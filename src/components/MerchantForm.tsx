@@ -29,6 +29,25 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
     phone: '',
   });
 
+  // Helper function to convert date format from MM-DD-YYYY to YYYY-MM-DD
+  const convertDateFormat = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    // Check if it's already in YYYY-MM-DD format
+    if (dateString.includes('-') && dateString.split('-')[0].length === 4) {
+      return dateString;
+    }
+    
+    // Convert from MM-DD-YYYY to YYYY-MM-DD
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const [month, day, year] = parts;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    return dateString;
+  };
+
   useEffect(() => {
     if (merchant) {
       setFormData({
@@ -38,7 +57,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
         area: merchant.area,
         state: merchant.state,
         zipcode: merchant.zipcode,
-        lastInteractionDate: merchant.lastInteractionDate,
+        lastInteractionDate: convertDateFormat(merchant.lastInteractionDate),
         platform: merchant.platform,
         phone: merchant.phone,
       });
@@ -65,9 +84,35 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
     }));
   };
 
+  // Helper function to convert date format from YYYY-MM-DD to MM-DD-YYYY
+  const convertDateFormatForSubmit = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    // Check if it's already in MM-DD-YYYY format
+    if (dateString.includes('-') && dateString.split('-')[0].length <= 2) {
+      return dateString;
+    }
+    
+    // Convert from YYYY-MM-DD to MM-DD-YYYY
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${month}-${day}-${year}`;
+    }
+    
+    return dateString;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Convert date format before submitting
+    const formDataToSubmit = {
+      ...formData,
+      lastInteractionDate: convertDateFormatForSubmit(formData.lastInteractionDate)
+    };
+    
+    onSubmit(formDataToSubmit);
     onClose();
   };
 
