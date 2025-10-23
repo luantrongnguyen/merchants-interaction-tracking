@@ -46,6 +46,8 @@ function App() {
       
       setMerchants(sortedMerchants);
       setFilteredMerchants(sortedMerchants);
+      // Clear any existing errors on successful load
+      setError(null);
     } catch (err) {
       setError('Unable to load merchant data. Please check backend API connection.');
     } finally {
@@ -74,6 +76,8 @@ function App() {
     try {
       await apiService.deleteMerchant(id);
       await loadMerchants();
+      // Clear any existing errors on successful delete
+      setError(null);
     } catch (err) {
       setError('Unable to delete merchant. Please try again.');
     }
@@ -87,15 +91,22 @@ function App() {
         await apiService.addMerchant(formData);
       }
       await loadMerchants();
+      // Clear any existing errors on successful save
+      setError(null);
     } catch (err) {
       setError('Unable to save merchant. Please try again.');
     }
   };
 
-  const handlePasscodeSuccess = () => {
+  const handlePasscodeSuccess = async () => {
     if (pendingAction) {
-      pendingAction();
-      setPendingAction(null);
+      try {
+        await pendingAction();
+        setPendingAction(null);
+      } catch (error) {
+        // Error is already handled in the action function
+        setPendingAction(null);
+      }
     }
   };
 
