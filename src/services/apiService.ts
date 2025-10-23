@@ -35,7 +35,6 @@ class ApiService {
         ...this.getAuthHeaders(),
         ...options.headers,
       },
-      credentials: 'include', // Include cookies for CORS
       mode: 'cors', // Enable CORS
       ...options,
     };
