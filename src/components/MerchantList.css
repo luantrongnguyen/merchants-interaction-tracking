@@ -1,0 +1,162 @@
+.merchant-list {
+  margin-top: 24px;
+}
+
+.list-header {
+  margin-bottom: 20px;
+}
+
+.list-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+  font-size: 1.1rem;
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+}
+
+.merchant-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.merchant-table th {
+  background-color: #f9fafb;
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.merchant-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+
+.merchant-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.merchant-name {
+  min-width: 200px;
+}
+
+.name-cell strong {
+  display: block;
+  color: #111827;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.street-info {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.address-cell {
+  min-width: 250px;
+}
+
+.address-info {
+  line-height: 1.4;
+}
+
+.area-info {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 2px 0;
+}
+
+.location-info {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.platform-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background-color: #e0e7ff;
+  color: #3730a3;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.date-info {
+  line-height: 1.4;
+}
+
+.days-info {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  color: white;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  min-width: 80px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-edit,
+.btn-delete {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.btn-edit:hover {
+  background-color: #f0f9ff;
+  border-color: #3b82f6;
+}
+
+.btn-delete:hover {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+}
+
+@media (max-width: 768px) {
+  .merchant-table {
+    font-size: 0.75rem;
+  }
+  
+  .merchant-table th,
+  .merchant-table td {
+    padding: 12px 8px;
+  }
+  
+  .merchant-name,
+  .address-cell {
+    min-width: 150px;
+  }
+}
