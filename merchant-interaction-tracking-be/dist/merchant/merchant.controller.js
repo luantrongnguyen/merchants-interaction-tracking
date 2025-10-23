@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const merchant_service_1 = require("./merchant.service");
 const create_merchant_dto_1 = require("./dto/create-merchant.dto");
 const update_merchant_dto_1 = require("./dto/update-merchant.dto");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let MerchantController = class MerchantController {
     merchantService;
     constructor(merchantService) {
@@ -76,6 +77,7 @@ __decorate([
 ], MerchantController.prototype, "remove", null);
 exports.MerchantController = MerchantController = __decorate([
     (0, common_1.Controller)('merchants'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [merchant_service_1.MerchantService])
 ], MerchantController);
 //# sourceMappingURL=merchant.controller.js.map

@@ -7,9 +7,13 @@ import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
 import StatsPanel from './components/StatsPanel';
 import SearchFilter from './components/SearchFilter';
+import GoogleAuth from './components/GoogleAuth';
+import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
 function App() {
+  const { user, isAuthenticated, login, logout } = useAuth();
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
   const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -227,60 +231,74 @@ function App() {
 
   return (
     <div className="app-container">
-      <main className="app-main">
-        {error && (
-          <div className="error-banner">
-            <p>{error}</p>
-            <button onClick={loadMerchants} className="retry-button">
-              Retry
-            </button>
-          </div>
-        )}
+      <header className="app-header">
+        <div className="header-content">
+          <h1>Merchant Interaction Tracking</h1>
+          <GoogleAuth
+            onLogin={login}
+            onLogout={logout}
+            isAuthenticated={isAuthenticated}
+            user={user}
+          />
+        </div>
+      </header>
 
-        <div className="app-content">
-          <div className="stats-section">
-            <StatsPanel merchants={merchants} />
-          </div>
-          
-          <div className="main-content">
-            <SearchFilter
-              onSearch={handleSearch}
-              onFilter={handleFilter}
-              onClear={handleClearSearch}
-            />
-            
-            <div className="controls">
-              <button onClick={handleAddMerchant} className="btn-primary">
-                Add New Merchant
-              </button>
-              <button onClick={loadMerchants} className="btn-secondary">
-                Refresh
+      <ProtectedRoute>
+        <main className="app-main">
+          {error && (
+            <div className="error-banner">
+              <p>{error}</p>
+              <button onClick={loadMerchants} className="retry-button">
+                Retry
               </button>
             </div>
+          )}
 
-            <MerchantList
-              merchants={filteredMerchants}
-              onEdit={handleEditMerchant}
-              onDelete={handleDeleteMerchant}
-            />
+          <div className="app-content">
+            <div className="stats-section">
+              <StatsPanel merchants={merchants} />
+            </div>
+            
+            <div className="main-content">
+              <SearchFilter
+                onSearch={handleSearch}
+                onFilter={handleFilter}
+                onClear={handleClearSearch}
+              />
+              
+              <div className="controls">
+                <button onClick={handleAddMerchant} className="btn-primary">
+                  Add New Merchant
+                </button>
+                <button onClick={loadMerchants} className="btn-secondary">
+                  Refresh
+                </button>
+              </div>
+
+              <MerchantList
+                merchants={filteredMerchants}
+                onEdit={handleEditMerchant}
+                onDelete={handleDeleteMerchant}
+              />
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <MerchantForm
-        merchant={editingMerchant}
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        title={formTitle}
-      />
+        <MerchantForm
+          merchant={editingMerchant}
+          isOpen={isFormOpen}
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={handleFormSubmit}
+          title={formTitle}
+        />
 
-      <PasscodeModal
-        isOpen={isPasscodeOpen}
-        onClose={handlePasscodeClose}
-        onSuccess={handlePasscodeSuccess}
-        title="Authentication Required"
-      />
+        <PasscodeModal
+          isOpen={isPasscodeOpen}
+          onClose={handlePasscodeClose}
+          onSuccess={handlePasscodeSuccess}
+          title="Authentication Required"
+        />
+      </ProtectedRoute>
     </div>
   );
 }

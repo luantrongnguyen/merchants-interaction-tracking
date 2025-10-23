@@ -151,4 +151,32 @@ export class GoogleSheetsService {
       throw error;
     }
   }
+
+  async getAuthorizedEmails(): Promise<string[]> {
+    try {
+      const spreadsheetId = appConfig.spreadsheetId;
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'AuthorizedEmails!A:A', // Assuming authorized emails are in column A
+      });
+
+      const rows = response.data.values;
+      if (!rows || rows.length === 0) {
+        this.logger.warn('No authorized emails found in Google Sheets');
+        return [];
+      }
+
+      // Extract emails and convert to lowercase for case-insensitive comparison
+      const emails = rows
+        .map((row: any[]) => row[0]?.toString().toLowerCase().trim())
+        .filter((email: string) => email && email.includes('@'));
+
+      this.logger.log(`Found ${emails.length} authorized emails`);
+      return emails;
+    } catch (error) {
+      this.logger.error('Error fetching authorized emails from Google Sheets:', error);
+      // Return empty array on error to prevent blocking access
+      return [];
+    }
+  }
 }

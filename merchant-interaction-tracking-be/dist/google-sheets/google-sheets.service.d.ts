@@ -8,4 +8,5 @@ export declare class GoogleSheetsService {
     addMerchant(merchant: any): Promise<void>;
     updateMerchant(id: number, merchant: any): Promise<void>;
     deleteMerchant(id: number): Promise<void>;
+    getAuthorizedEmails(): Promise<string[]>;
 }

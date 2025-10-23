@@ -3,18 +3,45 @@ import { CONFIG } from '../config';
 
 const API_BASE_URL = CONFIG.API_BASE_URL;
 
+interface User {
+  email: string;
+  name: string;
+  picture: string;
+  sub: string;
+}
+
+interface AuthResponse {
+  success: boolean;
+  message?: string;
+  user?: User;
+  isAuthenticated?: boolean;
+}
+
 class ApiService {
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('auth_token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
         ...options.headers,
       },
       ...options,
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        // Unauthorized - clear auth token and redirect to login
+        localStorage.removeItem('auth_token');
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
@@ -47,6 +74,34 @@ class ApiService {
     return this.request<void>(`/merchants/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // Authentication methods
+  async login(user: User): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ user }),
+    });
+    
+    if (response.success && response.user) {
+      localStorage.setItem('auth_token', 'authenticated');
+    }
+    
+    return response;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.request('/auth/logout', {
+        method: 'POST',
+      });
+    } finally {
+      localStorage.removeItem('auth_token');
+    }
+  }
+
+  async checkAuth(): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/auth/check');
   }
 }
 

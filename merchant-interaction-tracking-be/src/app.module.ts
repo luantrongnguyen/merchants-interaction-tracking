@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MerchantModule } from './merchant/merchant.module';
 import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
       isGlobal: true,
     }),
     GoogleSheetsModule,
+    AuthModule,
     MerchantModule,
   ],
   controllers: [AppController],

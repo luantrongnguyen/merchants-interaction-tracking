@@ -150,6 +150,29 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             throw error;
         }
     }
+    async getAuthorizedEmails() {
+        try {
+            const spreadsheetId = app_config_1.appConfig.spreadsheetId;
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId,
+                range: 'AuthorizedEmails!A:A',
+            });
+            const rows = response.data.values;
+            if (!rows || rows.length === 0) {
+                this.logger.warn('No authorized emails found in Google Sheets');
+                return [];
+            }
+            const emails = rows
+                .map((row) => row[0]?.toString().toLowerCase().trim())
+                .filter((email) => email && email.includes('@'));
+            this.logger.log(`Found ${emails.length} authorized emails`);
+            return emails;
+        }
+        catch (error) {
+            this.logger.error('Error fetching authorized emails from Google Sheets:', error);
+            return [];
+        }
+    }
 };
 exports.GoogleSheetsService = GoogleSheetsService;
 exports.GoogleSheetsService = GoogleSheetsService = GoogleSheetsService_1 = __decorate([
