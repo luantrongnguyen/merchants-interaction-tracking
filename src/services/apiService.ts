@@ -28,24 +28,37 @@ class ApiService {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    const response = await fetch(url, {
+    
+    const requestOptions: RequestInit = {
+      method: options.method || 'GET',
       headers: {
         ...this.getAuthHeaders(),
         ...options.headers,
       },
+      credentials: 'include', // Include cookies for CORS
+      mode: 'cors', // Enable CORS
       ...options,
-    });
+    };
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Unauthorized - clear auth token and redirect to login
-        localStorage.removeItem('auth_token');
-        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    try {
+      const response = await fetch(url, requestOptions);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Unauthorized - clear auth token and redirect to login
+          localStorage.removeItem('auth_token');
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
 
-    return response.json();
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+      }
+      throw error;
+    }
   }
 
   async getMerchants(): Promise<Merchant[]> {

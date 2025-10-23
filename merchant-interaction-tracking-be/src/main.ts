@@ -7,9 +7,16 @@ async function bootstrap() {
   
   // Enable CORS for all domains
   app.enableCors({
-    origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: [
+      'http://localhost:3000',
+      'https://luantrongnguyen.github.io',
+      'https://luantrongnguyen.github.io/merchants-interaction-tracking',
+      'https://luannguyentrong-mango.phuhoangcar.com'
+    ],
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     credentials: true,
+    optionsSuccessStatus: 200,
   });
   
   // Enable validation pipes
