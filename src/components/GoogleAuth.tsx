@@ -83,28 +83,9 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
     }
   };
 
-  const handleLogout = () => {
-    if (window.google) {
-      window.google.accounts.id.disableAutoSelect();
-    }
-    onLogout();
-  };
 
   if (isAuthenticated) {
-    return (
-      <div className="google-auth-container">
-        <div className="user-info">
-          <img src={user.picture} alt="Profile" className="profile-picture" />
-          <div className="user-details">
-            <span className="user-name">{user.name}</span>
-            <span className="user-email">{user.email}</span>
-          </div>
-        </div>
-        <button onClick={handleLogout} className="logout-btn">
-          Đăng xuất
-        </button>
-      </div>
-    );
+    return null; // Không hiển thị gì khi đã đăng nhập
   }
 
   return (

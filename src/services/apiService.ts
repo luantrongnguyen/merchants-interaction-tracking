@@ -15,15 +15,21 @@ interface AuthResponse {
   message?: string;
   user?: User;
   isAuthenticated?: boolean;
+  access_token?: string;
 }
 
 class ApiService {
   private getAuthHeaders(): HeadersInit {
     const token = localStorage.getItem('auth_token');
-    return {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
     };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -95,8 +101,8 @@ class ApiService {
       body: JSON.stringify({ user }),
     });
     
-    if (response.success && response.user) {
-      localStorage.setItem('auth_token', 'authenticated');
+    if (response.success && response.access_token) {
+      localStorage.setItem('auth_token', response.access_token);
     }
     
     return response;

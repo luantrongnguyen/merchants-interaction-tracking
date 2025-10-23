@@ -79,6 +79,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       // Ignore logout errors
     } finally {
+      // Clear token from localStorage
+      localStorage.removeItem('auth_token');
       setUser(null);
       setIsAuthenticated(false);
     }
