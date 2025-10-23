@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { MerchantFormData, MerchantWithStatus } from './types/merchant';
 import { calculateMerchantStatus } from './utils/merchantUtils';
 import apiService from './services/apiService';
@@ -32,8 +32,16 @@ function App() {
       setError(null);
       const data = await apiService.getMerchants();
       const merchantsWithStatus = data.map(calculateMerchantStatus);
-      setMerchants(merchantsWithStatus);
-      setFilteredMerchants(merchantsWithStatus);
+      
+      // Sort by lastInteractionDate (oldest first)
+      const sortedMerchants = merchantsWithStatus.sort((a, b) => {
+        const dateA = new Date(a.lastInteractionDate);
+        const dateB = new Date(b.lastInteractionDate);
+        return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+      });
+      
+      setMerchants(sortedMerchants);
+      setFilteredMerchants(sortedMerchants);
     } catch (err) {
       setError('Unable to load merchant data. Please check backend API connection.');
       console.error('Error loading merchants:', err);
@@ -120,6 +128,13 @@ function App() {
       });
     }
 
+    // Sort by lastInteractionDate (oldest first)
+    filtered = filtered.sort((a, b) => {
+      const dateA = new Date(a.lastInteractionDate);
+      const dateB = new Date(b.lastInteractionDate);
+      return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+    });
+
     setFilteredMerchants(filtered);
   };
 
@@ -148,6 +163,13 @@ function App() {
       });
     }
 
+    // Sort by lastInteractionDate (oldest first)
+    filtered = filtered.sort((a, b) => {
+      const dateA = new Date(a.lastInteractionDate);
+      const dateB = new Date(b.lastInteractionDate);
+      return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+    });
+
     setFilteredMerchants(filtered);
   };
 
@@ -175,6 +197,13 @@ function App() {
         );
       });
     }
+
+    // Sort by lastInteractionDate (oldest first)
+    filtered = filtered.sort((a, b) => {
+      const dateA = new Date(a.lastInteractionDate);
+      const dateB = new Date(b.lastInteractionDate);
+      return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+    });
 
     setFilteredMerchants(filtered);
   };

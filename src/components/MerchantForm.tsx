@@ -198,6 +198,18 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
             />
           </div>
 
+          <div className="form-group">
+            <label htmlFor="phone">Phone *</label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
           <div className="modal-actions">
             <button type="button" onClick={handleClose} className="btn-secondary">
               Cancel

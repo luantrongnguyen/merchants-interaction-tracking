@@ -28,6 +28,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
         <table className="merchant-table">
           <thead>
             <tr>
+              <th>No</th>
               <th>Name</th>
               <th>Address</th>
               <th>Platform</th>
@@ -38,8 +39,11 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
             </tr>
           </thead>
           <tbody>
-            {merchants.map((merchant) => (
+            {merchants.map((merchant, index) => (
               <tr key={merchant.id}>
+                <td className="merchant-no">
+                  {index + 1}
+                </td>
                 <td className="merchant-name">
                   <div className="name-cell">
                     <strong>{merchant.name}</strong>

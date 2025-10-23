@@ -46,6 +46,19 @@
   white-space: nowrap;
 }
 
+.merchant-table th:first-child {
+  text-align: center;
+  width: 60px;
+}
+
+.merchant-no {
+  text-align: center;
+  font-weight: 600;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+}
+
 .merchant-table td {
   padding: 16px 16px;
   border-bottom: 1px solid #f3f4f6;
