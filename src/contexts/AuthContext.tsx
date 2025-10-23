@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success) {
         setUser(userData);
         setIsAuthenticated(true);
-        // Reload page to refresh merchant list
+        // Reload page immediately to refresh merchant list
         window.location.reload();
       } else {
         throw new Error(response.message || 'Đăng nhập thất bại');

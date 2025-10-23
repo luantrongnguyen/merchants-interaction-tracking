@@ -75,6 +75,7 @@ function App() {
   const deleteMerchant = async (id: number) => {
     try {
       await apiService.deleteMerchant(id);
+      // Force reload merchants list
       await loadMerchants();
       // Clear any existing errors on successful delete
       setError(null);
@@ -103,9 +104,11 @@ function App() {
       try {
         await pendingAction();
         setPendingAction(null);
+        setIsPasscodeOpen(false); // Close modal after successful action
       } catch (error) {
         // Error is already handled in the action function
         setPendingAction(null);
+        setIsPasscodeOpen(false); // Close modal even on error
       }
     }
   };
