@@ -48,7 +48,6 @@ function App() {
       setFilteredMerchants(sortedMerchants);
     } catch (err) {
       setError('Unable to load merchant data. Please check backend API connection.');
-      console.error('Error loading merchants:', err);
     } finally {
       setLoading(false);
     }
@@ -77,7 +76,6 @@ function App() {
       await loadMerchants();
     } catch (err) {
       setError('Unable to delete merchant. Please try again.');
-      console.error('Error deleting merchant:', err);
     }
   };
 
@@ -91,7 +89,6 @@ function App() {
       await loadMerchants();
     } catch (err) {
       setError('Unable to save merchant. Please try again.');
-      console.error('Error saving merchant:', err);
     }
   };
 

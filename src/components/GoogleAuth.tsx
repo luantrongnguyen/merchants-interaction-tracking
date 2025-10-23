@@ -36,18 +36,11 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
 
     const initializeGoogleAuth = () => {
       if (window.google && CONFIG.GOOGLE_CLIENT_ID) {
-        console.log('Initializing Google Auth with Client ID:', CONFIG.GOOGLE_CLIENT_ID);
         window.google.accounts.id.initialize({
           client_id: CONFIG.GOOGLE_CLIENT_ID,
           callback: handleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true
-        });
-        console.log('Google Auth initialized successfully');
-      } else {
-        console.error('Google Auth initialization failed:', {
-          google: !!window.google,
-          clientId: CONFIG.GOOGLE_CLIENT_ID
         });
       }
     };
@@ -58,12 +51,9 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
   const handleCredentialResponse = (response: any) => {
     setIsLoading(true);
     
-    console.log('Google response received:', response);
-    
     // Decode JWT token to get user info
     try {
       const payload = JSON.parse(atob(response.credential.split('.')[1]));
-      console.log('Decoded payload:', payload);
       
       const userInfo = {
         email: payload.email,
@@ -72,18 +62,15 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
         sub: payload.sub
       };
       
-      console.log('User info:', userInfo);
-      
       // Check domain before attempting login
       if (!userInfo.email.toLowerCase().endsWith('@mangoforsalon.com')) {
-        alert('Chỉ email có domain @mangoforsalon.com mới được truy cập hệ thống.');
+        alert('Chỉ email có domain @mangoforsalon.com mới được truy cập.');
         setIsLoading(false);
         return;
       }
       
       onLogin(userInfo);
     } catch (error) {
-      console.error('Error decoding JWT:', error);
       alert('Lỗi xử lý thông tin đăng nhập. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);

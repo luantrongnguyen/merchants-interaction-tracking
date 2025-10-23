@@ -40,7 +40,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -58,7 +57,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(response.message || 'Đăng nhập thất bại');
       }
     } catch (error) {
-      console.error('Login failed:', error);
       // Show user-friendly error message
       if (
         typeof error === 'object' &&
@@ -67,7 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         typeof (error as any).message === 'string' &&
         (error as any).message.includes('mangoforsalon.com')
       ) {
-        alert('Chỉ email có domain @mangoforsalon.com mới được truy cập.');
+        alert('Chỉ email có domain @mangoforsalon.com mới được truy cập hệ thống.');
       } else {
         alert('Đăng nhập thất bại. Vui lòng thử lại.');
       }
@@ -79,7 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await apiService.logout();
     } catch (error) {
-      console.error('Logout failed:', error);
+      // Ignore logout errors
     } finally {
       setUser(null);
       setIsAuthenticated(false);

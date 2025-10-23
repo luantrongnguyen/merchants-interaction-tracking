@@ -26,18 +26,16 @@ export class AuthService {
         return false;
       }
       
-      // Get authorized emails from Google Sheets for additional validation
-      const authorizedEmails = await this.googleSheetsService.getAuthorizedEmails();
-      
-      // Check if user's email is in the authorized list
-      const isAuthorized = authorizedEmails.includes(user.email.toLowerCase());
-      
-      if (!isAuthorized) {
-        console.log(`Unauthorized access attempt from: ${user.email} - Not in authorized list`);
-        return false;
-      }
-      
+      console.log(`Authorized access from: ${user.email} - Mango domain confirmed`);
       return true;
+      
+      // Optional: Get authorized emails from Google Sheets for additional validation
+      // const authorizedEmails = await this.googleSheetsService.getAuthorizedEmails();
+      // const isAuthorized = authorizedEmails.includes(user.email.toLowerCase());
+      // if (!isAuthorized) {
+      //   console.log(`Unauthorized access attempt from: ${user.email} - Not in authorized list`);
+      //   return false;
+      // }
     } catch (error) {
       console.error('Error validating user:', error);
       return false;
@@ -48,7 +46,7 @@ export class AuthService {
     const isValid = await this.validateUser(user);
     
     if (!isValid) {
-      throw new UnauthorizedException('Chỉ email có domain @mangoforsalon.com mới được truy cập');
+      throw new UnauthorizedException('Chỉ email có domain @mangoforsalon.com mới được truy cập hệ thống');
     }
 
     const payload = { 

@@ -27,12 +27,7 @@ let AuthService = class AuthService {
                 console.log(`Unauthorized access attempt from: ${user.email} - Not a Mango domain`);
                 return false;
             }
-            const authorizedEmails = await this.googleSheetsService.getAuthorizedEmails();
-            const isAuthorized = authorizedEmails.includes(user.email.toLowerCase());
-            if (!isAuthorized) {
-                console.log(`Unauthorized access attempt from: ${user.email} - Not in authorized list`);
-                return false;
-            }
+            console.log(`Authorized access from: ${user.email} - Mango domain confirmed`);
             return true;
         }
         catch (error) {
@@ -43,7 +38,7 @@ let AuthService = class AuthService {
     async login(user) {
         const isValid = await this.validateUser(user);
         if (!isValid) {
-            throw new common_1.UnauthorizedException('Chỉ email có domain @mangoforsalon.com mới được truy cập');
+            throw new common_1.UnauthorizedException('Chỉ email có domain @mangoforsalon.com mới được truy cập hệ thống');
         }
         const payload = {
             email: user.email,
