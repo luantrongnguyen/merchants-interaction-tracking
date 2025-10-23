@@ -26,6 +26,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
     zipcode: '',
     lastInteractionDate: '',
     platform: '',
+    phone: '',
   });
 
   useEffect(() => {
@@ -39,6 +40,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
         zipcode: merchant.zipcode,
         lastInteractionDate: merchant.lastInteractionDate,
         platform: merchant.platform,
+        phone: merchant.phone,
       });
     } else {
       setFormData({
@@ -50,6 +52,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
         zipcode: '',
         lastInteractionDate: '',
         platform: '',
+        phone: '',
       });
     }
   }, [merchant, isOpen]);
@@ -119,6 +122,18 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
               id="address"
               name="address"
               value={formData.address}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="phone">Phone *</label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={formData.phone}
               onChange={handleChange}
               required
             />

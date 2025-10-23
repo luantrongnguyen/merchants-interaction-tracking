@@ -8,6 +8,7 @@ export interface Merchant {
   zipcode: string;
   lastInteractionDate: string;
   platform: string;
+  phone: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -21,6 +22,7 @@ export interface MerchantFormData {
   zipcode: string;
   lastInteractionDate: string;
   platform: string;
+  phone: string;
 }
 
 export type MerchantStatus = 'green' | 'orange' | 'red';

@@ -31,6 +31,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
               <th>Name</th>
               <th>Address</th>
               <th>Platform</th>
+              <th>Phone</th>
               <th>Last Interaction</th>
               <th>Status</th>
               <th>Actions</th>
@@ -61,6 +62,9 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                 </td>
                 <td>
                   <span className="platform-badge">{merchant.platform}</span>
+                </td>
+                <td>
+                  <span className="phone-info">{merchant.phone}</span>
                 </td>
                 <td>
                   <div className="date-info">

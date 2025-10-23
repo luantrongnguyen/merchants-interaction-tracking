@@ -5,10 +5,13 @@ import apiService from './services/apiService';
 import MerchantList from './components/MerchantList';
 import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
+import StatsPanel from './components/StatsPanel';
+import SearchFilter from './components/SearchFilter';
 import './App.css';
 
 function App() {
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
+  const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -30,6 +33,7 @@ function App() {
       const data = await apiService.getMerchants();
       const merchantsWithStatus = data.map(calculateMerchantStatus);
       setMerchants(merchantsWithStatus);
+      setFilteredMerchants(merchantsWithStatus);
     } catch (err) {
       setError('Unable to load merchant data. Please check backend API connection.');
       console.error('Error loading merchants:', err);
@@ -91,6 +95,96 @@ function App() {
     setPendingAction(null);
   };
 
+  const [currentSearchTerm, setCurrentSearchTerm] = useState('');
+  const [currentStatusFilter, setCurrentStatusFilter] = useState<'all' | 'green' | 'orange' | 'red'>('all');
+
+  const applyFilters = () => {
+    let filtered = merchants;
+
+    // Apply status filter
+    if (currentStatusFilter !== 'all') {
+      filtered = filtered.filter(merchant => merchant.status === currentStatusFilter);
+    }
+
+    // Apply search filter
+    if (currentSearchTerm) {
+      const term = currentSearchTerm.toLowerCase();
+      filtered = filtered.filter(merchant => {
+        return (
+          merchant.phone?.toLowerCase().includes(term) ||
+          merchant.zipcode?.toLowerCase().includes(term) ||
+          merchant.name?.toLowerCase().includes(term) ||
+          merchant.address?.toLowerCase().includes(term) ||
+          false
+        );
+      });
+    }
+
+    setFilteredMerchants(filtered);
+  };
+
+  const handleSearch = (searchTerm: string) => {
+    setCurrentSearchTerm(searchTerm);
+    
+    // Apply filters immediately
+    let filtered = merchants;
+
+    // Apply status filter
+    if (currentStatusFilter !== 'all') {
+      filtered = filtered.filter(merchant => merchant.status === currentStatusFilter);
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(merchant => {
+        return (
+          merchant.phone?.toLowerCase().includes(term) ||
+          merchant.zipcode?.toLowerCase().includes(term) ||
+          merchant.name?.toLowerCase().includes(term) ||
+          merchant.address?.toLowerCase().includes(term) ||
+          false
+        );
+      });
+    }
+
+    setFilteredMerchants(filtered);
+  };
+
+  const handleFilter = (status: 'all' | 'green' | 'orange' | 'red') => {
+    setCurrentStatusFilter(status);
+    
+    // Apply filters immediately
+    let filtered = merchants;
+
+    // Apply status filter
+    if (status !== 'all') {
+      filtered = filtered.filter(merchant => merchant.status === status);
+    }
+
+    // Apply search filter
+    if (currentSearchTerm) {
+      const term = currentSearchTerm.toLowerCase();
+      filtered = filtered.filter(merchant => {
+        return (
+          merchant.phone?.toLowerCase().includes(term) ||
+          merchant.zipcode?.toLowerCase().includes(term) ||
+          merchant.name?.toLowerCase().includes(term) ||
+          merchant.address?.toLowerCase().includes(term) ||
+          false
+        );
+      });
+    }
+
+    setFilteredMerchants(filtered);
+  };
+
+  const handleClearSearch = () => {
+    setCurrentSearchTerm('');
+    setCurrentStatusFilter('all');
+    setFilteredMerchants(merchants);
+  };
+
   if (loading) {
     return (
       <div className="app-container">
@@ -104,11 +198,6 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="app-header">
-        <h1>Merchant Interaction Tracking</h1>
-        <p>Manage and track interactions with merchants</p>
-      </header>
-
       <main className="app-main">
         {error && (
           <div className="error-banner">
@@ -119,20 +208,34 @@ function App() {
           </div>
         )}
 
-        <div className="controls">
-          <button onClick={handleAddMerchant} className="btn-primary">
-            Add New Merchant
-          </button>
-          <button onClick={loadMerchants} className="btn-secondary">
-            Refresh
-          </button>
-        </div>
+        <div className="app-content">
+          <div className="stats-section">
+            <StatsPanel merchants={merchants} />
+          </div>
+          
+          <div className="main-content">
+            <SearchFilter
+              onSearch={handleSearch}
+              onFilter={handleFilter}
+              onClear={handleClearSearch}
+            />
+            
+            <div className="controls">
+              <button onClick={handleAddMerchant} className="btn-primary">
+                Add New Merchant
+              </button>
+              <button onClick={loadMerchants} className="btn-secondary">
+                Refresh
+              </button>
+            </div>
 
-        <MerchantList
-          merchants={merchants}
-          onEdit={handleEditMerchant}
-          onDelete={handleDeleteMerchant}
-        />
+            <MerchantList
+              merchants={filteredMerchants}
+              onEdit={handleEditMerchant}
+              onDelete={handleDeleteMerchant}
+            />
+          </div>
+        </div>
       </main>
 
       <MerchantForm
