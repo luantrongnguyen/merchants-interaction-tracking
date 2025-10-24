@@ -40,7 +40,9 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
           client_id: CONFIG.GOOGLE_CLIENT_ID,
           callback: handleCredentialResponse,
           auto_select: false,
-          cancel_on_tap_outside: true
+          cancel_on_tap_outside: true,
+          error_callback: handleError,
+          use_fedcm_for_prompt: true // Enable FedCM as required by Google
         });
       }
     };
@@ -77,9 +79,33 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
     }
   };
 
+  const handleError = (error: any) => {
+    setIsLoading(false);
+    
+    // Ignore common user cancellation errors
+    if (
+      error.type === 'popup_closed' || 
+      error.type === 'abort' ||
+      error.name === 'AbortError' ||
+      error.message?.includes('AbortError') ||
+      error.message?.includes('signal is aborted') ||
+      error.message?.includes('The given origin is not allowed')
+    ) {
+      // User cancelled or origin not allowed - no need to show error
+      return;
+    }
+    
+    // Log other errors for debugging
+    console.error('Google Sign-In error:', error);
+  };
+
   const handleLogin = () => {
     if (window.google) {
-      window.google.accounts.id.prompt();
+      try {
+        window.google.accounts.id.prompt();
+      } catch (error) {
+        handleError(error);
+      }
     }
   };
 
