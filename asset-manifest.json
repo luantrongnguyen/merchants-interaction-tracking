@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/merchants-interaction-tracking/static/css/main.0fcd814a.css",
-    "main.js": "/merchants-interaction-tracking/static/js/main.ec3e14ae.js",
+    "main.js": "/merchants-interaction-tracking/static/js/main.d39e491b.js",
     "static/js/453.856d6526.chunk.js": "/merchants-interaction-tracking/static/js/453.856d6526.chunk.js",
     "index.html": "/merchants-interaction-tracking/index.html",
     "main.0fcd814a.css.map": "/merchants-interaction-tracking/static/css/main.0fcd814a.css.map",
-    "main.ec3e14ae.js.map": "/merchants-interaction-tracking/static/js/main.ec3e14ae.js.map",
+    "main.d39e491b.js.map": "/merchants-interaction-tracking/static/js/main.d39e491b.js.map",
     "453.856d6526.chunk.js.map": "/merchants-interaction-tracking/static/js/453.856d6526.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.0fcd814a.css",
-    "static/js/main.ec3e14ae.js"
+    "static/js/main.d39e491b.js"
   ]
 }
