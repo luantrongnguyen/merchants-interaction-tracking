@@ -42,7 +42,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
           auto_select: false,
           cancel_on_tap_outside: true,
           error_callback: handleError,
-          use_fedcm_for_prompt: false, // Disable FedCM to avoid browser blocking
+          use_fedcm_for_prompt: true, // Enable FedCM as required by Google
           itp_support: true // Enable ITP support for better compatibility
         });
       }
@@ -91,7 +91,8 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
       error.message?.includes('AbortError') ||
       error.message?.includes('signal is aborted') ||
       error.message?.includes('The given origin is not allowed') ||
-      error.message?.includes('FedCM was disabled')
+      error.message?.includes('FedCM was disabled') ||
+      error.message?.includes('NetworkError')
     ) {
       // User cancelled or FedCM disabled - no need to show error
       return;
@@ -104,17 +105,10 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
   const handleLogin = () => {
     if (window.google) {
       try {
-        // Try FedCM first
+        // Use FedCM as configured
         window.google.accounts.id.prompt();
       } catch (error) {
-        // If FedCM fails, try popup fallback
-        try {
-          window.google.accounts.id.prompt({
-            use_fedcm_for_prompt: false
-          });
-        } catch (fallbackError) {
-          handleError(fallbackError);
-        }
+        handleError(error);
       }
     }
   };

@@ -118,3 +118,4 @@ Sau khi cài đặt, ứng dụng sẽ có:
 - ✅ Kiểm soát quyền truy cập theo email
 - ✅ Bảo mật API endpoints
 - ✅ UI/UX hiện đại và thân thiện
+
