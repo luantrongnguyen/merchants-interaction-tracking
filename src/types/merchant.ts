@@ -11,6 +11,8 @@ export interface Merchant {
   phone: string;
   createdAt?: string;
   updatedAt?: string;
+  lastModifiedAt?: string;
+  lastModifiedBy?: string;
 }
 
 export interface MerchantFormData {

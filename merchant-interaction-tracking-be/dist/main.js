@@ -16,6 +16,11 @@ async function bootstrap() {
         res.header('Access-Control-Allow-Methods', '*');
         res.header('Access-Control-Allow-Headers', '*');
         res.header('Access-Control-Max-Age', '86400');
+        if (process.env.BYPASS_AUTH === 'true' || process.env.NODE_ENV === 'development') {
+            res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.header('Pragma', 'no-cache');
+            res.header('Expires', '0');
+        }
         if (req.method === 'OPTIONS') {
             res.status(200).end();
             return;

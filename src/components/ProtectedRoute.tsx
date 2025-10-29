@@ -8,6 +8,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
 
   if (isLoading) {
     return (
@@ -20,7 +21,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !bypassAuth) {
     return (
       <div className="app-container">
         <div className="blank-page">

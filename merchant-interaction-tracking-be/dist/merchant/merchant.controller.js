@@ -23,8 +23,9 @@ let MerchantController = class MerchantController {
     constructor(merchantService) {
         this.merchantService = merchantService;
     }
-    create(createMerchantDto) {
-        return this.merchantService.create(createMerchantDto);
+    create(createMerchantDto, req) {
+        const email = req?.user?.email || 'unknown@mangoforsalon.com';
+        return this.merchantService.create(createMerchantDto, email);
     }
     findAll() {
         return this.merchantService.findAll();
@@ -32,8 +33,9 @@ let MerchantController = class MerchantController {
     findOne(id) {
         return this.merchantService.findOne(id);
     }
-    update(id, updateMerchantDto) {
-        return this.merchantService.update(id, updateMerchantDto);
+    update(id, updateMerchantDto, req) {
+        const email = req?.user?.email || 'unknown@mangoforsalon.com';
+        return this.merchantService.update(id, updateMerchantDto, email);
     }
     remove(id) {
         return this.merchantService.remove(id);
@@ -43,8 +45,9 @@ exports.MerchantController = MerchantController;
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_merchant_dto_1.CreateMerchantDto]),
+    __metadata("design:paramtypes", [create_merchant_dto_1.CreateMerchantDto, Object]),
     __metadata("design:returntype", void 0)
 ], MerchantController.prototype, "create", null);
 __decorate([
@@ -64,8 +67,9 @@ __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, update_merchant_dto_1.UpdateMerchantDto]),
+    __metadata("design:paramtypes", [Number, update_merchant_dto_1.UpdateMerchantDto, Object]),
     __metadata("design:returntype", void 0)
 ], MerchantController.prototype, "update", null);
 __decorate([

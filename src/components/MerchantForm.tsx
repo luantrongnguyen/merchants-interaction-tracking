@@ -29,7 +29,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
     phone: '',
   });
 
-  // Helper function to convert date format from MM-DD-YYYY to YYYY-MM-DD
+  // Helper function to convert date format to YYYY-MM-DD for input[type="date"]
   const convertDateFormat = (dateString: string): string => {
     if (!dateString) return '';
     
@@ -38,10 +38,17 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
       return dateString;
     }
     
+    // Convert from MM/DD/YYYY to YYYY-MM-DD
+    const slashParts = dateString.split('/');
+    if (slashParts.length === 3) {
+      const [month, day, year] = slashParts;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
     // Convert from MM-DD-YYYY to YYYY-MM-DD
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-      const [month, day, year] = parts;
+    const dashParts = dateString.split('-');
+    if (dashParts.length === 3) {
+      const [month, day, year] = dashParts;
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     
@@ -84,22 +91,32 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
     }));
   };
 
-  // Helper function to convert date format from YYYY-MM-DD to MM-DD-YYYY
+  // Helper: ensure submit date is ISO date-only (YYYY-MM-DD)
   const convertDateFormatForSubmit = (dateString: string): string => {
     if (!dateString) return '';
-    
-    // Check if it's already in MM-DD-YYYY format
-    if (dateString.includes('-') && dateString.split('-')[0].length <= 2) {
+
+    // Already ISO date-only
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       return dateString;
     }
-    
-    // Convert from YYYY-MM-DD to MM-DD-YYYY
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-      const [year, month, day] = parts;
-      return `${month}-${day}-${year}`;
+
+    // If input like MM-DD-YYYY => convert to YYYY-MM-DD
+    const mdYMatch = dateString.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (mdYMatch) {
+      const [, mm, dd, yyyy] = mdYMatch;
+      const month = mm.padStart(2, '0');
+      const day = dd.padStart(2, '0');
+      return `${yyyy}-${month}-${day}`;
     }
-    
+
+    // Fallback: try Date parse and extract date part
+    const d = new Date(dateString);
+    if (!isNaN(d.getTime())) {
+      return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+        .toISOString()
+        .slice(0, 10);
+    }
+
     return dateString;
   };
 

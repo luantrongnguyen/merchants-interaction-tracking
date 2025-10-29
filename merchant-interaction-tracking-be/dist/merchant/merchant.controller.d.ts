@@ -4,9 +4,9 @@ import { UpdateMerchantDto } from './dto/update-merchant.dto';
 export declare class MerchantController {
     private readonly merchantService;
     constructor(merchantService: MerchantService);
-    create(createMerchantDto: CreateMerchantDto): Promise<any>;
+    create(createMerchantDto: CreateMerchantDto, req: any): Promise<any>;
     findAll(): Promise<any[]>;
     findOne(id: number): Promise<any>;
-    update(id: number, updateMerchantDto: UpdateMerchantDto): Promise<any>;
+    update(id: number, updateMerchantDto: UpdateMerchantDto, req: any): Promise<any>;
     remove(id: number): Promise<void>;
 }

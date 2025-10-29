@@ -27,10 +27,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
 
   const checkAuth = async () => {
     try {
       setIsLoading(true);
+      if (bypassAuth) {
+        // Dev mode: bypass authentication
+        setUser({ email: 'dev@example.com', name: 'Dev User', picture: '', sub: 'dev' });
+        setIsAuthenticated(true);
+        return;
+      }
       const response = await apiService.checkAuth();
       if (response.isAuthenticated && response.user) {
         setUser(response.user);

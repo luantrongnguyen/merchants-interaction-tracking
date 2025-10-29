@@ -35,18 +35,33 @@ class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
+    // Disable cache in dev mode
+    const isDevMode = process.env.REACT_APP_BYPASS_AUTH === 'true';
+    const cacheOption = isDevMode ? { cache: 'no-cache' as RequestCache } : {};
+    
     const requestOptions: RequestInit = {
       method: options.method || 'GET',
       headers: {
         ...this.getAuthHeaders(),
+        ...(isDevMode && {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }),
         ...options.headers,
       },
       mode: 'cors', // Enable CORS
+      ...cacheOption,
       ...options,
     };
 
+    // Add timestamp to prevent cache in dev mode
+    const urlWithTimestamp = isDevMode && !endpoint.includes('?') 
+      ? `${url}?_t=${Date.now()}` 
+      : url;
+
     try {
-      const response = await fetch(url, requestOptions);
+      const response = await fetch(urlWithTimestamp, requestOptions);
 
       if (!response.ok) {
         if (response.status === 401) {

@@ -26,12 +26,47 @@ export class GoogleSheetsService {
     }
   }
 
+  private getMockMerchants(): any[] {
+    // Return mock data for dev mode
+    return [
+      {
+        id: 1,
+        name: 'Test Merchant 1',
+        address: '123 Test Street',
+        street: '123 Test Street',
+        area: 'Test Area',
+        state: 'Test State',
+        zipcode: '12345',
+        lastInteractionDate: '2025-01-15',
+        platform: 'Crisp',
+        phone: '1234567890',
+      },
+      {
+        id: 2,
+        name: 'Test Merchant 2',
+        address: '456 Sample Ave',
+        street: '456 Sample Ave',
+        area: 'Sample Area',
+        state: 'Sample State',
+        zipcode: '54321',
+        lastInteractionDate: '2025-01-20',
+        platform: 'Vonage',
+        phone: '0987654321',
+      },
+    ];
+  }
+
   async getMerchants(): Promise<any[]> {
     try {
+      // Check if sheets is initialized
+      if (!this.sheets) {
+        throw new Error('Google Sheets service not initialized');
+      }
+
       const spreadsheetId = appConfig.spreadsheetId;
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'Merchants!A:I',
+        range: 'Merchants!A:K',
       });
 
       const rows = response.data.values;
@@ -51,6 +86,8 @@ export class GoogleSheetsService {
         lastInteractionDate: row[6] || '',
         platform: row[7] || '',
         phone: row[8] || '',
+        lastModifiedAt: row[9] || '',
+        lastModifiedBy: row[10] || '',
       }));
 
       return merchants;
@@ -60,8 +97,12 @@ export class GoogleSheetsService {
     }
   }
 
-  async addMerchant(merchant: any): Promise<void> {
+  async addMerchant(merchant: any, meta: { by: string; at?: string }): Promise<void> {
     try {
+      if (!this.sheets) {
+        throw new Error('Google Sheets service not initialized');
+      }
+
       const spreadsheetId = appConfig.spreadsheetId;
       const values = [
         [
@@ -74,12 +115,14 @@ export class GoogleSheetsService {
           merchant.lastInteractionDate,
           merchant.platform,
           merchant.phone,
+          meta.at ?? new Date().toISOString().slice(0, 10),
+          meta.by,
         ],
       ];
 
       await this.sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Merchants!A:I',
+        range: 'Merchants!A:K',
         valueInputOption: 'RAW',
         resource: { values },
       });
@@ -91,8 +134,12 @@ export class GoogleSheetsService {
     }
   }
 
-  async updateMerchant(id: number, merchant: any): Promise<void> {
+  async updateMerchant(id: number, merchant: any, meta: { by: string; at?: string }): Promise<void> {
     try {
+      if (!this.sheets) {
+        throw new Error('Google Sheets service not initialized');
+      }
+
       const spreadsheetId = appConfig.spreadsheetId;
       const values = [
         [
@@ -105,12 +152,14 @@ export class GoogleSheetsService {
           merchant.lastInteractionDate,
           merchant.platform,
           merchant.phone,
+          meta.at ?? new Date().toISOString().slice(0, 10),
+          meta.by,
         ],
       ];
 
       await this.sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `Merchants!A${id + 1}:I${id + 1}`,
+        range: `Merchants!A${id + 1}:K${id + 1}`,
         valueInputOption: 'RAW',
         resource: { values },
       });
@@ -124,6 +173,10 @@ export class GoogleSheetsService {
 
   async deleteMerchant(id: number): Promise<void> {
     try {
+      if (!this.sheets) {
+        throw new Error('Google Sheets service not initialized');
+      }
+
       const spreadsheetId = appConfig.spreadsheetId;
       const rowIndex = id + 1; // +1 because sheets are 1-indexed
 

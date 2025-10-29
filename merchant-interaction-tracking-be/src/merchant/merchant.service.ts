@@ -9,8 +9,8 @@ export class MerchantService {
     private googleSheetsService: GoogleSheetsService,
   ) {}
 
-  async create(createMerchantDto: CreateMerchantDto): Promise<any> {
-    await this.googleSheetsService.addMerchant(createMerchantDto);
+  async create(createMerchantDto: CreateMerchantDto, userEmail: string): Promise<any> {
+    await this.googleSheetsService.addMerchant(createMerchantDto, { by: userEmail });
     return createMerchantDto;
   }
 
@@ -23,8 +23,8 @@ export class MerchantService {
     return merchants.find(merchant => merchant.id === id);
   }
 
-  async update(id: number, updateMerchantDto: UpdateMerchantDto): Promise<any> {
-    await this.googleSheetsService.updateMerchant(id, updateMerchantDto);
+  async update(id: number, updateMerchantDto: UpdateMerchantDto, userEmail: string): Promise<any> {
+    await this.googleSheetsService.updateMerchant(id, updateMerchantDto, { by: userEmail });
     return updateMerchantDto;
   }
 

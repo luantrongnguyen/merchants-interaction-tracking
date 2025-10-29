@@ -21,10 +21,16 @@
     "web-vitals": "^2.1.4"
   },
   "devDependencies": {
-    "gh-pages": "^6.1.1"
+    "gh-pages": "^6.1.1",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3"
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:fe": "react-scripts start",
+    "start:be": "cross-env BYPASS_AUTH=true NODE_ENV=development npm run start:dev -w backend",
+    "start:be:local": "cd merchant-interaction-tracking-be && cross-env BYPASS_AUTH=true NODE_ENV=development npm run start:dev",
+    "dev": "cross-env REACT_APP_BYPASS_AUTH=true REACT_APP_API_BASE_URL=http://localhost:3001 concurrently \"npm run start:fe\" \"npm run start:be:local\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

@@ -34,12 +34,43 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             this.logger.error('Error initializing Google Sheets auth:', error);
         }
     }
+    getMockMerchants() {
+        return [
+            {
+                id: 1,
+                name: 'Test Merchant 1',
+                address: '123 Test Street',
+                street: '123 Test Street',
+                area: 'Test Area',
+                state: 'Test State',
+                zipcode: '12345',
+                lastInteractionDate: '2025-01-15',
+                platform: 'Crisp',
+                phone: '1234567890',
+            },
+            {
+                id: 2,
+                name: 'Test Merchant 2',
+                address: '456 Sample Ave',
+                street: '456 Sample Ave',
+                area: 'Sample Area',
+                state: 'Sample State',
+                zipcode: '54321',
+                lastInteractionDate: '2025-01-20',
+                platform: 'Vonage',
+                phone: '0987654321',
+            },
+        ];
+    }
     async getMerchants() {
         try {
+            if (!this.sheets) {
+                throw new Error('Google Sheets service not initialized');
+            }
             const spreadsheetId = app_config_1.appConfig.spreadsheetId;
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId,
-                range: 'Merchants!A:I',
+                range: 'Merchants!A:K',
             });
             const rows = response.data.values;
             if (!rows || rows.length <= 1) {
@@ -56,6 +87,8 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                 lastInteractionDate: row[6] || '',
                 platform: row[7] || '',
                 phone: row[8] || '',
+                lastModifiedAt: row[9] || '',
+                lastModifiedBy: row[10] || '',
             }));
             return merchants;
         }
@@ -64,8 +97,11 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             throw error;
         }
     }
-    async addMerchant(merchant) {
+    async addMerchant(merchant, meta) {
         try {
+            if (!this.sheets) {
+                throw new Error('Google Sheets service not initialized');
+            }
             const spreadsheetId = app_config_1.appConfig.spreadsheetId;
             const values = [
                 [
@@ -78,11 +114,13 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                     merchant.lastInteractionDate,
                     merchant.platform,
                     merchant.phone,
+                    meta.at ?? new Date().toISOString().slice(0, 10),
+                    meta.by,
                 ],
             ];
             await this.sheets.spreadsheets.values.append({
                 spreadsheetId,
-                range: 'Merchants!A:I',
+                range: 'Merchants!A:K',
                 valueInputOption: 'RAW',
                 resource: { values },
             });
@@ -93,8 +131,11 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             throw error;
         }
     }
-    async updateMerchant(id, merchant) {
+    async updateMerchant(id, merchant, meta) {
         try {
+            if (!this.sheets) {
+                throw new Error('Google Sheets service not initialized');
+            }
             const spreadsheetId = app_config_1.appConfig.spreadsheetId;
             const values = [
                 [
@@ -107,11 +148,13 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                     merchant.lastInteractionDate,
                     merchant.platform,
                     merchant.phone,
+                    meta.at ?? new Date().toISOString().slice(0, 10),
+                    meta.by,
                 ],
             ];
             await this.sheets.spreadsheets.values.update({
                 spreadsheetId,
-                range: `Merchants!A${id + 1}:I${id + 1}`,
+                range: `Merchants!A${id + 1}:K${id + 1}`,
                 valueInputOption: 'RAW',
                 resource: { values },
             });
@@ -124,6 +167,9 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
     }
     async deleteMerchant(id) {
         try {
+            if (!this.sheets) {
+                throw new Error('Google Sheets service not initialized');
+            }
             const spreadsheetId = app_config_1.appConfig.spreadsheetId;
             const rowIndex = id + 1;
             await this.sheets.spreadsheets.batchUpdate({

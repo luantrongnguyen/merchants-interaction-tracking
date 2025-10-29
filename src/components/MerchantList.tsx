@@ -76,6 +76,17 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                     <div className="days-info">
                       {merchant.daysSinceLastInteraction} days ago
                     </div>
+                    {(merchant.lastModifiedAt || merchant.lastModifiedBy) && (
+                      <div className="modified-info">
+                        {merchant.lastModifiedAt && (
+                          <span>Updated: {formatDate(merchant.lastModifiedAt)}</span>
+                        )}
+                        {merchant.lastModifiedAt && merchant.lastModifiedBy && ' · '}
+                        {merchant.lastModifiedBy && (
+                          <span>by {merchant.lastModifiedBy}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td>

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Req } from '@nestjs/common';
 import { MerchantService } from './merchant.service';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
@@ -10,8 +10,9 @@ export class MerchantController {
   constructor(private readonly merchantService: MerchantService) {}
 
   @Post()
-  create(@Body() createMerchantDto: CreateMerchantDto) {
-    return this.merchantService.create(createMerchantDto);
+  create(@Body() createMerchantDto: CreateMerchantDto, @Req() req: any) {
+    const email = req?.user?.email || 'unknown@mangoforsalon.com';
+    return this.merchantService.create(createMerchantDto, email);
   }
 
   @Get()
@@ -25,8 +26,9 @@ export class MerchantController {
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateMerchantDto: UpdateMerchantDto) {
-    return this.merchantService.update(id, updateMerchantDto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() updateMerchantDto: UpdateMerchantDto, @Req() req: any) {
+    const email = req?.user?.email || 'unknown@mangoforsalon.com';
+    return this.merchantService.update(id, updateMerchantDto, email);
   }
 
   @Delete(':id')

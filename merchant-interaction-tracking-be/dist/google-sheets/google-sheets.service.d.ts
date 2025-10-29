@@ -4,9 +4,16 @@ export declare class GoogleSheetsService {
     private auth;
     constructor();
     private initializeAuth;
+    private getMockMerchants;
     getMerchants(): Promise<any[]>;
-    addMerchant(merchant: any): Promise<void>;
-    updateMerchant(id: number, merchant: any): Promise<void>;
+    addMerchant(merchant: any, meta: {
+        by: string;
+        at?: string;
+    }): Promise<void>;
+    updateMerchant(id: number, merchant: any, meta: {
+        by: string;
+        at?: string;
+    }): Promise<void>;
     deleteMerchant(id: number): Promise<void>;
     getAuthorizedEmails(): Promise<string[]>;
 }

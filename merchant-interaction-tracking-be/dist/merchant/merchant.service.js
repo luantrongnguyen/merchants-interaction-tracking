@@ -17,8 +17,8 @@ let MerchantService = class MerchantService {
     constructor(googleSheetsService) {
         this.googleSheetsService = googleSheetsService;
     }
-    async create(createMerchantDto) {
-        await this.googleSheetsService.addMerchant(createMerchantDto);
+    async create(createMerchantDto, userEmail) {
+        await this.googleSheetsService.addMerchant(createMerchantDto, { by: userEmail });
         return createMerchantDto;
     }
     async findAll() {
@@ -28,8 +28,8 @@ let MerchantService = class MerchantService {
         const merchants = await this.googleSheetsService.getMerchants();
         return merchants.find(merchant => merchant.id === id);
     }
-    async update(id, updateMerchantDto) {
-        await this.googleSheetsService.updateMerchant(id, updateMerchantDto);
+    async update(id, updateMerchantDto, userEmail) {
+        await this.googleSheetsService.updateMerchant(id, updateMerchantDto, { by: userEmail });
         return updateMerchantDto;
     }
     async remove(id) {
