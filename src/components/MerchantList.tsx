@@ -10,6 +10,8 @@ interface MerchantListProps {
 }
 
 const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete }) => {
+  const [showHistoryFor, setShowHistoryFor] = React.useState<MerchantWithStatus | null>(null);
+
   if (merchants.length === 0) {
     return (
       <div className="empty-state">
@@ -113,6 +115,13 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                     >
                       Delete
                     </button>
+                    <button
+                      className="btn-history"
+                      onClick={() => setShowHistoryFor(merchant)}
+                      title="History"
+                    >
+                      History
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -120,6 +129,47 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
           </tbody>
         </table>
       </div>
+
+      {showHistoryFor && (
+        <div className="modal-overlay" onClick={() => setShowHistoryFor(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>History - {showHistoryFor.name}</h3>
+              <button className="close-button" onClick={() => setShowHistoryFor(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              {(!showHistoryFor.historyLogs || showHistoryFor.historyLogs.length === 0) && (
+                <div>No history logs.</div>
+              )}
+              {showHistoryFor.historyLogs && showHistoryFor.historyLogs.length > 0 && (
+                <div className="history-list">
+                  {showHistoryFor.historyLogs.slice().reverse().map((log, idx) => (
+                    <div key={idx} className="history-item">
+                      <div className="history-meta">
+                        <strong>{log.by || 'unknown'}</strong> at {formatDate(log.at)}
+                      </div>
+                      <div className="history-data">
+                        <div><strong>Name:</strong> {log.data.name}</div>
+                        <div><strong>Address:</strong> {log.data.address}</div>
+                        {log.data.street && <div><strong>Street:</strong> {log.data.street}</div>}
+                        {log.data.area && <div><strong>Area:</strong> {log.data.area}</div>}
+                        <div><strong>State:</strong> {log.data.state}</div>
+                        {log.data.zipcode && <div><strong>Zip:</strong> {log.data.zipcode}</div>}
+                        <div><strong>Last Interaction:</strong> {formatDate(log.data.lastInteractionDate)}</div>
+                        <div><strong>Platform:</strong> {log.data.platform}</div>
+                        <div><strong>Phone:</strong> {log.data.phone}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowHistoryFor(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

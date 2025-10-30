@@ -66,7 +66,7 @@ export class GoogleSheetsService {
       const spreadsheetId = appConfig.spreadsheetId;
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'Merchants!A:K',
+        range: 'Merchants!A:L',
       });
 
       const rows = response.data.values;
@@ -75,7 +75,16 @@ export class GoogleSheetsService {
       }
 
       // Skip header row
-      const merchants = rows.slice(1).map((row: any[], index: number) => ({
+      const merchants = rows.slice(1).map((row: any[], index: number) => {
+        let historyLogs: any[] = [];
+        if (row[11]) {
+          try {
+            historyLogs = JSON.parse(row[11]);
+          } catch (e) {
+            this.logger.warn(`Invalid history_logs JSON at row ${index + 2}`);
+          }
+        }
+        return {
         id: index + 1,
         name: row[0] || '',
         address: row[1] || '',
@@ -88,7 +97,8 @@ export class GoogleSheetsService {
         phone: row[8] || '',
         lastModifiedAt: row[9] || '',
         lastModifiedBy: row[10] || '',
-      }));
+        historyLogs,
+      };});
 
       return merchants;
     } catch (error) {
@@ -117,12 +127,13 @@ export class GoogleSheetsService {
           merchant.phone,
           meta.at ?? new Date().toISOString().slice(0, 10),
           meta.by,
+          JSON.stringify([]),
         ],
       ];
 
       await this.sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Merchants!A:K',
+        range: 'Merchants!A:L',
         valueInputOption: 'RAW',
         resource: { values },
       });
@@ -141,6 +152,37 @@ export class GoogleSheetsService {
       }
 
       const spreadsheetId = appConfig.spreadsheetId;
+      const rowIndex = id + 1;
+
+      // Fetch current row including history_logs
+      const current = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `Merchants!A${rowIndex}:L${rowIndex}`,
+      });
+      const row = current.data.values?.[0] || [];
+
+      // Build previous snapshot
+      const previous = {
+        name: row[0] || '',
+        address: row[1] || '',
+        street: row[2] || '',
+        area: row[3] || '',
+        state: row[4] || '',
+        zipcode: row[5] || '',
+        lastInteractionDate: row[6] || '',
+        platform: row[7] || '',
+        phone: row[8] || '',
+        lastModifiedAt: row[9] || '',
+        lastModifiedBy: row[10] || '',
+      };
+
+      // Parse existing history logs
+      let historyLogs: any[] = [];
+      if (row[11]) {
+        try { historyLogs = JSON.parse(row[11]); } catch {}
+      }
+      historyLogs.push({ at: previous.lastModifiedAt || new Date().toISOString(), by: previous.lastModifiedBy || meta.by, data: previous });
+
       const values = [
         [
           merchant.name,
@@ -154,12 +196,13 @@ export class GoogleSheetsService {
           merchant.phone,
           meta.at ?? new Date().toISOString().slice(0, 10),
           meta.by,
+          JSON.stringify(historyLogs),
         ],
       ];
 
       await this.sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `Merchants!A${id + 1}:K${id + 1}`,
+        range: `Merchants!A${rowIndex}:L${rowIndex}`,
         valueInputOption: 'RAW',
         resource: { values },
       });

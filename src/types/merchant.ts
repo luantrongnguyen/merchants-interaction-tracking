@@ -1,3 +1,21 @@
+export interface HistoryLog {
+  at: string; // ISO date or datetime
+  by: string; // email
+  data: {
+    name: string;
+    address: string;
+    street: string;
+    area: string;
+    state: string;
+    zipcode: string;
+    lastInteractionDate: string;
+    platform: string;
+    phone: string;
+    lastModifiedAt?: string;
+    lastModifiedBy?: string;
+  };
+}
+
 export interface Merchant {
   id?: number;
   name: string;
@@ -13,6 +31,7 @@ export interface Merchant {
   updatedAt?: string;
   lastModifiedAt?: string;
   lastModifiedBy?: string;
+  historyLogs?: HistoryLog[];
 }
 
 export interface MerchantFormData {
