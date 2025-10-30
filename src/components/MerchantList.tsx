@@ -132,7 +132,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
 
       {showHistoryFor && (
         <div className="modal-overlay" onClick={() => setShowHistoryFor(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content history-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>History - {showHistoryFor.name}</h3>
               <button className="close-button" onClick={() => setShowHistoryFor(null)}>×</button>

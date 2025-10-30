@@ -147,7 +147,8 @@
 }
 
 .btn-edit,
-.btn-delete {
+.btn-delete,
+.btn-history {
   background: none;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -167,6 +168,87 @@
   border-color: #ef4444;
 }
 
+.btn-history:hover {
+  background-color: #f5f3ff;
+  border-color: #8b5cf6;
+}
+
+/* History modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-content.history-modal {
+  width: 960px;
+  max-width: 96vw;
+  max-height: 86vh;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-body {
+  padding: 16px 20px;
+  overflow: auto;
+}
+
+.modal-actions {
+  padding: 12px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.history-item {
+  padding: 12px 0;
+  border-top: 1px solid #e5e7eb; /* divider */
+}
+
+.history-item:first-child {
+  border-top: none;
+}
+
+.history-meta {
+  color: #374151;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.history-data {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+}
+
 @media (max-width: 768px) {
   .table-container {
     max-height: 60vh;
@@ -184,5 +266,14 @@
   .merchant-name,
   .address-cell {
     min-width: 150px;
+  }
+  
+  .modal-content.history-modal {
+    width: 96vw;
+    max-height: 86vh;
+  }
+  
+  .history-data {
+    grid-template-columns: 1fr;
   }
 }
