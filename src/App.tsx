@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { MerchantFormData, MerchantWithStatus } from './types/merchant';
+import { useState, useEffect, useRef } from 'react';
+import { MerchantFormData, Merchant, MerchantWithStatus } from './types/merchant';
 import { calculateMerchantStatus } from './utils/merchantUtils';
 import apiService from './services/apiService';
 import MerchantList from './components/MerchantList';
 import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
+import HeaderProgressBar from './components/HeaderProgressBar';
 import StatsPanel from './components/StatsPanel';
 import SearchFilter from './components/SearchFilter';
 import GoogleAuth from './components/GoogleAuth';
@@ -22,9 +23,20 @@ function App() {
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPasscodeOpen, setIsPasscodeOpen] = useState(false);
+  const [isUpdatePasscodeOpen, setIsUpdatePasscodeOpen] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<MerchantWithStatus | undefined>();
   const [formTitle, setFormTitle] = useState('');
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  // Update progress states
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [currentMerchant, setCurrentMerchant] = useState<string>('');
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [totalMerchants, setTotalMerchants] = useState<number>(0);
+  const [shouldStop, setShouldStop] = useState(false); // để dừng cập nhật hàng loạt
+  const shouldStopRef = useRef(false);
+  const [updateResults, setUpdateResults] = useState<Array<{merchant: string, storeId: string, success: boolean, message: string, updated?: boolean}>>([]);
 
   useEffect(() => {
     loadMerchants();
@@ -116,6 +128,212 @@ function App() {
   const handlePasscodeClose = () => {
     setIsPasscodeOpen(false);
     setPendingAction(null);
+  };
+
+  // Handle update passcode success
+  const handleUpdatePasscodeSuccess = () => {
+    setIsUpdatePasscodeOpen(false);
+    startBulkUpdate();
+  };
+
+  const handleUpdatePasscodeClose = () => {
+    if (!isUpdating) {
+      setIsUpdatePasscodeOpen(false);
+    }
+  };
+
+  const handleStopUpdate = () => {
+    shouldStopRef.current = true;
+    setShouldStop(true);
+  };
+
+  const updateMerchantLastInteraction = async (merchant: MerchantWithStatus) => {
+    if (!merchant.storeId) {
+      throw new Error('Store ID không tồn tại');
+    }
+
+    console.log(`\n🔍 Processing ${merchant.name} (${merchant.storeId})...`);
+    
+    // Fetch lại merchant từ API để đảm bảo có đầy đủ thông tin
+    let fullMerchant: Merchant;
+    try {
+      console.log(`  📥 Fetching full merchant data for id=${merchant.id}...`);
+      fullMerchant = await apiService.getMerchant(merchant.id!);
+      console.log(`  ✅ Got full merchant data:`, {
+        name: fullMerchant.name,
+        address: fullMerchant.address,
+        state: fullMerchant.state,
+        phone: fullMerchant.phone
+      });
+    } catch (error) {
+      console.error(`  ⚠️  Failed to fetch merchant, using current data:`, error);
+      // Nếu không fetch được, dùng data hiện tại
+      fullMerchant = merchant as Merchant;
+    }
+
+    const transactionService = (await import('./services/transactionService')).default;
+
+    // Gọi API transaction
+    console.log(`  📡 Calling transaction API for ${merchant.storeId}...`);
+    const transactionResponse = await transactionService.getTransactionByStoreCode(merchant.storeId);
+    console.log(`  ✅ Got response:`, transactionResponse?.data?.length || 0, 'transactions');
+    
+    // Lấy date từ transaction đầu tiên
+    const latestDate = transactionService.getLatestTransactionDate(transactionResponse);
+    console.log(`  📅 Latest transaction date:`, latestDate || 'null');
+    
+    if (!latestDate) {
+      console.log(`  ⚠️  No transactions found`);
+      return { updated: false, message: 'Không có transaction nào' };
+    }
+
+    // So sánh với lastInteractionDate hiện tại
+    const currentDate = fullMerchant.lastInteractionDate;
+    console.log(`  📆 Current lastInteractionDate:`, currentDate);
+    
+    const isNewer = transactionService.isDateNewer(latestDate, currentDate);
+    console.log(`  🔄 Is newer?`, isNewer, `(${latestDate} vs ${currentDate})`);
+
+    if (!isNewer) {
+      console.log(`  ⏭️  Skipped: Date not newer`);
+      return { 
+        updated: false, 
+        message: `Date mới nhất (${latestDate}) không mới hơn date hiện tại (${currentDate})` 
+      };
+    }
+
+    // Update merchant với lastInteractionDate mới
+    // Đảm bảo tất cả field required không bị empty - dùng data từ fullMerchant
+    // Nếu field bị thiếu, điền giá trị mặc định
+    const updateData = {
+      name: fullMerchant.name || '',
+      storeId: fullMerchant.storeId || '',
+      address: (fullMerchant.address && fullMerchant.address.trim() !== '') ? fullMerchant.address : ',',
+      street: fullMerchant.street || '',
+      area: fullMerchant.area || '',
+      state: (fullMerchant.state && fullMerchant.state.trim() !== '') ? fullMerchant.state : ',',
+      zipcode: fullMerchant.zipcode || '',
+      lastInteractionDate: latestDate,
+      platform: fullMerchant.platform || '',
+      phone: (fullMerchant.phone && fullMerchant.phone.trim() !== '') ? fullMerchant.phone : ',',
+    };
+
+    // Log warning nếu phải dùng giá trị mặc định
+    if (updateData.address === ',') {
+      console.warn(`  ⚠️  Address is empty for merchant ${merchant.id}, using default: ","`);
+    }
+    if (updateData.state === ',') {
+      console.warn(`  ⚠️  State is empty for merchant ${merchant.id}, using default: ","`);
+    }
+    if (updateData.phone === ',') {
+      console.warn(`  ⚠️  Phone is empty for merchant ${merchant.id}, using default: ","`);
+    }
+
+    console.log(`  💾 Updating merchant ${merchant.id}...`, {
+      name: updateData.name,
+      address: updateData.address,
+      state: updateData.state,
+      phone: updateData.phone,
+      lastInteractionDate: updateData.lastInteractionDate
+    });
+    
+    try {
+      await apiService.updateMerchant(merchant.id!, updateData, 'updated by system');
+      console.log(`  ✅ Successfully updated!`);
+    } catch (error) {
+      console.error(`  ❌ Update failed:`, error);
+      throw error;
+    }
+
+    return { 
+      updated: true, 
+      message: `Đã cập nhật từ ${currentDate} sang ${latestDate}` 
+    };
+  };
+
+  const startBulkUpdate = async () => {
+    setIsUpdating(true);
+    shouldStopRef.current = false;
+    setShouldStop(false);
+    setUpdateProgress(0);
+    setCurrentIndex(0);
+    setCurrentMerchant('');
+    setUpdateResults([]);
+
+    // Filter merchants có storeId
+    const merchantsWithStoreId = merchants.filter(m => m.storeId && m.storeId.trim() !== '');
+    const merchantsToUpdate = merchantsWithStoreId; // Update tất cả
+    const total = merchantsToUpdate.length;
+    setTotalMerchants(total);
+
+    console.log(`🚀 Bắt đầu update ${total} merchants`);
+
+    if (total === 0) {
+      setIsUpdating(false);
+      setError('Không có merchant nào có Store ID để cập nhật.');
+      return;
+    }
+
+    const results: Array<{merchant: string, storeId: string, success: boolean, message: string, updated?: boolean}> = [];
+
+    for (let i = 0; i < merchantsToUpdate.length; i++) {
+      // Kiểm tra nếu user muốn dừng
+      if (shouldStopRef.current) {
+        setError('Đã dừng cập nhật theo yêu cầu người dùng.');
+        break;
+      }
+
+      const merchant = merchantsToUpdate[i];
+      setCurrentIndex(i + 1);
+      setCurrentMerchant(`${merchant.name} (${merchant.storeId})`);
+      
+      // Update progress
+      const progressValue = ((i + 1) / total) * 100;
+      setUpdateProgress(progressValue);
+
+      try {
+        const result = await updateMerchantLastInteraction(merchant);
+        results.push({
+          merchant: merchant.name,
+          storeId: merchant.storeId || '',
+          success: true,
+          message: result.message,
+          updated: result.updated
+        });
+        console.log(`✅ ${merchant.name}: ${result.message}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        results.push({
+          merchant: merchant.name,
+          storeId: merchant.storeId || '',
+          success: false,
+          message: errorMessage
+        });
+        console.error(`❌ Error updating ${merchant.name}:`, errorMessage);
+      }
+
+      // Update results để hiển thị real-time
+      setUpdateResults([...results]);
+
+      // Delay nhỏ để tránh spam API
+      if (i < merchantsToUpdate.length - 1 && !shouldStopRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    setIsUpdating(false);
+    setShouldStop(false);
+    shouldStopRef.current = false;
+    setCurrentMerchant('');
+    
+    // Log tổng kết
+    const updatedCount = results.filter(r => r.success && r.updated).length;
+    const skippedCount = results.filter(r => r.success && !r.updated).length;
+    const errorCount = results.filter(r => !r.success).length;
+    console.log(`\n📊 Tổng kết: ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors`);
+    
+    // Reload merchants sau khi hoàn thành
+    await loadMerchants();
   };
 
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
@@ -245,14 +463,37 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <h1>Merchant Interaction Tracking</h1>
-          <GoogleAuth
-            onLogin={login}
-            onLogout={logout}
-            isAuthenticated={isAuthenticated}
-            user={user}
-          />
+          <div className="header-actions">
+            {!isUpdating && (
+              <button 
+                onClick={() => setIsUpdatePasscodeOpen(true)} 
+                className="btn-primary header-update-btn"
+                title="Cập nhật Last Interaction Date từ transaction API"
+              >
+                Weekly Update
+              </button>
+            )}
+            <GoogleAuth
+              onLogin={login}
+              onLogout={logout}
+              isAuthenticated={isAuthenticated}
+              user={user}
+            />
+          </div>
         </div>
       </header>
+
+      <HeaderProgressBar
+        isUpdating={isUpdating}
+        progress={updateProgress}
+        currentMerchant={currentMerchant}
+        currentIndex={currentIndex}
+        totalMerchants={totalMerchants}
+        shouldStop={shouldStop}
+        updateResults={updateResults}
+        onStop={handleStopUpdate}
+        onClose={() => setUpdateResults([])}
+      />
 
       <ProtectedRoute>
         <main className="app-main">
@@ -308,6 +549,13 @@ function App() {
           onClose={handlePasscodeClose}
           onSuccess={handlePasscodeSuccess}
           title="Authentication Required"
+        />
+
+        <PasscodeModal
+          isOpen={isUpdatePasscodeOpen}
+          onClose={handleUpdatePasscodeClose}
+          onSuccess={handleUpdatePasscodeSuccess}
+          title="Confirm to update all merchants"
         />
       </ProtectedRoute>
     </div>

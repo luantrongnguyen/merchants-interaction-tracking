@@ -19,6 +19,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<MerchantFormData>({
     name: '',
+    storeId: '',
     address: '',
     street: '',
     area: '',
@@ -59,6 +60,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
     if (merchant) {
       setFormData({
         name: merchant.name,
+        storeId: merchant.storeId || '',
         address: merchant.address,
         street: merchant.street,
         area: merchant.area,
@@ -71,6 +73,7 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
     } else {
       setFormData({
         name: '',
+        storeId: '',
         address: '',
         street: '',
         area: '',
@@ -159,6 +162,17 @@ const MerchantForm: React.FC<MerchantFormProps> = ({
                 value={formData.name}
                 onChange={handleChange}
                 required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="storeId">Store ID</label>
+              <input
+                type="text"
+                id="storeId"
+                name="storeId"
+                value={formData.storeId || ''}
+                onChange={handleChange}
+                placeholder="e.g., S04314"
               />
             </div>
             <div className="form-group">

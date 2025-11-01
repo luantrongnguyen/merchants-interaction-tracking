@@ -14,6 +14,7 @@ const app_service_1 = require("./app.service");
 const merchant_module_1 = require("./merchant/merchant.module");
 const google_sheets_module_1 = require("./google-sheets/google-sheets.module");
 const auth_module_1 = require("./auth/auth.module");
+const ims_proxy_module_1 = require("./ims-proxy/ims-proxy.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -26,6 +27,7 @@ exports.AppModule = AppModule = __decorate([
             google_sheets_module_1.GoogleSheetsModule,
             auth_module_1.AuthModule,
             merchant_module_1.MerchantModule,
+            ims_proxy_module_1.ImsProxyModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

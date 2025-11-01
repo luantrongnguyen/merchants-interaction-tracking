@@ -32,23 +32,56 @@
 .merchant-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
-  table-layout: auto;
+  font-size: 0.8rem;
+  table-layout: fixed;
 }
 
 .merchant-table th {
   background-color: #f9fafb;
-  padding: 16px 16px;
+  padding: 8px 6px;
   text-align: left;
   font-weight: 600;
   color: #374151;
   border-bottom: 1px solid #e5e7eb;
   white-space: nowrap;
+  font-size: 0.75rem;
 }
 
 .merchant-table th:first-child {
   text-align: center;
-  width: 60px;
+  width: 40px;
+}
+
+.merchant-table th:nth-child(2) {
+  width: 160px; /* Name */
+}
+
+.merchant-table th:nth-child(3) {
+  width: 70px; /* ID */
+}
+
+.merchant-table th:nth-child(4) {
+  width: 180px; /* Address */
+}
+
+.merchant-table th:nth-child(5) {
+  width: 70px; /* Platform */
+}
+
+.merchant-table th:nth-child(6) {
+  width: 90px; /* Phone */
+}
+
+.merchant-table th:nth-child(7) {
+  width: 90px; /* Last Interaction */
+}
+
+.merchant-table th:nth-child(8) {
+  width: 70px; /* Status */
+}
+
+.merchant-table th:nth-child(9) {
+  width: 100px; /* Actions */
 }
 
 .merchant-no {
@@ -57,12 +90,16 @@
   color: #6b7280;
   background-color: #f9fafb;
   border-right: 1px solid #e5e7eb;
+  font-size: 0.75rem;
 }
 
 .merchant-table td {
-  padding: 16px 16px;
+  padding: 8px 6px;
   border-bottom: 1px solid #f3f4f6;
   vertical-align: top;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .merchant-table tr:hover {
@@ -70,80 +107,126 @@
 }
 
 .merchant-name {
-  min-width: 200px;
+  min-width: 0;
 }
 
 .name-cell strong {
   display: block;
   color: #111827;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .street-info {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #6b7280;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.store-id {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #374151;
+  font-weight: 500;
+  padding: 2px 4px;
+  background-color: #f3f4f6;
+  border-radius: 3px;
+  display: inline-block;
 }
 
 .address-cell {
-  min-width: 250px;
+  min-width: 0;
 }
 
 .address-info {
-  line-height: 1.4;
+  line-height: 1.3;
+  font-size: 0.75rem;
+}
+
+.address-info > div:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .area-info {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #6b7280;
-  margin: 2px 0;
+  margin: 1px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .location-info {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #6b7280;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .platform-badge {
   display: inline-block;
-  padding: 4px 8px;
+  padding: 2px 6px;
   background-color: #e0e7ff;
   color: #3730a3;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
   font-weight: 500;
 }
 
 .phone-info {
   font-family: monospace;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: #374151;
 }
 
 .date-info {
-  line-height: 1.4;
+  line-height: 1.3;
+  font-size: 0.75rem;
+}
+
+.date-info > div:first-child {
+  font-weight: 500;
+  margin-bottom: 2px;
 }
 
 .days-info {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #6b7280;
+}
+
+.modified-info {
+  font-size: 0.6rem;
+  color: #9ca3af;
+  margin-top: 2px;
 }
 
 .status-badge {
   display: inline-block;
-  padding: 6px 12px;
+  padding: 4px 8px;
   color: white;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
   font-weight: 600;
   text-align: center;
-  min-width: 80px;
+  min-width: 60px;
 }
 
 .action-buttons {
   display: flex;
-  gap: 8px;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .btn-edit,
@@ -151,11 +234,17 @@
 .btn-history {
   background: none;
   border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 6px 8px;
+  border-radius: 3px;
+  padding: 4px 6px;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 1rem;
   transition: all 0.2s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
 }
 
 .btn-edit:hover {

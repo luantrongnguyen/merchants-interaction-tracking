@@ -3,6 +3,7 @@ export interface HistoryLog {
   by: string; // email
   data: {
     name: string;
+    storeId?: string;
     address: string;
     street: string;
     area: string;
@@ -19,6 +20,7 @@ export interface HistoryLog {
 export interface Merchant {
   id?: number;
   name: string;
+  storeId?: string; // ID dạng "S04314"
   address: string;
   street: string;
   area: string;
@@ -36,6 +38,7 @@ export interface Merchant {
 
 export interface MerchantFormData {
   name: string;
+  storeId?: string;
   address: string;
   street: string;
   area: string;

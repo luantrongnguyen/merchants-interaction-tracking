@@ -32,6 +32,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
             <tr>
               <th>No</th>
               <th>Name</th>
+              <th>ID</th>
               <th>Address</th>
               <th>Platform</th>
               <th>Phone</th>
@@ -53,6 +54,9 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                       <div className="street-info">{merchant.street}</div>
                     )}
                   </div>
+                </td>
+                <td>
+                  <span className="store-id">{merchant.storeId || '-'}</span>
                 </td>
                 <td className="address-cell">
                   <div className="address-info">
@@ -76,19 +80,8 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                   <div className="date-info">
                     <div>{formatDate(merchant.lastInteractionDate)}</div>
                     <div className="days-info">
-                      {merchant.daysSinceLastInteraction} days ago
+                      {merchant.daysSinceLastInteraction}d
                     </div>
-                    {(merchant.lastModifiedAt || merchant.lastModifiedBy) && (
-                      <div className="modified-info">
-                        {merchant.lastModifiedAt && (
-                          <span>Updated: {formatDate(merchant.lastModifiedAt)}</span>
-                        )}
-                        {merchant.lastModifiedAt && merchant.lastModifiedBy && ' · '}
-                        {merchant.lastModifiedBy && (
-                          <span>by {merchant.lastModifiedBy}</span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </td>
                 <td>
@@ -106,21 +99,21 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                       onClick={() => onEdit(merchant)}
                       title="Edit"
                     >
-                      Edit
+                      ✏️
                     </button>
                     <button
                       className="btn-delete"
                       onClick={() => onDelete(merchant.id!)}
                       title="Delete"
                     >
-                      Delete
+                      🗑️
                     </button>
                     <button
                       className="btn-history"
                       onClick={() => setShowHistoryFor(merchant)}
                       title="History"
                     >
-                      History
+                      📜
                     </button>
                   </div>
                 </td>
@@ -150,6 +143,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                       </div>
                       <div className="history-data">
                         <div><strong>Name:</strong> {log.data.name}</div>
+                        {log.data.storeId && <div><strong>Store ID:</strong> {log.data.storeId}</div>}
                         <div><strong>Address:</strong> {log.data.address}</div>
                         {log.data.street && <div><strong>Street:</strong> {log.data.street}</div>}
                         {log.data.area && <div><strong>Area:</strong> {log.data.area}</div>}

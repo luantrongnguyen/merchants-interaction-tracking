@@ -34,8 +34,15 @@ let MerchantController = class MerchantController {
         return this.merchantService.findOne(id);
     }
     update(id, updateMerchantDto, req) {
-        const email = req?.user?.email || 'unknown@mangoforsalon.com';
-        return this.merchantService.update(id, updateMerchantDto, email);
+        const { updatedBy, ...merchantData } = updateMerchantDto;
+        const by = updatedBy || req?.user?.email || 'unknown@mangoforsalon.com';
+        console.log(`[MerchantController] Update request:`, {
+            id,
+            updatedBy: by,
+            data: merchantData,
+            lastInteractionDate: merchantData.lastInteractionDate
+        });
+        return this.merchantService.update(id, merchantData, by);
     }
     remove(id) {
         return this.merchantService.remove(id);

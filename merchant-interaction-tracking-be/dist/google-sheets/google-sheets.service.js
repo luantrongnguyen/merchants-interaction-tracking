@@ -70,7 +70,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             const spreadsheetId = app_config_1.appConfig.spreadsheetId;
             const response = await this.sheets.spreadsheets.values.get({
                 spreadsheetId,
-                range: 'Merchants!A:L',
+                range: 'Merchants!A:M',
             });
             const rows = response.data.values;
             if (!rows || rows.length <= 1) {
@@ -78,9 +78,9 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             }
             const merchants = rows.slice(1).map((row, index) => {
                 let historyLogs = [];
-                if (row[11]) {
+                if (row[12]) {
                     try {
-                        historyLogs = JSON.parse(row[11]);
+                        historyLogs = JSON.parse(row[12]);
                     }
                     catch (e) {
                         this.logger.warn(`Invalid history_logs JSON at row ${index + 2}`);
@@ -89,16 +89,17 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                 return {
                     id: index + 1,
                     name: row[0] || '',
-                    address: row[1] || '',
-                    street: row[2] || '',
-                    area: row[3] || '',
-                    state: row[4] || '',
-                    zipcode: row[5] || '',
-                    lastInteractionDate: row[6] || '',
-                    platform: row[7] || '',
-                    phone: row[8] || '',
-                    lastModifiedAt: row[9] || '',
-                    lastModifiedBy: row[10] || '',
+                    storeId: row[1] || '',
+                    address: row[2] || '',
+                    street: row[3] || '',
+                    area: row[4] || '',
+                    state: row[5] || '',
+                    zipcode: row[6] || '',
+                    lastInteractionDate: row[7] || '',
+                    platform: row[8] || '',
+                    phone: row[9] || '',
+                    lastModifiedAt: row[10] || '',
+                    lastModifiedBy: row[11] || '',
                     historyLogs,
                 };
             });
@@ -118,6 +119,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             const values = [
                 [
                     merchant.name,
+                    merchant.storeId || '',
                     merchant.address,
                     merchant.street,
                     merchant.area,
@@ -133,7 +135,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             ];
             await this.sheets.spreadsheets.values.append({
                 spreadsheetId,
-                range: 'Merchants!A:L',
+                range: 'Merchants!A:M',
                 valueInputOption: 'RAW',
                 resource: { values },
             });
@@ -151,35 +153,51 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             }
             const spreadsheetId = app_config_1.appConfig.spreadsheetId;
             const rowIndex = id + 1;
+            this.logger.log(`[GoogleSheets] Updating merchant id=${id}, rowIndex=${rowIndex}, lastInteractionDate=${merchant.lastInteractionDate}, updatedBy=${meta.by}`);
             const current = await this.sheets.spreadsheets.values.get({
                 spreadsheetId,
-                range: `Merchants!A${rowIndex}:L${rowIndex}`,
+                range: `Merchants!A${rowIndex}:M${rowIndex}`,
             });
             const row = current.data.values?.[0] || [];
+            if (!row || row.length === 0) {
+                this.logger.error(`[GoogleSheets] Row ${rowIndex} not found or empty`);
+                throw new Error(`Row ${rowIndex} not found in Google Sheets`);
+            }
+            this.logger.log(`[GoogleSheets] Current row data: name=${row[0]}, currentLastInteractionDate=${row[7]}`);
             const previous = {
                 name: row[0] || '',
-                address: row[1] || '',
-                street: row[2] || '',
-                area: row[3] || '',
-                state: row[4] || '',
-                zipcode: row[5] || '',
-                lastInteractionDate: row[6] || '',
-                platform: row[7] || '',
-                phone: row[8] || '',
-                lastModifiedAt: row[9] || '',
-                lastModifiedBy: row[10] || '',
+                storeId: row[1] || '',
+                address: row[2] || '',
+                street: row[3] || '',
+                area: row[4] || '',
+                state: row[5] || '',
+                zipcode: row[6] || '',
+                lastInteractionDate: row[7] || '',
+                platform: row[8] || '',
+                phone: row[9] || '',
+                lastModifiedAt: row[10] || '',
+                lastModifiedBy: row[11] || '',
             };
             let historyLogs = [];
-            if (row[11]) {
+            if (row[12]) {
                 try {
-                    historyLogs = JSON.parse(row[11]);
+                    historyLogs = JSON.parse(row[12]);
+                    this.logger.log(`[GoogleSheets] Existing history logs: ${historyLogs.length} entries`);
                 }
-                catch { }
+                catch (e) {
+                    this.logger.warn(`[GoogleSheets] Failed to parse history logs:`, e);
+                }
             }
-            historyLogs.push({ at: previous.lastModifiedAt || new Date().toISOString(), by: previous.lastModifiedBy || meta.by, data: previous });
+            historyLogs.push({
+                at: previous.lastModifiedAt || new Date().toISOString(),
+                by: previous.lastModifiedBy || meta.by,
+                data: previous
+            });
+            this.logger.log(`[GoogleSheets] Adding history log. Total logs: ${historyLogs.length}`);
             const values = [
                 [
                     merchant.name,
+                    merchant.storeId || '',
                     merchant.address,
                     merchant.street,
                     merchant.area,
@@ -193,16 +211,24 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                     JSON.stringify(historyLogs),
                 ],
             ];
-            await this.sheets.spreadsheets.values.update({
+            this.logger.log(`[GoogleSheets] Updating row ${rowIndex} with values:`, {
+                name: values[0][0],
+                storeId: values[0][1],
+                lastInteractionDate: values[0][7],
+                lastModifiedAt: values[0][10],
+                lastModifiedBy: values[0][11],
+            });
+            const updateResult = await this.sheets.spreadsheets.values.update({
                 spreadsheetId,
-                range: `Merchants!A${rowIndex}:L${rowIndex}`,
+                range: `Merchants!A${rowIndex}:M${rowIndex}`,
                 valueInputOption: 'RAW',
                 resource: { values },
             });
-            this.logger.log(`Merchant ${id} updated in Google Sheets`);
+            this.logger.log(`[GoogleSheets] Update successful! Updated cells:`, updateResult.data.updatedCells);
+            this.logger.log(`Merchant ${id} updated in Google Sheets - lastInteractionDate: ${merchant.lastInteractionDate}`);
         }
         catch (error) {
-            this.logger.error('Error updating merchant in Google Sheets:', error);
+            this.logger.error(`[GoogleSheets] Error updating merchant ${id}:`, error);
             throw error;
         }
     }

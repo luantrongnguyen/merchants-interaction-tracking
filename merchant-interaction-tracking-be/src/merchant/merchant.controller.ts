@@ -27,8 +27,18 @@ export class MerchantController {
 
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateMerchantDto: UpdateMerchantDto, @Req() req: any) {
-    const email = req?.user?.email || 'unknown@mangoforsalon.com';
-    return this.merchantService.update(id, updateMerchantDto, email);
+    // Nếu có updatedBy trong body thì dùng nó, nếu không thì dùng email từ user
+    const { updatedBy, ...merchantData } = updateMerchantDto;
+    const by = updatedBy || req?.user?.email || 'unknown@mangoforsalon.com';
+    
+    console.log(`[MerchantController] Update request:`, {
+      id,
+      updatedBy: by,
+      data: merchantData,
+      lastInteractionDate: merchantData.lastInteractionDate
+    });
+    
+    return this.merchantService.update(id, merchantData, by);
   }
 
   @Delete(':id')

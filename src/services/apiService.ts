@@ -96,11 +96,28 @@ class ApiService {
     });
   }
 
-  async updateMerchant(id: number, merchant: MerchantFormData): Promise<Merchant> {
-    return this.request<Merchant>(`/merchants/${id}`, {
+  async updateMerchant(id: number, merchant: MerchantFormData, updatedBy?: string): Promise<Merchant> {
+    const body = updatedBy ? { ...merchant, updatedBy } : merchant;
+    console.log(`📤 API Update Request:`, {
+      id,
+      url: `${API_BASE_URL}/merchants/${id}`,
       method: 'PATCH',
-      body: JSON.stringify(merchant),
+      body: JSON.stringify(body),
+      updatedBy
     });
+    
+    try {
+      const response = await this.request<Merchant>(`/merchants/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+      
+      console.log(`📥 API Update Response:`, response);
+      return response;
+    } catch (error) {
+      console.error(`❌ API Update Error:`, error);
+      throw error;
+    }
   }
 
   async deleteMerchant(id: number): Promise<void> {

@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { MerchantModule } from './merchant/merchant.module';
 import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
 import { AuthModule } from './auth/auth.module';
+import { ImsProxyModule } from './ims-proxy/ims-proxy.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
     GoogleSheetsModule,
     AuthModule,
     MerchantModule,
+    ImsProxyModule,
   ],
   controllers: [AppController],
   providers: [AppService],
