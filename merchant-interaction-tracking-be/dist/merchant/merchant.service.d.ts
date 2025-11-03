@@ -9,4 +9,14 @@ export declare class MerchantService {
     findOne(id: number): Promise<any>;
     update(id: number, updateMerchantDto: UpdateMerchantDto, userEmail: string): Promise<any>;
     remove(id: number): Promise<void>;
+    syncMerchantsFromExternal(userEmail: string): Promise<{
+        added: number;
+        skipped: number;
+        errors: number;
+    }>;
+    syncCallLogs(userEmail: string): Promise<{
+        matched: number;
+        updated: number;
+        errors: number;
+    }>;
 }

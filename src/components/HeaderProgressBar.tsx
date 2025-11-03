@@ -7,6 +7,8 @@ interface UpdateResult {
   success: boolean;
   message: string;
   updated?: boolean;
+  added?: boolean;
+  callLogsAdded?: number;
 }
 
 interface HeaderProgressBarProps {
@@ -50,14 +52,20 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
   if (!isUpdating && showResults && updateResults.length > 0) {
     const updatedCount = updateResults.filter(r => r.success && r.updated).length;
     const skippedCount = updateResults.filter(r => r.success && !r.updated).length;
+    const addedCount = updateResults.filter(r => r.success && r.added).length;
     const errorCount = updateResults.filter(r => !r.success).length;
+    
+    // Calculate total call logs added (from results with callLogsAdded property)
+    const totalCallLogsAdded = updateResults.reduce((sum, r) => sum + (r.callLogsAdded || 0), 0);
 
     return (
       <div className="header-progress-bar results-bar">
         <div className="header-progress-content">
           <div className="results-summary-inline">
-            <span className="summary-success">✅ {updatedCount} cập nhật</span>
-            <span className="summary-skipped">⏭️ {skippedCount} bỏ qua</span>
+            {updatedCount > 0 && <span className="summary-success">✅ {updatedCount} cập nhật</span>}
+            {addedCount > 0 && <span className="summary-success">➕ {addedCount} đã thêm</span>}
+            {totalCallLogsAdded > 0 && <span className="summary-success">📞 {totalCallLogsAdded} call logs đã sync</span>}
+            {skippedCount > 0 && <span className="summary-skipped">⏭️ {skippedCount} bỏ qua</span>}
             {errorCount > 0 && <span className="summary-error">❌ {errorCount} lỗi</span>}
           </div>
           <button className="header-close-btn" onClick={() => { setShowResults(false); onClose(); }}>×</button>
@@ -73,7 +81,7 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
       <div className="header-progress-content">
         <div className="header-progress-info">
           <span className="header-progress-text">
-            {currentMerchant ? `Đang xử lý: ${currentMerchant}` : 'Đang khởi tạo...'}
+            {currentMerchant || 'Đang khởi tạo...'}
           </span>
           {currentIndex > 0 && totalMerchants > 0 && (
             <span className="header-progress-count">

@@ -5,7 +5,7 @@ export declare class CreateMerchantDto {
     area?: string;
     state: string;
     zipcode?: string;
-    lastInteractionDate: string;
+    lastInteractionDate?: string;
     platform: string;
     phone: string;
 }

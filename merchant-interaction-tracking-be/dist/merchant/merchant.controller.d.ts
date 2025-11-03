@@ -9,4 +9,14 @@ export declare class MerchantController {
     findOne(id: number): Promise<any>;
     update(id: number, updateMerchantDto: UpdateMerchantDto, req: any): Promise<any>;
     remove(id: number): Promise<void>;
+    syncMerchants(req: any): Promise<{
+        added: number;
+        skipped: number;
+        errors: number;
+    }>;
+    syncCallLogs(req: any): Promise<{
+        matched: number;
+        updated: number;
+        errors: number;
+    }>;
 }

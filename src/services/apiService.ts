@@ -126,6 +126,18 @@ class ApiService {
     });
   }
 
+  async syncMerchants(): Promise<{ added: number; skipped: number; errors: number }> {
+    return this.request<{ added: number; skipped: number; errors: number }>('/merchants/sync', {
+      method: 'POST',
+    });
+  }
+
+  async syncCallLogs(): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
+    return this.request<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }>('/merchants/sync-call-logs', {
+      method: 'POST',
+    });
+  }
+
   // Authentication methods
   async login(user: User): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/auth/login', {

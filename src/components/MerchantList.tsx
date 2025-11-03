@@ -11,6 +11,7 @@ interface MerchantListProps {
 
 const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete }) => {
   const [showHistoryFor, setShowHistoryFor] = React.useState<MerchantWithStatus | null>(null);
+  const [showCallLogsFor, setShowCallLogsFor] = React.useState<MerchantWithStatus | null>(null);
 
   if (merchants.length === 0) {
     return (
@@ -95,13 +96,6 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                 <td>
                   <div className="action-buttons">
                     <button
-                      className="btn-edit"
-                      onClick={() => onEdit(merchant)}
-                      title="Edit"
-                    >
-                      ✏️
-                    </button>
-                    <button
                       className="btn-delete"
                       onClick={() => onDelete(merchant.id!)}
                       title="Delete"
@@ -115,6 +109,13 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                     >
                       📜
                     </button>
+                    <button
+                      className="btn-call-logs"
+                      onClick={() => setShowCallLogsFor(merchant)}
+                      title="Call Logs"
+                    >
+                      📞
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -122,6 +123,49 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
           </tbody>
         </table>
       </div>
+
+      {showCallLogsFor && (
+        <div className="modal-overlay" onClick={() => setShowCallLogsFor(null)}>
+          <div className="modal-content call-logs-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Call Logs - {showCallLogsFor.name}</h3>
+              <button className="close-button" onClick={() => setShowCallLogsFor(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              {(!showCallLogsFor.supportLogs || showCallLogsFor.supportLogs.length === 0) && (
+                <div className="empty-state">No call logs found.</div>
+              )}
+              {showCallLogsFor.supportLogs && showCallLogsFor.supportLogs.length > 0 && (
+                <div className="call-logs-list">
+                  {showCallLogsFor.supportLogs.slice().reverse().map((log, idx) => (
+                    <div key={idx} className="call-log-item">
+                      <div className="call-log-header">
+                        <div className="call-log-date-time">
+                          <span className="call-log-date">📅 {log.date}</span>
+                          <span className="call-log-time">🕐 {log.time}</span>
+                        </div>
+                        {log.supporter && (
+                          <div className="call-log-supporter">
+                            👤 {log.supporter}
+                          </div>
+                        )}
+                      </div>
+                      {log.issue && (
+                        <div className="call-log-issue">
+                          <strong>Issue:</strong> {log.issue}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowCallLogsFor(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showHistoryFor && (
         <div className="modal-overlay" onClick={() => setShowHistoryFor(null)}>

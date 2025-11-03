@@ -47,6 +47,14 @@ let MerchantController = class MerchantController {
     remove(id) {
         return this.merchantService.remove(id);
     }
+    async syncMerchants(req) {
+        const email = req?.user?.email || 'unknown@mangoforsalon.com';
+        return this.merchantService.syncMerchantsFromExternal(email);
+    }
+    async syncCallLogs(req) {
+        const email = req?.user?.email || 'unknown@mangoforsalon.com';
+        return this.merchantService.syncCallLogs(email);
+    }
 };
 exports.MerchantController = MerchantController;
 __decorate([
@@ -86,6 +94,20 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], MerchantController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)('sync'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], MerchantController.prototype, "syncMerchants", null);
+__decorate([
+    (0, common_1.Post)('sync-call-logs'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], MerchantController.prototype, "syncCallLogs", null);
 exports.MerchantController = MerchantController = __decorate([
     (0, common_1.Controller)('merchants'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

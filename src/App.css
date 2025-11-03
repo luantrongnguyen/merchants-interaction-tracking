@@ -158,6 +158,19 @@ body {
   font-weight: 600;
 }
 
+.btn-primary:disabled {
+  background-color: #e5e7eb; /* gray-200 */
+  color: #9ca3af; /* gray-400 */
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-primary:disabled:hover {
+  background-color: #e5e7eb;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-primary:hover {
   background-color: #f59e0b;
   transform: translateY(-1px);

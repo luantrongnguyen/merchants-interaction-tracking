@@ -26,8 +26,8 @@ export class CreateMerchantDto {
   zipcode?: string;
 
   @IsDateString()
-  @IsNotEmpty()
-  lastInteractionDate: string;
+  @IsOptional()
+  lastInteractionDate?: string; // Optional - will be computed from call logs if not provided
 
   @IsString()
   @IsNotEmpty()

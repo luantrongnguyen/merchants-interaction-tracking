@@ -17,6 +17,13 @@ export interface HistoryLog {
   };
 }
 
+export interface SupportLog {
+  date: string;
+  time: string;
+  issue: string;
+  supporter: string;
+}
+
 export interface Merchant {
   id?: number;
   name: string;
@@ -34,6 +41,7 @@ export interface Merchant {
   lastModifiedAt?: string;
   lastModifiedBy?: string;
   historyLogs?: HistoryLog[];
+  supportLogs?: SupportLog[];
 }
 
 export interface MerchantFormData {

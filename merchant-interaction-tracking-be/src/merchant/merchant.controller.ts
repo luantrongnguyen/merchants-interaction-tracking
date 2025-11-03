@@ -45,4 +45,16 @@ export class MerchantController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.merchantService.remove(id);
   }
+
+  @Post('sync')
+  async syncMerchants(@Req() req: any) {
+    const email = req?.user?.email || 'unknown@mangoforsalon.com';
+    return this.merchantService.syncMerchantsFromExternal(email);
+  }
+
+  @Post('sync-call-logs')
+  async syncCallLogs(@Req() req: any) {
+    const email = req?.user?.email || 'unknown@mangoforsalon.com';
+    return this.merchantService.syncCallLogs(email);
+  }
 }
