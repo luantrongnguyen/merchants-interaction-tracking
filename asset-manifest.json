@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/merchants-interaction-tracking/static/css/main.7d463d1a.css",
-    "main.js": "/merchants-interaction-tracking/static/js/main.587e036d.js",
+    "main.js": "/merchants-interaction-tracking/static/js/main.0546338d.js",
     "static/js/128.b60fc67d.chunk.js": "/merchants-interaction-tracking/static/js/128.b60fc67d.chunk.js",
     "static/js/453.856d6526.chunk.js": "/merchants-interaction-tracking/static/js/453.856d6526.chunk.js",
     "index.html": "/merchants-interaction-tracking/index.html",
     "main.7d463d1a.css.map": "/merchants-interaction-tracking/static/css/main.7d463d1a.css.map",
-    "main.587e036d.js.map": "/merchants-interaction-tracking/static/js/main.587e036d.js.map",
+    "main.0546338d.js.map": "/merchants-interaction-tracking/static/js/main.0546338d.js.map",
     "128.b60fc67d.chunk.js.map": "/merchants-interaction-tracking/static/js/128.b60fc67d.chunk.js.map",
     "453.856d6526.chunk.js.map": "/merchants-interaction-tracking/static/js/453.856d6526.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.7d463d1a.css",
-    "static/js/main.587e036d.js"
+    "static/js/main.0546338d.js"
   ]
 }
