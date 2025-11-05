@@ -30,8 +30,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
 
   const checkAuth = async () => {
+    // Kiểm tra token trước - không cần set loading nếu không có token
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token && !bypassAuth) {
+      // Không có token và không phải dev mode - set unauthenticated ngay, không cần loading
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
+      
       if (bypassAuth) {
         // Dev mode: bypass authentication
         setUser({ email: 'dev@example.com', name: 'Dev User', picture: '', sub: 'dev' });
@@ -39,18 +51,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(false);
         return;
       }
-      
-      // Kiểm tra token trước khi gọi API
-      const token = localStorage.getItem('auth_token');
+
+      // Có token, gọi API để kiểm tra (token đã được check ở trên, không thể null)
       if (!token) {
-        // Không có token, không cần gọi API, set unauthenticated
-        setUser(null);
-        setIsAuthenticated(false);
         setIsLoading(false);
         return;
       }
-
-      // Có token, gọi API để kiểm tra
+      
       const response = await apiService.checkAuth();
       if (response.isAuthenticated) {
         // Nếu có user từ response, dùng user đó
