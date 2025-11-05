@@ -56,10 +56,20 @@ function App() {
   const [syncCallLogsTotalAdded, setSyncCallLogsTotalAdded] = useState<number>(0);
 
   useEffect(() => {
-    loadMerchants();
-  }, []);
+    // Chỉ load merchants khi đã đăng nhập
+    if (isAuthenticated) {
+      loadMerchants();
+    }
+  }, [isAuthenticated]);
 
   const loadMerchants = async () => {
+    // Kiểm tra authentication trước khi gọi API
+    if (!isAuthenticated) {
+      setError('Vui lòng đăng nhập để truy cập dữ liệu.');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);

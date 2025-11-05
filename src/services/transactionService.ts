@@ -61,6 +61,13 @@ class TransactionService {
       throw new Error('Store ID is required');
     }
 
+    // Kiểm tra authentication trước khi gọi API
+    const token = localStorage.getItem('auth_token');
+    const isDevMode = process.env.REACT_APP_BYPASS_AUTH === 'true';
+    if (!isDevMode && !token) {
+      throw new Error('Vui lòng đăng nhập để truy cập dữ liệu.');
+    }
+
     try {
       // Gọi API qua backend proxy để tránh vấn đề CORS và cookie
       const backendUrl = CONFIG.API_BASE_URL;

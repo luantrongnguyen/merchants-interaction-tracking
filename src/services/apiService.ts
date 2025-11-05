@@ -39,6 +39,14 @@ class ApiService {
     const isDevMode = process.env.REACT_APP_BYPASS_AUTH === 'true';
     const cacheOption = isDevMode ? { cache: 'no-cache' as RequestCache } : {};
     
+    // Kiểm tra authentication cho các endpoint không phải login/checkAuth
+    const isAuthEndpoint = endpoint === '/auth/login' || endpoint === '/auth/check';
+    const token = localStorage.getItem('auth_token');
+    
+    if (!isDevMode && !isAuthEndpoint && !token) {
+      throw new Error('Vui lòng đăng nhập để truy cập dữ liệu.');
+    }
+    
     const requestOptions: RequestInit = {
       method: options.method || 'GET',
       headers: {
