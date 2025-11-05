@@ -3,6 +3,7 @@ import { MerchantFormData, Merchant, MerchantWithStatus } from './types/merchant
 import { calculateMerchantStatus } from './utils/merchantUtils';
 import apiService from './services/apiService';
 import MerchantList from './components/MerchantList';
+import Dashboard from './components/Dashboard';
 import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
 import HeaderProgressBar from './components/HeaderProgressBar';
@@ -48,6 +49,7 @@ function App() {
 
   // Sync call logs progress states
   const [isSyncingCallLogs, setIsSyncingCallLogs] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [syncCallLogsProgress, setSyncCallLogsProgress] = useState(0);
   const [syncCallLogsCurrent, setSyncCallLogsCurrent] = useState<string>('');
   const [syncCallLogsResults, setSyncCallLogsResults] = useState<Array<{merchant: string, storeId: string, success: boolean, message: string, updated?: boolean, callLogsAdded?: number}>>([]);
@@ -698,13 +700,20 @@ function App() {
                 <button onClick={loadMerchants} className="btn-secondary">
                   Refresh
                 </button>
+                <button onClick={() => setShowDashboard(prev => !prev)} className="btn-secondary">
+                  {showDashboard ? 'Quay lại danh sách' : 'Dashboard'}
+                </button>
               </div>
 
-              <MerchantList
-                merchants={filteredMerchants}
-                onEdit={handleEditMerchant}
-                onDelete={handleDeleteMerchant}
-              />
+              {showDashboard ? (
+                <Dashboard merchants={merchants} />
+              ) : (
+                <MerchantList
+                  merchants={filteredMerchants}
+                  onEdit={handleEditMerchant}
+                  onDelete={handleDeleteMerchant}
+                />
+              )}
             </div>
           </div>
         </main>

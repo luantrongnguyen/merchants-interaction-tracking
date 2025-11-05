@@ -30,6 +30,7 @@ export declare class GoogleSheetsService {
         date: string;
         time: string;
         issue: string;
+        category?: string;
         supporter: string;
     }>>;
     syncCallLogsToMerchants(userEmail: string): Promise<{

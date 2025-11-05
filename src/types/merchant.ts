@@ -21,6 +21,7 @@ export interface SupportLog {
   date: string;
   time: string;
   issue: string;
+  category?: string;
   supporter: string;
 }
 

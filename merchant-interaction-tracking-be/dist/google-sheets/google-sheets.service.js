@@ -466,6 +466,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                     time: row[2] || '',
                     id: id,
                     issue: row[7] || '',
+                    category: row[8] || '',
                     supporter: row[12] || '',
                     numericId: numericId,
                     rawRow: row,
@@ -524,6 +525,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                                 columnC_time: log.time || 'TRỐNG',
                                 columnF_id: log.id || 'TRỐNG',
                                 columnH_issue: log.issue || 'TRỐNG',
+                                columnI_category: log.category || 'TRỐNG',
                                 columnM_supporter: log.supporter || 'TRỐNG',
                             }
                         });
@@ -572,7 +574,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             if (callLogs.length > 0) {
                 this.logSync(`Sample call logs (first 5):`);
                 callLogs.slice(0, 5).forEach((log, index) => {
-                    this.logSync(`  [${index + 1}] ID: ${log.id} (numeric: ${log.numericId}), Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
+                    this.logSync(`  [${index + 1}] ID: ${log.id} (numeric: ${log.numericId}), Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Category: ${log.category || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
                 });
                 if (callLogs.length > 5) {
                     this.logSync(`  ... and ${callLogs.length - 5} more call logs`);
@@ -720,28 +722,49 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                         else {
                             this.logSync(`No existing support_logs found for merchant ${merchant.storeId}, will create new`);
                         }
-                        const existingDateTimes = new Set(existingLogs.map(log => `${log.date}|${log.time}`));
-                        const newLogs = logs.filter(log => {
-                            const dateTimeKey = `${log.date}|${log.time}`;
-                            return !existingDateTimes.has(dateTimeKey);
+                        const existingMap = new Map();
+                        existingLogs.forEach(log => {
+                            existingMap.set(`${log.date}|${log.time}`, log);
                         });
-                        if (newLogs.length === 0) {
-                            this.logSync(`Merchant ${merchant.storeId} (ID: ${numericId}): No new call logs to add`);
+                        let updatedExisting = 0;
+                        const additions = [];
+                        logs.forEach(log => {
+                            const key = `${log.date}|${log.time}`;
+                            const existing = existingMap.get(key);
+                            if (existing) {
+                                const hasExistingCategory = typeof existing.category === 'string' && existing.category.trim() !== '';
+                                const hasIncomingCategory = typeof log.category === 'string' && log.category.trim() !== '';
+                                if (!hasExistingCategory && hasIncomingCategory) {
+                                    existing.category = log.category;
+                                    updatedExisting++;
+                                }
+                            }
+                            else {
+                                additions.push({
+                                    date: log.date,
+                                    time: log.time,
+                                    issue: log.issue || '',
+                                    category: log.category || '',
+                                    supporter: log.supporter || '',
+                                });
+                            }
+                        });
+                        if (additions.length === 0 && updatedExisting === 0) {
+                            this.logSync(`Merchant ${merchant.storeId} (ID: ${numericId}): No changes (no new logs, no category updates)`);
                             continue;
                         }
-                        const formattedNewLogs = newLogs.map(log => ({
-                            date: log.date,
-                            time: log.time,
-                            issue: log.issue || '',
-                            supporter: log.supporter || '',
-                        }));
                         this.logSync(`[Call Log Sync] Merchant: ${merchant.storeId} (ID: ${numericId}), Merchant Name: ${merchant.name}`);
-                        formattedNewLogs.forEach((log, index) => {
-                            this.logSync(`  [${index + 1}] Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
-                        });
-                        const allLogs = [...existingLogs, ...formattedNewLogs];
+                        if (additions.length > 0) {
+                            additions.forEach((log, index) => {
+                                this.logSync(`  [ADD ${index + 1}] Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Category: ${log.category || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
+                            });
+                        }
+                        if (updatedExisting > 0) {
+                            this.logSync(`  [UPDATE] Added missing Category for ${updatedExisting} existing logs (matched by Date+Time)`);
+                        }
+                        const allLogs = [...existingLogs, ...additions];
                         const supportLogsJson = JSON.stringify(allLogs);
-                        this.logSync(`Preparing to update row ${actualRowIndex} with ${allLogs.length} total support logs (${formattedNewLogs.length} new)`);
+                        this.logSync(`Preparing to update row ${actualRowIndex} with ${allLogs.length} total support logs (${additions.length} new, ${updatedExisting} updated)`);
                         this.logSync(`Support logs JSON length: ${supportLogsJson.length} characters`);
                         const valuesArray = [
                             row[0] || '',
@@ -776,8 +799,8 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                             this.warnSync(`Update response is empty, but no error thrown`);
                         }
                         updated++;
-                        totalCallLogsAdded += newLogs.length;
-                        this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${newLogs.length} call logs, total ${allLogs.length} logs`);
+                        totalCallLogsAdded += additions.length;
+                        this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${additions.length} call logs, updated ${updatedExisting} existing, total ${allLogs.length} logs`);
                         const verifyResult = await this.sheets.spreadsheets.values.get({
                             spreadsheetId: app_config_1.appConfig.spreadsheetId,
                             range: `Merchants!M${actualRowIndex}:M${actualRowIndex}`,

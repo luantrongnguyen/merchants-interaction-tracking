@@ -437,6 +437,7 @@ export class GoogleSheetsService {
     date: string;
     time: string;
     issue: string;
+    category?: string;
     supporter: string;
   }>> {
     try {
@@ -465,7 +466,7 @@ export class GoogleSheetsService {
       const totalRowsRead = rows.length - 1; // Exclude header row
       this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows từ sheet ${lastSheetName} (có header row)`);
 
-      // Skip header row and map to columns: B(1), C(2), F(5), H(7), M(12)
+      // Skip header row and map to columns: B(1), C(2), F(5), H(7), I(8: Category), M(12)
       let lastValidDate = ''; // Track last valid date for forward fill
       const callLogsBeforeFilter = rows.slice(1)
         .map((row: any[], index: number) => {
@@ -488,6 +489,7 @@ export class GoogleSheetsService {
             time: row[2] || '', // C (index 2)
             id: id,
             issue: row[7] || '', // H (index 7)
+            category: row[8] || '', // I (index 8)
             supporter: row[12] || '', // M (index 12)
             numericId: numericId,
             rawRow: row, // Keep raw row for debugging
@@ -558,6 +560,7 @@ export class GoogleSheetsService {
                 columnC_time: log.time || 'TRỐNG',
                 columnF_id: log.id || 'TRỐNG',
                 columnH_issue: log.issue || 'TRỐNG',
+                columnI_category: log.category || 'TRỐNG',
                 columnM_supporter: log.supporter || 'TRỐNG',
               }
             });
@@ -616,7 +619,7 @@ export class GoogleSheetsService {
       if (callLogs.length > 0) {
         this.logSync(`Sample call logs (first 5):`);
         callLogs.slice(0, 5).forEach((log, index) => {
-          this.logSync(`  [${index + 1}] ID: ${log.id} (numeric: ${log.numericId}), Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
+          this.logSync(`  [${index + 1}] ID: ${log.id} (numeric: ${log.numericId}), Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Category: ${log.category || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
         });
         if (callLogs.length > 5) {
           this.logSync(`  ... and ${callLogs.length - 5} more call logs`);
@@ -793,7 +796,7 @@ export class GoogleSheetsService {
           this.logSync(`Row ${actualRowIndex} has ${row.length} columns`);
           
           // Parse existing support_logs (column M, index 12)
-          let existingLogs: Array<{ date: string; time: string; issue: string; supporter: string }> = [];
+          let existingLogs: Array<{ date: string; time: string; issue: string; category?: string; supporter: string }> = [];
           if (row[12]) {
             try {
               existingLogs = JSON.parse(row[12]);
@@ -805,41 +808,61 @@ export class GoogleSheetsService {
             this.logSync(`No existing support_logs found for merchant ${merchant.storeId}, will create new`);
           }
 
-          // Create a set of existing date+time combinations
-          const existingDateTimes = new Set(
-            existingLogs.map(log => `${log.date}|${log.time}`)
-          );
-
-          // Add new logs that don't have duplicate date+time
-          const newLogs = logs.filter(log => {
-            const dateTimeKey = `${log.date}|${log.time}`;
-            return !existingDateTimes.has(dateTimeKey);
+          // Create map of existing logs by date|time for easy update
+          const existingMap = new Map<string, { date: string; time: string; issue: string; category?: string; supporter: string }>();
+          existingLogs.forEach(log => {
+            existingMap.set(`${log.date}|${log.time}`, log);
           });
 
-          if (newLogs.length === 0) {
-            this.logSync(`Merchant ${merchant.storeId} (ID: ${numericId}): No new call logs to add`);
-            continue; // No new logs to add
+          // Track updates vs additions
+          let updatedExisting = 0;
+          const additions: Array<{ date: string; time: string; issue: string; category?: string; supporter: string }> = [];
+
+          // Upsert each log from sheet
+          logs.forEach(log => {
+            const key = `${log.date}|${log.time}`;
+            const existing = existingMap.get(key);
+            if (existing) {
+              // Update missing category if available from sheet
+              const hasExistingCategory = typeof existing.category === 'string' && existing.category.trim() !== '';
+              const hasIncomingCategory = typeof log.category === 'string' && log.category.trim() !== '';
+              if (!hasExistingCategory && hasIncomingCategory) {
+                existing.category = log.category;
+                updatedExisting++;
+              }
+              // Optionally could update issue/supporter if missing; focus on category per requirement
+            } else {
+              additions.push({
+                date: log.date,
+                time: log.time,
+                issue: log.issue || '',
+                category: log.category || '',
+                supporter: log.supporter || '',
+              });
+            }
+          });
+
+          if (additions.length === 0 && updatedExisting === 0) {
+            this.logSync(`Merchant ${merchant.storeId} (ID: ${numericId}): No changes (no new logs, no category updates)`);
+            continue;
           }
 
-          // Format logs for storage
-          const formattedNewLogs = newLogs.map(log => ({
-            date: log.date,
-            time: log.time,
-            issue: log.issue || '',
-            supporter: log.supporter || '',
-          }));
-
-          // Log each call log being synced
+          // Log actions
           this.logSync(`[Call Log Sync] Merchant: ${merchant.storeId} (ID: ${numericId}), Merchant Name: ${merchant.name}`);
-          formattedNewLogs.forEach((log, index) => {
-            this.logSync(`  [${index + 1}] Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
-          });
+          if (additions.length > 0) {
+            additions.forEach((log, index) => {
+              this.logSync(`  [ADD ${index + 1}] Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Category: ${log.category || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
+            });
+          }
+          if (updatedExisting > 0) {
+            this.logSync(`  [UPDATE] Added missing Category for ${updatedExisting} existing logs (matched by Date+Time)`);
+          }
 
-          // Combine existing and new logs
-          const allLogs = [...existingLogs, ...formattedNewLogs];
+          // Combine existing (possibly updated) with new additions
+          const allLogs = [...existingLogs, ...additions];
           const supportLogsJson = JSON.stringify(allLogs);
           
-          this.logSync(`Preparing to update row ${actualRowIndex} with ${allLogs.length} total support logs (${formattedNewLogs.length} new)`);
+          this.logSync(`Preparing to update row ${actualRowIndex} with ${allLogs.length} total support logs (${additions.length} new, ${updatedExisting} updated)`);
           this.logSync(`Support logs JSON length: ${supportLogsJson.length} characters`);
 
           // Ensure row has all 13 columns (A through M, without lastInteractionDate)
@@ -883,8 +906,8 @@ export class GoogleSheetsService {
           }
 
           updated++;
-          totalCallLogsAdded += newLogs.length; // Track total call logs added
-          this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${newLogs.length} call logs, total ${allLogs.length} logs`);
+          totalCallLogsAdded += additions.length; // Track total call logs added
+          this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${additions.length} call logs, updated ${updatedExisting} existing, total ${allLogs.length} logs`);
           
           // Verify the update by reading back the row
           const verifyResult = await this.sheets.spreadsheets.values.get({

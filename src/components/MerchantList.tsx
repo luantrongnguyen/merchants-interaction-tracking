@@ -2,6 +2,7 @@ import React from 'react';
 import { MerchantWithStatus } from '../types/merchant';
 import { getStatusColor, getStatusText, formatDate } from '../utils/merchantUtils';
 import './MerchantList.css';
+import MerchantStatsModal from './MerchantStatsModal';
 
 interface MerchantListProps {
   merchants: MerchantWithStatus[];
@@ -12,6 +13,7 @@ interface MerchantListProps {
 const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete }) => {
   const [showHistoryFor, setShowHistoryFor] = React.useState<MerchantWithStatus | null>(null);
   const [showCallLogsFor, setShowCallLogsFor] = React.useState<MerchantWithStatus | null>(null);
+  const [showStatsFor, setShowStatsFor] = React.useState<MerchantWithStatus | null>(null);
 
   if (merchants.length === 0) {
     return (
@@ -104,10 +106,10 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                     </button>
                     <button
                       className="btn-history"
-                      onClick={() => setShowHistoryFor(merchant)}
-                      title="History"
+                      onClick={() => setShowStatsFor(merchant)}
+                      title="Stats"
                     >
-                      📜
+                      📊
                     </button>
                     <button
                       className="btn-call-logs"
@@ -153,6 +155,11 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                       {log.issue && (
                         <div className="call-log-issue">
                           <strong>Issue:</strong> {log.issue}
+                        </div>
+                      )}
+                      {log.category && (
+                        <div className="call-log-issue">
+                          <strong>Category:</strong> {log.category}
                         </div>
                       )}
                     </div>
@@ -207,6 +214,10 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
             </div>
           </div>
         </div>
+      )}
+
+      {showStatsFor && (
+        <MerchantStatsModal merchant={showStatsFor} onClose={() => setShowStatsFor(null)} />
       )}
     </div>
   );

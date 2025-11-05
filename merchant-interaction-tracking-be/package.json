@@ -35,6 +35,8 @@
     "class-validator": "^0.14.2",
     "cors": "^2.8.5",
     "googleapis": "^164.1.0",
+    "@nestjs/schedule": "^4.1.0",
+    "cron": "^3.1.7",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",

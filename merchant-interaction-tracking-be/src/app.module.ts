@@ -6,6 +6,8 @@ import { MerchantModule } from './merchant/merchant.module';
 import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
 import { AuthModule } from './auth/auth.module';
 import { ImsProxyModule } from './ims-proxy/ims-proxy.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SchedulerService } from './scheduler/scheduler.service';
 
 @Module({
   imports: [
@@ -13,11 +15,12 @@ import { ImsProxyModule } from './ims-proxy/ims-proxy.module';
       isGlobal: true,
     }),
     GoogleSheetsModule,
+    ScheduleModule.forRoot(),
     AuthModule,
     MerchantModule,
     ImsProxyModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, SchedulerService],
 })
 export class AppModule {}
