@@ -43,6 +43,9 @@ let AuthController = class AuthController {
         };
     }
     async checkAuth(req) {
+        if (!req.user) {
+            throw new common_1.UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+        }
         return {
             success: true,
             isAuthenticated: true,

@@ -11,6 +11,11 @@ const common_1 = require("@nestjs/common");
 const passport_1 = require("@nestjs/passport");
 let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
     canActivate(context) {
+        const request = context.switchToHttp().getRequest();
+        const isCheckEndpoint = request.url === '/auth/check' || request.url?.includes('/auth/check');
+        if (isCheckEndpoint) {
+            return super.canActivate(context);
+        }
         if (process.env.BYPASS_AUTH === 'true' || process.env.NODE_ENV === 'development') {
             return true;
         }

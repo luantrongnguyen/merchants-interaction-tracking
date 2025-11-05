@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -42,6 +42,12 @@ export class AuthController {
   @Get('check')
   @UseGuards(JwtAuthGuard)
   async checkAuth(@Request() req) {
+    // Nếu không có user từ guard (không có token hoặc token không hợp lệ)
+    // Guard sẽ throw UnauthorizedException, nhưng để an toàn ta vẫn check
+    if (!req.user) {
+      throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+    }
+    
     return {
       success: true,
       isAuthenticated: true,

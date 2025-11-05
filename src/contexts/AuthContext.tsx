@@ -39,6 +39,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsLoading(false);
         return;
       }
+      
+      // Kiểm tra token trước khi gọi API
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        // Không có token, không cần gọi API, set unauthenticated
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+
+      // Có token, gọi API để kiểm tra
       const response = await apiService.checkAuth();
       if (response.isAuthenticated) {
         // Nếu có user từ response, dùng user đó
@@ -48,36 +60,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           // Nếu không có user từ response nhưng isAuthenticated = true
           // Thử decode token từ localStorage để lấy user info
-          const token = localStorage.getItem('auth_token');
-          if (token) {
-            try {
-              const payload = JSON.parse(atob(token.split('.')[1]));
-              const userFromToken: User = {
-                email: payload.email,
-                name: payload.name,
-                picture: payload.picture,
-                sub: payload.sub
-              };
-              setUser(userFromToken);
-              setIsAuthenticated(true);
-            } catch (decodeError) {
-              // Nếu không decode được token, clear và yêu cầu đăng nhập lại
-              localStorage.removeItem('auth_token');
-              setUser(null);
-              setIsAuthenticated(false);
-            }
-          } else {
-            // Không có token, set unauthenticated
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const userFromToken: User = {
+              email: payload.email,
+              name: payload.name,
+              picture: payload.picture,
+              sub: payload.sub
+            };
+            setUser(userFromToken);
+            setIsAuthenticated(true);
+          } catch (decodeError) {
+            // Nếu không decode được token, clear và yêu cầu đăng nhập lại
+            localStorage.removeItem('auth_token');
             setUser(null);
             setIsAuthenticated(false);
           }
         }
       } else {
+        // Response trả về isAuthenticated = false, clear token
+        localStorage.removeItem('auth_token');
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
-      // Nếu có lỗi, clear auth và yêu cầu đăng nhập lại
+      // Nếu có lỗi (401, network error, etc.), clear auth và yêu cầu đăng nhập lại
       localStorage.removeItem('auth_token');
       setUser(null);
       setIsAuthenticated(false);
