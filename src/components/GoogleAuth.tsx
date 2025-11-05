@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { CONFIG } from '../config';
 import './GoogleAuth.css';
 
@@ -17,6 +17,7 @@ declare global {
 
 const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthenticated, user }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const buttonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load Google Identity Services script
@@ -42,9 +43,29 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
           auto_select: false,
           cancel_on_tap_outside: true,
           error_callback: handleError,
-          use_fedcm_for_prompt: true, // Enable FedCM as required by Google
-          itp_support: true // Enable ITP support for better compatibility
+          use_fedcm_for_prompt: false, // Disable FedCM to use redirect flow
+          itp_support: true
+          // ux_mode: 'popup' // Use redirect mode by default (more reliable)
         });
+
+        // Render button in the hidden container when ready
+        // Use a small delay to ensure the ref is set
+        setTimeout(() => {
+          if (buttonRef.current) {
+            try {
+              window.google.accounts.id.renderButton(buttonRef.current, {
+                type: 'standard',
+                theme: 'outline',
+                size: 'large',
+                text: 'signin_with',
+                width: '250',
+                callback: handleCredentialResponse,
+              });
+            } catch (error) {
+              console.error('Error rendering Google button:', error);
+            }
+          }
+        }, 100);
       }
     };
 
@@ -103,13 +124,84 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
   };
 
   const handleLogin = () => {
-    if (window.google) {
-      try {
-        // Use FedCM as configured
-        window.google.accounts.id.prompt();
-      } catch (error) {
-        handleError(error);
+    if (!window.google || !window.google.accounts) {
+      console.error('Google Identity Services not loaded');
+      alert('Google Sign-In is not available. Please refresh the page.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Try to click the rendered Google button directly
+      if (buttonRef.current) {
+        // Find the iframe or button element
+        const iframe = buttonRef.current.querySelector('iframe');
+        const button = buttonRef.current.querySelector('div[role="button"]') as HTMLElement;
+        
+        if (iframe) {
+          // Try to click the iframe - this should work if it's in the same origin context
+          // But if it's cross-origin, we need to use a different approach
+          try {
+            // Create a pointer event to simulate user click
+            const rect = iframe.getBoundingClientRect();
+            const clickEvent = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true,
+              clientX: rect.left + rect.width / 2,
+              clientY: rect.top + rect.height / 2
+            });
+            
+            // Try to dispatch on iframe
+            iframe.dispatchEvent(clickEvent);
+            
+            // Also try direct click
+            iframe.click();
+          } catch (e) {
+            console.log('Direct iframe click failed, trying alternative method:', e);
+            // Alternative: Use the button container if available
+            if (button) {
+              button.click();
+            } else {
+              // Last resort: use prompt
+              window.google.accounts.id.prompt();
+            }
+          }
+        } else if (button) {
+          button.click();
+        } else {
+          // Button not rendered yet, wait and retry
+          setTimeout(() => {
+            const retryIframe = buttonRef.current?.querySelector('iframe');
+            const retryButton = buttonRef.current?.querySelector('div[role="button"]') as HTMLElement;
+            
+            if (retryIframe) {
+              retryIframe.click();
+            } else if (retryButton) {
+              retryButton.click();
+            } else {
+              setIsLoading(false);
+              // Use prompt as fallback
+              window.google.accounts.id.prompt((notification: any) => {
+                setIsLoading(false);
+                if (notification.isNotDisplayed()) {
+                  const reason = notification.getNotDisplayedReason();
+                  console.log('One Tap not displayed:', reason);
+                  alert('Google Sign-In popup could not be opened. Please try again.');
+                }
+              });
+            }
+          }, 500);
+        }
+      } else {
+        setIsLoading(false);
+        alert('Google Sign-In is not initialized. Please refresh the page.');
       }
+    } catch (error) {
+      console.error('Error triggering login:', error);
+      setIsLoading(false);
+      handleError(error);
     }
   };
 
@@ -119,11 +211,16 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
   }
 
   return (
-    <div className="google-auth-container">
+    <div className="google-auth-container" style={{ position: 'relative', display: 'inline-block' }}>
+      {/* Custom styled button - visible layer */}
       <button 
-        onClick={handleLogin} 
         className="google-login-btn"
         disabled={isLoading}
+        style={{ 
+          position: 'relative', 
+          zIndex: 1,
+          pointerEvents: 'none' // Make it non-interactive, just visual
+        }}
       >
         {isLoading ? (
           <div className="spinner-small"></div>
@@ -139,6 +236,26 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
           </>
         )}
       </button>
+      
+      {/* Google's rendered button - invisible but receives all clicks */}
+      <div 
+        ref={buttonRef}
+        onClick={() => {
+          // This will be handled by Google's button
+          setIsLoading(true);
+        }}
+        style={{ 
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: '100%',
+          height: '100%',
+          opacity: 0,
+          zIndex: 2,
+          pointerEvents: 'auto',
+          cursor: 'pointer'
+        }}
+      />
     </div>
   );
 };
