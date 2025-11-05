@@ -22,7 +22,7 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ merchants }) => {
   return (
     <div className="stats-panel">
       <div className="stats-panel__header">
-        <h1>Mango Merchants Interaction Tracking</h1>
+        <h1>Merchant Tracking</h1>
         <p>Manage and track interactions with merchants</p>
       </div>
       

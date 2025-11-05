@@ -24,11 +24,16 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
+  
+  // Khởi tạo state dựa trên việc có token hay không để tránh loading không cần thiết
+  const initialToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const shouldStartLoading = initialToken !== null || bypassAuth;
+  
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
-
+  const [isLoading, setIsLoading] = useState(shouldStartLoading);
+  
   const checkAuth = async () => {
     // Kiểm tra token trước - không cần set loading nếu không có token
     const token = localStorage.getItem('auth_token');

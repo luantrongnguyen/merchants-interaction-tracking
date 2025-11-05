@@ -620,7 +620,7 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <div className="header-content">
-          <h1>Merchant Interaction Tracking</h1>
+          <h1>Merchant Tracking</h1>
           <div className="header-actions">
             {!isUpdating && !isSyncing && !isSyncingCallLogs && (
               <>
