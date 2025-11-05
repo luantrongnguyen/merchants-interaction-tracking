@@ -12,18 +12,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   // Nếu đang loading, hiển thị loading trong main content (header vẫn hiển thị bên ngoài)
   // Chỉ hiển thị loading nếu thực sự đang kiểm tra (có token)
-  // if (isLoading) {
-  //   return (
-  //     <>
-  //       <main className="app-main">
-  //         <div className="loading">
-  //           <div className="spinner"></div>
-  //           <p>Đang kiểm tra quyền truy cập...</p>
-  //         </div>
-  //       </main>
-  //     </>
-  //   );
-  // }
+  if (isLoading) {
+    return (
+      <>
+        <main className="app-main">
+          <div className="loading">
+            <div className="spinner"></div>
+            <p>Đang kiểm tra quyền truy cập...</p>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   // Nếu chưa đăng nhập, hiển thị blank page (header với GoogleAuth button vẫn hiển thị)
   if (!isAuthenticated && !bypassAuth) {

@@ -18,7 +18,7 @@ function App() {
   const { user, isAuthenticated, login, logout } = useAuth();
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
   const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Modal states
