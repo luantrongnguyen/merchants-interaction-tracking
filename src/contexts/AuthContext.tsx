@@ -36,17 +36,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Dev mode: bypass authentication
         setUser({ email: 'dev@example.com', name: 'Dev User', picture: '', sub: 'dev' });
         setIsAuthenticated(true);
+        setIsLoading(false);
         return;
       }
       const response = await apiService.checkAuth();
-      if (response.isAuthenticated && response.user) {
-        setUser(response.user);
-        setIsAuthenticated(true);
+      if (response.isAuthenticated) {
+        // Nếu có user từ response, dùng user đó
+        if (response.user) {
+          setUser(response.user);
+          setIsAuthenticated(true);
+        } else {
+          // Nếu không có user từ response nhưng isAuthenticated = true
+          // Thử decode token từ localStorage để lấy user info
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              const userFromToken: User = {
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture,
+                sub: payload.sub
+              };
+              setUser(userFromToken);
+              setIsAuthenticated(true);
+            } catch (decodeError) {
+              // Nếu không decode được token, clear và yêu cầu đăng nhập lại
+              localStorage.removeItem('auth_token');
+              setUser(null);
+              setIsAuthenticated(false);
+            }
+          } else {
+            // Không có token, set unauthenticated
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        }
       } else {
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
+      // Nếu có lỗi, clear auth và yêu cầu đăng nhập lại
+      localStorage.removeItem('auth_token');
       setUser(null);
       setIsAuthenticated(false);
     } finally {
