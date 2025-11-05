@@ -658,6 +658,25 @@ function App() {
               isAuthenticated={isAuthenticated}
               user={user}
             />
+            {isAuthenticated && user && (
+              <div className="header-user-info">
+                {user.picture && (
+                  <img 
+                    src={user.picture} 
+                    alt={user.name || user.email}
+                    className="user-avatar"
+                  />
+                )}
+                <span className="user-name">{user.name || user.email}</span>
+                <button 
+                  onClick={logout}
+                  className="btn-secondary logout-btn"
+                  title="Đăng xuất"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
