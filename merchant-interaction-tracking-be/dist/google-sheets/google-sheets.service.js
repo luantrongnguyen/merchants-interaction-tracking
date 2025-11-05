@@ -54,6 +54,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
     sheets;
     auth;
     logFilePath;
+    operationLock = Promise.resolve();
     constructor() {
         this.initializeAuth();
         this.initializeLogFile();
@@ -131,108 +132,272 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             },
         ];
     }
-    async getMerchants() {
+    async withLock(operation, operationName) {
+        const currentLock = this.operationLock;
+        let releaseLock;
+        const newLock = new Promise((resolve) => {
+            releaseLock = resolve;
+        });
+        this.operationLock = currentLock.then(async () => {
+            this.logger.debug(`[Lock] Acquired lock for: ${operationName}`);
+            try {
+                await newLock;
+            }
+            finally {
+                this.logger.debug(`[Lock] Released lock for: ${operationName}`);
+            }
+        });
         try {
-            if (!this.sheets) {
-                throw new Error('Google Sheets service not initialized');
-            }
-            const spreadsheetId = app_config_1.appConfig.spreadsheetId;
-            const response = await this.sheets.spreadsheets.values.get({
-                spreadsheetId,
-                range: 'Merchants!A:M',
-            });
-            const rows = response.data.values;
-            if (!rows || rows.length <= 1) {
-                return [];
-            }
-            const merchants = rows.slice(1).map((row, index) => {
-                let historyLogs = [];
-                if (row[11]) {
-                    try {
-                        historyLogs = JSON.parse(row[11]);
-                    }
-                    catch (e) {
-                        this.logger.warn(`Invalid history_logs JSON at row ${index + 2}`);
-                    }
+            await currentLock;
+            return await operation();
+        }
+        finally {
+            releaseLock();
+        }
+    }
+    async getMerchants() {
+        return this.withLock(async () => {
+            try {
+                if (!this.sheets) {
+                    throw new Error('Google Sheets service not initialized');
                 }
-                let supportLogs = [];
-                if (row[12]) {
+                const spreadsheetId = app_config_1.appConfig.spreadsheetId;
+                let lastError;
+                const maxRetries = 3;
+                for (let attempt = 0; attempt < maxRetries; attempt++) {
                     try {
-                        supportLogs = JSON.parse(row[12]);
-                    }
-                    catch (e) {
-                        this.logger.warn(`Invalid support_logs JSON at row ${index + 2}`);
-                    }
-                }
-                let lastInteractionDate = '';
-                if (supportLogs && supportLogs.length > 0) {
-                    const sortedLogs = [...supportLogs].sort((a, b) => {
-                        const parseDate = (dateStr) => {
-                            if (!dateStr)
-                                return null;
-                            if (dateStr.includes('/')) {
-                                const parts = dateStr.split('/');
-                                if (parts.length === 3) {
-                                    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                        const response = await this.sheets.spreadsheets.values.get({
+                            spreadsheetId,
+                            range: 'Merchants!A:M',
+                        });
+                        const rows = response.data.values;
+                        if (!rows || rows.length <= 1) {
+                            return [];
+                        }
+                        const merchants = rows.slice(1).map((row, index) => {
+                            let historyLogs = [];
+                            if (row[11]) {
+                                try {
+                                    historyLogs = JSON.parse(row[11]);
+                                }
+                                catch (e) {
+                                    this.logger.warn(`Invalid history_logs JSON at row ${index + 2}`);
                                 }
                             }
-                            return new Date(dateStr);
-                        };
-                        const dateA = parseDate(a.date);
-                        const dateB = parseDate(b.date);
-                        if (!dateA && !dateB)
+                            let supportLogs = [];
+                            if (row[12]) {
+                                try {
+                                    supportLogs = JSON.parse(row[12]);
+                                }
+                                catch (e) {
+                                    this.logger.warn(`Invalid support_logs JSON at row ${index + 2}`);
+                                }
+                            }
+                            let lastInteractionDate = '';
+                            if (supportLogs && supportLogs.length > 0) {
+                                const sortedLogs = [...supportLogs].sort((a, b) => {
+                                    const parseDate = (dateStr) => {
+                                        if (!dateStr)
+                                            return null;
+                                        if (dateStr.includes('/')) {
+                                            const parts = dateStr.split('/');
+                                            if (parts.length === 3) {
+                                                return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                                            }
+                                        }
+                                        return new Date(dateStr);
+                                    };
+                                    const dateA = parseDate(a.date);
+                                    const dateB = parseDate(b.date);
+                                    if (!dateA && !dateB)
+                                        return 0;
+                                    if (!dateA)
+                                        return 1;
+                                    if (!dateB)
+                                        return -1;
+                                    const dateCompare = dateB.getTime() - dateA.getTime();
+                                    if (dateCompare !== 0)
+                                        return dateCompare;
+                                    if (a.time && b.time)
+                                        return b.time.localeCompare(a.time);
+                                    return 0;
+                                });
+                                const latestLog = sortedLogs[0];
+                                if (latestLog.date) {
+                                    if (latestLog.date.includes('/')) {
+                                        const parts = latestLog.date.split('/');
+                                        if (parts.length === 3) {
+                                            lastInteractionDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                                        }
+                                        else {
+                                            lastInteractionDate = latestLog.date;
+                                        }
+                                    }
+                                    else {
+                                        lastInteractionDate = latestLog.date;
+                                    }
+                                }
+                            }
+                            return {
+                                id: index + 1,
+                                name: row[0] || '',
+                                storeId: row[1] || '',
+                                address: row[2] || '',
+                                street: row[3] || '',
+                                area: row[4] || '',
+                                state: row[5] || '',
+                                zipcode: row[6] || '',
+                                lastInteractionDate: lastInteractionDate || '',
+                                platform: row[7] || '',
+                                phone: row[8] || '',
+                                lastModifiedAt: row[9] || '',
+                                lastModifiedBy: row[10] || '',
+                                historyLogs,
+                                supportLogs,
+                            };
+                        });
+                        return merchants;
+                    }
+                    catch (error) {
+                        lastError = error;
+                        const statusCode = error?.response?.status || error?.code;
+                        const isRetryable = statusCode === 500 || statusCode === 503 || statusCode === 429 ||
+                            error?.message?.includes('rate limit') ||
+                            error?.message?.includes('quota exceeded');
+                        if (isRetryable && attempt < maxRetries - 1) {
+                            const delay = Math.pow(2, attempt) * 1000;
+                            this.logger.warn(`[getMerchants] Retryable error (attempt ${attempt + 1}/${maxRetries}): ${error.message}. Retrying in ${delay}ms...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            continue;
+                        }
+                        throw error;
+                    }
+                }
+                throw lastError;
+            }
+            catch (error) {
+                this.logger.error('Error fetching merchants from Google Sheets:', error);
+                throw error;
+            }
+        }, 'getMerchants');
+    }
+    async getMerchantsInternal() {
+        if (!this.sheets) {
+            throw new Error('Google Sheets service not initialized');
+        }
+        const spreadsheetId = app_config_1.appConfig.spreadsheetId;
+        let lastError;
+        const maxRetries = 3;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await this.sheets.spreadsheets.values.get({
+                    spreadsheetId,
+                    range: 'Merchants!A:M',
+                });
+                const rows = response.data.values;
+                if (!rows || rows.length <= 1) {
+                    return [];
+                }
+                const merchants = rows.slice(1).map((row, index) => {
+                    let historyLogs = [];
+                    if (row[11]) {
+                        try {
+                            historyLogs = JSON.parse(row[11]);
+                        }
+                        catch (e) {
+                            this.logger.warn(`Invalid history_logs JSON at row ${index + 2}`);
+                        }
+                    }
+                    let supportLogs = [];
+                    if (row[12]) {
+                        try {
+                            supportLogs = JSON.parse(row[12]);
+                        }
+                        catch (e) {
+                            this.logger.warn(`Invalid support_logs JSON at row ${index + 2}`);
+                        }
+                    }
+                    let lastInteractionDate = '';
+                    if (supportLogs && supportLogs.length > 0) {
+                        const sortedLogs = [...supportLogs].sort((a, b) => {
+                            const parseDate = (dateStr) => {
+                                if (!dateStr)
+                                    return null;
+                                if (dateStr.includes('/')) {
+                                    const parts = dateStr.split('/');
+                                    if (parts.length === 3) {
+                                        return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                                    }
+                                }
+                                return new Date(dateStr);
+                            };
+                            const dateA = parseDate(a.date);
+                            const dateB = parseDate(b.date);
+                            if (!dateA && !dateB)
+                                return 0;
+                            if (!dateA)
+                                return 1;
+                            if (!dateB)
+                                return -1;
+                            const dateCompare = dateB.getTime() - dateA.getTime();
+                            if (dateCompare !== 0)
+                                return dateCompare;
+                            if (a.time && b.time)
+                                return b.time.localeCompare(a.time);
                             return 0;
-                        if (!dateA)
-                            return 1;
-                        if (!dateB)
-                            return -1;
-                        const dateCompare = dateB.getTime() - dateA.getTime();
-                        if (dateCompare !== 0)
-                            return dateCompare;
-                        if (a.time && b.time)
-                            return b.time.localeCompare(a.time);
-                        return 0;
-                    });
-                    const latestLog = sortedLogs[0];
-                    if (latestLog.date) {
-                        if (latestLog.date.includes('/')) {
-                            const parts = latestLog.date.split('/');
-                            if (parts.length === 3) {
-                                lastInteractionDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                        });
+                        const latestLog = sortedLogs[0];
+                        if (latestLog.date) {
+                            if (latestLog.date.includes('/')) {
+                                const parts = latestLog.date.split('/');
+                                if (parts.length === 3) {
+                                    lastInteractionDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                                }
+                                else {
+                                    lastInteractionDate = latestLog.date;
+                                }
                             }
                             else {
                                 lastInteractionDate = latestLog.date;
                             }
                         }
-                        else {
-                            lastInteractionDate = latestLog.date;
-                        }
                     }
+                    return {
+                        id: index + 1,
+                        name: row[0] || '',
+                        storeId: row[1] || '',
+                        address: row[2] || '',
+                        street: row[3] || '',
+                        area: row[4] || '',
+                        state: row[5] || '',
+                        zipcode: row[6] || '',
+                        lastInteractionDate: lastInteractionDate || '',
+                        platform: row[7] || '',
+                        phone: row[8] || '',
+                        lastModifiedAt: row[9] || '',
+                        lastModifiedBy: row[10] || '',
+                        historyLogs,
+                        supportLogs,
+                    };
+                });
+                return merchants;
+            }
+            catch (error) {
+                lastError = error;
+                const statusCode = error?.response?.status || error?.code;
+                const isRetryable = statusCode === 500 || statusCode === 503 || statusCode === 429 ||
+                    error?.message?.includes('rate limit') ||
+                    error?.message?.includes('quota exceeded');
+                if (isRetryable && attempt < maxRetries - 1) {
+                    const delay = Math.pow(2, attempt) * 1000;
+                    this.logger.warn(`[getMerchantsInternal] Retryable error (attempt ${attempt + 1}/${maxRetries}): ${error.message}. Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
                 }
-                return {
-                    id: index + 1,
-                    name: row[0] || '',
-                    storeId: row[1] || '',
-                    address: row[2] || '',
-                    street: row[3] || '',
-                    area: row[4] || '',
-                    state: row[5] || '',
-                    zipcode: row[6] || '',
-                    lastInteractionDate: lastInteractionDate || '',
-                    platform: row[7] || '',
-                    phone: row[8] || '',
-                    lastModifiedAt: row[9] || '',
-                    lastModifiedBy: row[10] || '',
-                    historyLogs,
-                    supportLogs,
-                };
-            });
-            return merchants;
+                throw error;
+            }
         }
-        catch (error) {
-            this.logger.error('Error fetching merchants from Google Sheets:', error);
-            throw error;
-        }
+        throw lastError;
     }
     async addMerchant(merchant, meta) {
         try {
@@ -588,260 +753,262 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
         }
     }
     async syncCallLogsToMerchants(userEmail) {
-        try {
-            if (!this.sheets) {
-                throw new Error('Google Sheets service not initialized');
-            }
-            this.logSync(`[Sync Call Logs] Bắt đầu đọc call logs từ sheet Call Logs...`);
-            const callLogs = await this.readCallLogs();
-            this.logSync(`[Sync Call Logs] 📊 TỔNG SỐ CALL LOGS ĐÃ ĐỌC ĐƯỢC: ${callLogs.length} call logs từ sheet Call Logs`);
-            if (callLogs.length === 0) {
-                this.logSync(`[Sync Call Logs] Không có call logs nào để sync`);
-                return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
-            }
-            const merchants = await this.getMerchants();
-            this.logSync(`Total merchants found: ${merchants.length}`);
-            const merchantMap = new Map();
-            this.logSync(`[ID Matching] Building merchant map by numeric ID:`);
-            merchants.forEach(merchant => {
-                if (merchant.storeId) {
-                    const numericId = this.extractNumericId(merchant.storeId, `Merchant ${merchant.name}`);
-                    this.logSync(`  - Merchant: ${merchant.name}, Store ID: ${merchant.storeId}, Extracted Numeric ID: ${numericId}`);
-                    if (numericId) {
-                        if (!merchantMap.has(numericId)) {
-                            merchantMap.set(numericId, []);
+        return this.withLock(async () => {
+            try {
+                if (!this.sheets) {
+                    throw new Error('Google Sheets service not initialized');
+                }
+                this.logSync(`[Sync Call Logs] Bắt đầu đọc call logs từ sheet Call Logs...`);
+                const callLogs = await this.readCallLogs();
+                this.logSync(`[Sync Call Logs] 📊 TỔNG SỐ CALL LOGS ĐÃ ĐỌC ĐƯỢC: ${callLogs.length} call logs từ sheet Call Logs`);
+                if (callLogs.length === 0) {
+                    this.logSync(`[Sync Call Logs] Không có call logs nào để sync`);
+                    return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
+                }
+                const merchants = await this.getMerchantsInternal();
+                this.logSync(`Total merchants found: ${merchants.length}`);
+                const merchantMap = new Map();
+                this.logSync(`[ID Matching] Building merchant map by numeric ID:`);
+                merchants.forEach(merchant => {
+                    if (merchant.storeId) {
+                        const numericId = this.extractNumericId(merchant.storeId, `Merchant ${merchant.name}`);
+                        this.logSync(`  - Merchant: ${merchant.name}, Store ID: ${merchant.storeId}, Extracted Numeric ID: ${numericId}`);
+                        if (numericId) {
+                            if (!merchantMap.has(numericId)) {
+                                merchantMap.set(numericId, []);
+                            }
+                            merchantMap.get(numericId).push(merchant);
+                            const merchantsWithSameId = merchantMap.get(numericId);
+                            if (merchantsWithSameId.length > 1) {
+                                this.logSync(`  ✅ Found ${merchantsWithSameId.length} merchants with same numeric ID ${numericId}: ${merchantsWithSameId.map(m => m.storeId).join(', ')}`);
+                            }
                         }
-                        merchantMap.get(numericId).push(merchant);
-                        const merchantsWithSameId = merchantMap.get(numericId);
-                        if (merchantsWithSameId.length > 1) {
-                            this.logSync(`  ✅ Found ${merchantsWithSameId.length} merchants with same numeric ID ${numericId}: ${merchantsWithSameId.map(m => m.storeId).join(', ')}`);
+                        else {
+                            this.warnSync(`  ⚠️ Could not extract numeric ID from storeId "${merchant.storeId}" for merchant ${merchant.name}`);
                         }
                     }
                     else {
-                        this.warnSync(`  ⚠️ Could not extract numeric ID from storeId "${merchant.storeId}" for merchant ${merchant.name}`);
+                        this.warnSync(`  ⚠️ Merchant ${merchant.name} (id=${merchant.id}) has no storeId`);
                     }
-                }
-                else {
-                    this.warnSync(`  ⚠️ Merchant ${merchant.name} (id=${merchant.id}) has no storeId`);
-                }
-            });
-            this.logSync(`Total unique numeric IDs in merchant map: ${merchantMap.size}`);
-            const uniqueCallLogIds = new Set(callLogs.map(log => log.numericId));
-            this.logSync(`[ID Matching] Unique numeric IDs from call logs (${uniqueCallLogIds.size}):`);
-            Array.from(uniqueCallLogIds).slice(0, 20).forEach(id => {
-                const count = callLogs.filter(log => log.numericId === id).length;
-                this.logSync(`  - Numeric ID: ${id} (found in ${count} call logs)`);
-            });
-            if (uniqueCallLogIds.size > 20) {
-                this.logSync(`  ... and ${uniqueCallLogIds.size - 20} more unique IDs`);
-            }
-            this.logSync(`[ID Matching] Analyzing matches:`);
-            this.logSync(`  - Total merchants in map: ${merchantMap.size} unique numeric IDs`);
-            this.logSync(`  - Total unique numeric IDs from call logs: ${uniqueCallLogIds.size}`);
-            const merchantNumericIds = Array.from(merchantMap.keys());
-            this.logSync(`  - Sample merchant numeric IDs (first 10): ${merchantNumericIds.slice(0, 10).join(', ')}`);
-            const callLogNumericIds = Array.from(uniqueCallLogIds);
-            this.logSync(`  - Sample call log numeric IDs (first 10): ${callLogNumericIds.slice(0, 10).join(', ')}`);
-            const matchedIds = new Set();
-            const unmatchedIds = new Set();
-            callLogs.forEach(log => {
-                if (merchantMap.has(log.numericId)) {
-                    matchedIds.add(log.numericId);
-                }
-                else {
-                    unmatchedIds.add(log.numericId);
-                }
-            });
-            this.logSync(`  - Matched IDs: ${matchedIds.size} (${Array.from(matchedIds).slice(0, 10).join(', ')}${matchedIds.size > 10 ? '...' : ''})`);
-            this.logSync(`  - Unmatched IDs: ${unmatchedIds.size} (${Array.from(unmatchedIds).slice(0, 10).join(', ')}${unmatchedIds.size > 10 ? '...' : ''})`);
-            let totalMerchantsMatched = 0;
-            matchedIds.forEach(numericId => {
-                const merchants = merchantMap.get(numericId);
-                if (merchants) {
-                    totalMerchantsMatched += merchants.length;
-                }
-            });
-            this.logSync(`[ID Matching] 📊 TỔNG SỐ MERCHANT MATCH VỚI CALL LOG: ${totalMerchantsMatched} merchants (từ ${matchedIds.size} unique numeric IDs, có ${uniqueCallLogIds.size} unique numeric IDs từ call logs, tổng ${merchants.length} merchants trong hệ thống)`);
-            let matched = 0;
-            let updated = 0;
-            let errors = 0;
-            let totalCallLogsAdded = 0;
-            const logsByMerchant = new Map();
-            callLogs.forEach(log => {
-                if (!logsByMerchant.has(log.numericId)) {
-                    logsByMerchant.set(log.numericId, []);
-                }
-                logsByMerchant.get(log.numericId).push(log);
-            });
-            this.logSync(`[ID Matching] Grouped call logs into ${logsByMerchant.size} unique merchant IDs`);
-            for (const [numericId, logs] of logsByMerchant.entries()) {
-                this.logSync(`[ID Matching] Processing numeric ID: ${numericId} with ${logs.length} call logs`);
-                const matchedMerchants = merchantMap.get(numericId);
-                if (!matchedMerchants || matchedMerchants.length === 0) {
-                    this.warnSync(`  ❌ No merchant found for numeric ID: ${numericId}`);
-                    this.warnSync(`  Available merchant numeric IDs: ${Array.from(merchantMap.keys()).slice(0, 20).join(', ')}${merchantMap.size > 20 ? '...' : ''}`);
-                    continue;
-                }
-                this.logSync(`  ✅ Found ${matchedMerchants.length} matching merchant(s) with numeric ID ${numericId}:`);
-                matchedMerchants.forEach(m => {
-                    this.logSync(`    - ${m.name} (Store ID: ${m.storeId})`);
                 });
-                this.logSync(`  - Call log IDs: ${logs.map(l => l.id).join(', ')}`);
-                this.logSync(`  - All extract to numeric ID: ${numericId}`);
-                matched += matchedMerchants.length;
-                for (const merchant of matchedMerchants) {
-                    if (!merchant.id) {
-                        this.warnSync(`  ⚠️ Skipping merchant ${merchant.name} (Store ID: ${merchant.storeId}) - no id field`);
+                this.logSync(`Total unique numeric IDs in merchant map: ${merchantMap.size}`);
+                const uniqueCallLogIds = new Set(callLogs.map(log => log.numericId));
+                this.logSync(`[ID Matching] Unique numeric IDs from call logs (${uniqueCallLogIds.size}):`);
+                Array.from(uniqueCallLogIds).slice(0, 20).forEach(id => {
+                    const count = callLogs.filter(log => log.numericId === id).length;
+                    this.logSync(`  - Numeric ID: ${id} (found in ${count} call logs)`);
+                });
+                if (uniqueCallLogIds.size > 20) {
+                    this.logSync(`  ... and ${uniqueCallLogIds.size - 20} more unique IDs`);
+                }
+                this.logSync(`[ID Matching] Analyzing matches:`);
+                this.logSync(`  - Total merchants in map: ${merchantMap.size} unique numeric IDs`);
+                this.logSync(`  - Total unique numeric IDs from call logs: ${uniqueCallLogIds.size}`);
+                const merchantNumericIds = Array.from(merchantMap.keys());
+                this.logSync(`  - Sample merchant numeric IDs (first 10): ${merchantNumericIds.slice(0, 10).join(', ')}`);
+                const callLogNumericIds = Array.from(uniqueCallLogIds);
+                this.logSync(`  - Sample call log numeric IDs (first 10): ${callLogNumericIds.slice(0, 10).join(', ')}`);
+                const matchedIds = new Set();
+                const unmatchedIds = new Set();
+                callLogs.forEach(log => {
+                    if (merchantMap.has(log.numericId)) {
+                        matchedIds.add(log.numericId);
+                    }
+                    else {
+                        unmatchedIds.add(log.numericId);
+                    }
+                });
+                this.logSync(`  - Matched IDs: ${matchedIds.size} (${Array.from(matchedIds).slice(0, 10).join(', ')}${matchedIds.size > 10 ? '...' : ''})`);
+                this.logSync(`  - Unmatched IDs: ${unmatchedIds.size} (${Array.from(unmatchedIds).slice(0, 10).join(', ')}${unmatchedIds.size > 10 ? '...' : ''})`);
+                let totalMerchantsMatched = 0;
+                matchedIds.forEach(numericId => {
+                    const merchants = merchantMap.get(numericId);
+                    if (merchants) {
+                        totalMerchantsMatched += merchants.length;
+                    }
+                });
+                this.logSync(`[ID Matching] 📊 TỔNG SỐ MERCHANT MATCH VỚI CALL LOG: ${totalMerchantsMatched} merchants (từ ${matchedIds.size} unique numeric IDs, có ${uniqueCallLogIds.size} unique numeric IDs từ call logs, tổng ${merchants.length} merchants trong hệ thống)`);
+                let matched = 0;
+                let updated = 0;
+                let errors = 0;
+                let totalCallLogsAdded = 0;
+                const logsByMerchant = new Map();
+                callLogs.forEach(log => {
+                    if (!logsByMerchant.has(log.numericId)) {
+                        logsByMerchant.set(log.numericId, []);
+                    }
+                    logsByMerchant.get(log.numericId).push(log);
+                });
+                this.logSync(`[ID Matching] Grouped call logs into ${logsByMerchant.size} unique merchant IDs`);
+                for (const [numericId, logs] of logsByMerchant.entries()) {
+                    this.logSync(`[ID Matching] Processing numeric ID: ${numericId} with ${logs.length} call logs`);
+                    const matchedMerchants = merchantMap.get(numericId);
+                    if (!matchedMerchants || matchedMerchants.length === 0) {
+                        this.warnSync(`  ❌ No merchant found for numeric ID: ${numericId}`);
+                        this.warnSync(`  Available merchant numeric IDs: ${Array.from(merchantMap.keys()).slice(0, 20).join(', ')}${merchantMap.size > 20 ? '...' : ''}`);
                         continue;
                     }
-                    try {
-                        const actualRowIndex = merchant.id + 1;
-                        this.logSync(`[Sync Call Logs] Processing merchant: ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`);
-                        this.logSync(`  - merchant.id = ${merchant.id}, actualRowIndex in sheet = ${actualRowIndex}`);
-                        this.logSync(`  - Found ${logs.length} call logs to process for this merchant`);
-                        const current = await this.sheets.spreadsheets.values.get({
-                            spreadsheetId: app_config_1.appConfig.spreadsheetId,
-                            range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
-                        });
-                        const row = current.data.values?.[0] || [];
-                        if (row.length === 0) {
-                            this.warnSync(`Row ${actualRowIndex} is empty, skipping...`);
+                    this.logSync(`  ✅ Found ${matchedMerchants.length} matching merchant(s) with numeric ID ${numericId}:`);
+                    matchedMerchants.forEach(m => {
+                        this.logSync(`    - ${m.name} (Store ID: ${m.storeId})`);
+                    });
+                    this.logSync(`  - Call log IDs: ${logs.map(l => l.id).join(', ')}`);
+                    this.logSync(`  - All extract to numeric ID: ${numericId}`);
+                    matched += matchedMerchants.length;
+                    for (const merchant of matchedMerchants) {
+                        if (!merchant.id) {
+                            this.warnSync(`  ⚠️ Skipping merchant ${merchant.name} (Store ID: ${merchant.storeId}) - no id field`);
                             continue;
                         }
-                        this.logSync(`Row ${actualRowIndex} has ${row.length} columns`);
-                        let existingLogs = [];
-                        if (row[12]) {
-                            try {
-                                existingLogs = JSON.parse(row[12]);
-                                this.logSync(`Found ${existingLogs.length} existing support logs for merchant ${merchant.storeId}`);
+                        try {
+                            const actualRowIndex = merchant.id + 1;
+                            this.logSync(`[Sync Call Logs] Processing merchant: ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`);
+                            this.logSync(`  - merchant.id = ${merchant.id}, actualRowIndex in sheet = ${actualRowIndex}`);
+                            this.logSync(`  - Found ${logs.length} call logs to process for this merchant`);
+                            const current = await this.sheets.spreadsheets.values.get({
+                                spreadsheetId: app_config_1.appConfig.spreadsheetId,
+                                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                            });
+                            const row = current.data.values?.[0] || [];
+                            if (row.length === 0) {
+                                this.warnSync(`Row ${actualRowIndex} is empty, skipping...`);
+                                continue;
                             }
-                            catch (e) {
-                                this.warnSync(`Invalid support_logs JSON at row ${actualRowIndex}: ${row[12]}`);
-                            }
-                        }
-                        else {
-                            this.logSync(`No existing support_logs found for merchant ${merchant.storeId}, will create new`);
-                        }
-                        const existingMap = new Map();
-                        existingLogs.forEach(log => {
-                            existingMap.set(`${log.date}|${log.time}`, log);
-                        });
-                        let updatedExisting = 0;
-                        const additions = [];
-                        logs.forEach(log => {
-                            const key = `${log.date}|${log.time}`;
-                            const existing = existingMap.get(key);
-                            if (existing) {
-                                const hasExistingCategory = typeof existing.category === 'string' && existing.category.trim() !== '';
-                                const hasIncomingCategory = typeof log.category === 'string' && log.category.trim() !== '';
-                                if (!hasExistingCategory && hasIncomingCategory) {
-                                    existing.category = log.category;
-                                    updatedExisting++;
+                            this.logSync(`Row ${actualRowIndex} has ${row.length} columns`);
+                            let existingLogs = [];
+                            if (row[12]) {
+                                try {
+                                    existingLogs = JSON.parse(row[12]);
+                                    this.logSync(`Found ${existingLogs.length} existing support logs for merchant ${merchant.storeId}`);
+                                }
+                                catch (e) {
+                                    this.warnSync(`Invalid support_logs JSON at row ${actualRowIndex}: ${row[12]}`);
                                 }
                             }
                             else {
-                                additions.push({
-                                    date: log.date,
-                                    time: log.time,
-                                    issue: log.issue || '',
-                                    category: log.category || '',
-                                    supporter: log.supporter || '',
+                                this.logSync(`No existing support_logs found for merchant ${merchant.storeId}, will create new`);
+                            }
+                            const existingMap = new Map();
+                            existingLogs.forEach(log => {
+                                existingMap.set(`${log.date}|${log.time}`, log);
+                            });
+                            let updatedExisting = 0;
+                            const additions = [];
+                            logs.forEach(log => {
+                                const key = `${log.date}|${log.time}`;
+                                const existing = existingMap.get(key);
+                                if (existing) {
+                                    const hasExistingCategory = typeof existing.category === 'string' && existing.category.trim() !== '';
+                                    const hasIncomingCategory = typeof log.category === 'string' && log.category.trim() !== '';
+                                    if (!hasExistingCategory && hasIncomingCategory) {
+                                        existing.category = log.category;
+                                        updatedExisting++;
+                                    }
+                                }
+                                else {
+                                    additions.push({
+                                        date: log.date,
+                                        time: log.time,
+                                        issue: log.issue || '',
+                                        category: log.category || '',
+                                        supporter: log.supporter || '',
+                                    });
+                                }
+                            });
+                            if (additions.length === 0 && updatedExisting === 0) {
+                                this.logSync(`Merchant ${merchant.storeId} (ID: ${numericId}): No changes (no new logs, no category updates)`);
+                                continue;
+                            }
+                            this.logSync(`[Call Log Sync] Merchant: ${merchant.storeId} (ID: ${numericId}), Merchant Name: ${merchant.name}`);
+                            if (additions.length > 0) {
+                                additions.forEach((log, index) => {
+                                    this.logSync(`  [ADD ${index + 1}] Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Category: ${log.category || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
                                 });
                             }
-                        });
-                        if (additions.length === 0 && updatedExisting === 0) {
-                            this.logSync(`Merchant ${merchant.storeId} (ID: ${numericId}): No changes (no new logs, no category updates)`);
-                            continue;
-                        }
-                        this.logSync(`[Call Log Sync] Merchant: ${merchant.storeId} (ID: ${numericId}), Merchant Name: ${merchant.name}`);
-                        if (additions.length > 0) {
-                            additions.forEach((log, index) => {
-                                this.logSync(`  [ADD ${index + 1}] Date: ${log.date}, Time: ${log.time}, Issue: ${log.issue || 'N/A'}, Category: ${log.category || 'N/A'}, Supporter: ${log.supporter || 'N/A'}`);
+                            if (updatedExisting > 0) {
+                                this.logSync(`  [UPDATE] Added missing Category for ${updatedExisting} existing logs (matched by Date+Time)`);
+                            }
+                            const allLogs = [...existingLogs, ...additions];
+                            const supportLogsJson = JSON.stringify(allLogs);
+                            this.logSync(`Preparing to update row ${actualRowIndex} with ${allLogs.length} total support logs (${additions.length} new, ${updatedExisting} updated)`);
+                            this.logSync(`Support logs JSON length: ${supportLogsJson.length} characters`);
+                            const valuesArray = [
+                                row[0] || '',
+                                row[1] || '',
+                                row[2] || '',
+                                row[3] || '',
+                                row[4] || '',
+                                row[5] || '',
+                                row[6] || '',
+                                row[7] || '',
+                                row[8] || '',
+                                row[9] || '',
+                                row[10] || '',
+                                row[11] || '[]',
+                                supportLogsJson,
+                            ];
+                            while (valuesArray.length < 13) {
+                                valuesArray.push('');
+                            }
+                            const values = [valuesArray];
+                            this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:M${actualRowIndex}`);
+                            const updateResult = await this.sheets.spreadsheets.values.update({
+                                spreadsheetId: app_config_1.appConfig.spreadsheetId,
+                                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                                valueInputOption: 'RAW',
+                                resource: { values },
                             });
-                        }
-                        if (updatedExisting > 0) {
-                            this.logSync(`  [UPDATE] Added missing Category for ${updatedExisting} existing logs (matched by Date+Time)`);
-                        }
-                        const allLogs = [...existingLogs, ...additions];
-                        const supportLogsJson = JSON.stringify(allLogs);
-                        this.logSync(`Preparing to update row ${actualRowIndex} with ${allLogs.length} total support logs (${additions.length} new, ${updatedExisting} updated)`);
-                        this.logSync(`Support logs JSON length: ${supportLogsJson.length} characters`);
-                        const valuesArray = [
-                            row[0] || '',
-                            row[1] || '',
-                            row[2] || '',
-                            row[3] || '',
-                            row[4] || '',
-                            row[5] || '',
-                            row[6] || '',
-                            row[7] || '',
-                            row[8] || '',
-                            row[9] || '',
-                            row[10] || '',
-                            row[11] || '[]',
-                            supportLogsJson,
-                        ];
-                        while (valuesArray.length < 13) {
-                            valuesArray.push('');
-                        }
-                        const values = [valuesArray];
-                        this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:M${actualRowIndex}`);
-                        const updateResult = await this.sheets.spreadsheets.values.update({
-                            spreadsheetId: app_config_1.appConfig.spreadsheetId,
-                            range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
-                            valueInputOption: 'RAW',
-                            resource: { values },
-                        });
-                        if (updateResult.data) {
-                            this.logSync(`Update response: updatedCells=${updateResult.data.updatedCells}, updatedRows=${updateResult.data.updatedRows}, updatedColumns=${updateResult.data.updatedColumns}`);
-                        }
-                        else {
-                            this.warnSync(`Update response is empty, but no error thrown`);
-                        }
-                        updated++;
-                        totalCallLogsAdded += additions.length;
-                        this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${additions.length} call logs, updated ${updatedExisting} existing, total ${allLogs.length} logs`);
-                        const verifyResult = await this.sheets.spreadsheets.values.get({
-                            spreadsheetId: app_config_1.appConfig.spreadsheetId,
-                            range: `Merchants!M${actualRowIndex}:M${actualRowIndex}`,
-                        });
-                        const verifyRow = verifyResult.data.values?.[0]?.[0];
-                        if (verifyRow) {
-                            try {
-                                const verifyLogs = JSON.parse(verifyRow);
-                                this.logSync(`✅ Verification: Row ${actualRowIndex} column M now contains ${verifyLogs.length} support logs`);
+                            if (updateResult.data) {
+                                this.logSync(`Update response: updatedCells=${updateResult.data.updatedCells}, updatedRows=${updateResult.data.updatedRows}, updatedColumns=${updateResult.data.updatedColumns}`);
                             }
-                            catch (e) {
-                                this.warnSync(`⚠️ Verification failed: Column M content is not valid JSON: ${verifyRow}`);
+                            else {
+                                this.warnSync(`Update response is empty, but no error thrown`);
+                            }
+                            updated++;
+                            totalCallLogsAdded += additions.length;
+                            this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${additions.length} call logs, updated ${updatedExisting} existing, total ${allLogs.length} logs`);
+                            const verifyResult = await this.sheets.spreadsheets.values.get({
+                                spreadsheetId: app_config_1.appConfig.spreadsheetId,
+                                range: `Merchants!M${actualRowIndex}:M${actualRowIndex}`,
+                            });
+                            const verifyRow = verifyResult.data.values?.[0]?.[0];
+                            if (verifyRow) {
+                                try {
+                                    const verifyLogs = JSON.parse(verifyRow);
+                                    this.logSync(`✅ Verification: Row ${actualRowIndex} column M now contains ${verifyLogs.length} support logs`);
+                                }
+                                catch (e) {
+                                    this.warnSync(`⚠️ Verification failed: Column M content is not valid JSON: ${verifyRow}`);
+                                }
+                            }
+                            else {
+                                this.warnSync(`⚠️ Verification failed: Column M is empty after update`);
                             }
                         }
-                        else {
-                            this.warnSync(`⚠️ Verification failed: Column M is empty after update`);
+                        catch (error) {
+                            errors++;
+                            this.errorSync(`❌ Error updating support_logs for merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
                         }
-                    }
-                    catch (error) {
-                        errors++;
-                        this.errorSync(`❌ Error updating support_logs for merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
                     }
                 }
+                this.logSync(`[Call Log Sync Summary] 📊 TỔNG KẾT:`);
+                this.logSync(`  - Tổng số merchant có call logs match: ${matched}/${totalMerchantsMatched}`);
+                this.logSync(`  - Tổng số merchant đã update thành công: ${updated}`);
+                this.logSync(`  - Tổng số merchant có lỗi: ${errors}`);
+                this.logSync(`  - Tổng số call logs đã thêm mới: ${totalCallLogsAdded}`);
+                this.logSync(`  - Tổng số merchant trong hệ thống: ${merchants.length}`);
+                this.logSync(`  - Tổng số unique numeric IDs từ call logs: ${uniqueCallLogIds.size}`);
+                this.logSync(`  - Tổng số call logs đã đọc: ${callLogs.length}`);
+                this.writeToLogFile(`\n=== Call Logs Sync Completed at ${new Date().toISOString()} ===\n`);
+                this.writeToLogFile(`Final Results: Matched=${matched}, Updated=${updated}, Errors=${errors}, TotalCallLogsAdded=${totalCallLogsAdded}\n`);
+                return { matched, updated, errors, totalCallLogsAdded };
             }
-            this.logSync(`[Call Log Sync Summary] 📊 TỔNG KẾT:`);
-            this.logSync(`  - Tổng số merchant có call logs match: ${matched}/${totalMerchantsMatched}`);
-            this.logSync(`  - Tổng số merchant đã update thành công: ${updated}`);
-            this.logSync(`  - Tổng số merchant có lỗi: ${errors}`);
-            this.logSync(`  - Tổng số call logs đã thêm mới: ${totalCallLogsAdded}`);
-            this.logSync(`  - Tổng số merchant trong hệ thống: ${merchants.length}`);
-            this.logSync(`  - Tổng số unique numeric IDs từ call logs: ${uniqueCallLogIds.size}`);
-            this.logSync(`  - Tổng số call logs đã đọc: ${callLogs.length}`);
-            this.writeToLogFile(`\n=== Call Logs Sync Completed at ${new Date().toISOString()} ===\n`);
-            this.writeToLogFile(`Final Results: Matched=${matched}, Updated=${updated}, Errors=${errors}, TotalCallLogsAdded=${totalCallLogsAdded}\n`);
-            return { matched, updated, errors, totalCallLogsAdded };
-        }
-        catch (error) {
-            this.errorSync('Error syncing call logs to merchants', error);
-            this.writeToLogFile(`\n=== Call Logs Sync Failed at ${new Date().toISOString()} ===\n`);
-            throw error;
-        }
+            catch (error) {
+                this.errorSync('Error syncing call logs to merchants', error);
+                this.writeToLogFile(`\n=== Call Logs Sync Failed at ${new Date().toISOString()} ===\n`);
+                throw error;
+            }
+        }, 'syncCallLogsToMerchants');
     }
     async getAuthorizedEmails() {
         try {

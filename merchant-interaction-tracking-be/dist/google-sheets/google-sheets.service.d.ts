@@ -3,6 +3,7 @@ export declare class GoogleSheetsService {
     private sheets;
     private auth;
     private logFilePath;
+    private operationLock;
     constructor();
     private initializeLogFile;
     private writeToLogFile;
@@ -11,7 +12,9 @@ export declare class GoogleSheetsService {
     private errorSync;
     private initializeAuth;
     private getMockMerchants;
+    private withLock;
     getMerchants(): Promise<any[]>;
+    private getMerchantsInternal;
     addMerchant(merchant: any, meta: {
         by: string;
         at?: string;

@@ -10,6 +10,8 @@ export class GoogleSheetsService {
   private sheets: any;
   private auth: any;
   private logFilePath: string;
+  // Mutex to prevent concurrent Google Sheets operations
+  private operationLock: Promise<void> = Promise.resolve();
 
   constructor() {
     this.initializeAuth();
@@ -100,23 +102,55 @@ export class GoogleSheetsService {
     ];
   }
 
-  async getMerchants(): Promise<any[]> {
+  // Helper method to acquire lock and execute operation
+  private async withLock<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
+    const currentLock = this.operationLock;
+    let releaseLock: () => void;
+    const newLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    this.operationLock = currentLock.then(async () => {
+      this.logger.debug(`[Lock] Acquired lock for: ${operationName}`);
+      try {
+        await newLock;
+      } finally {
+        this.logger.debug(`[Lock] Released lock for: ${operationName}`);
+      }
+    });
+
     try {
-      // Check if sheets is initialized
-      if (!this.sheets) {
-        throw new Error('Google Sheets service not initialized');
-      }
+      await currentLock;
+      return await operation();
+    } finally {
+      releaseLock!();
+    }
+  }
 
-      const spreadsheetId = appConfig.spreadsheetId;
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'Merchants!A:M',
-      });
+  async getMerchants(): Promise<any[]> {
+    return this.withLock(async () => {
+      try {
+        // Check if sheets is initialized
+        if (!this.sheets) {
+          throw new Error('Google Sheets service not initialized');
+        }
 
-      const rows = response.data.values;
-      if (!rows || rows.length <= 1) {
-        return [];
-      }
+        const spreadsheetId = appConfig.spreadsheetId;
+        
+        // Retry logic with exponential backoff
+        let lastError: any;
+        const maxRetries = 3;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          try {
+            const response = await this.sheets.spreadsheets.values.get({
+              spreadsheetId,
+              range: 'Merchants!A:M',
+            });
+
+            const rows = response.data.values;
+            if (!rows || rows.length <= 1) {
+              return [];
+            }
 
       // Skip header row
       // Columns mapping (after removing lastInteractionDate):
@@ -200,11 +234,168 @@ export class GoogleSheetsService {
         supportLogs,
       };});
 
-      return merchants;
-    } catch (error) {
-      this.logger.error('Error fetching merchants from Google Sheets:', error);
-      throw error;
+            return merchants;
+          } catch (error: any) {
+            lastError = error;
+            const statusCode = error?.response?.status || error?.code;
+            const isRetryable = statusCode === 500 || statusCode === 503 || statusCode === 429 || 
+                              error?.message?.includes('rate limit') || 
+                              error?.message?.includes('quota exceeded');
+            
+            if (isRetryable && attempt < maxRetries - 1) {
+              const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+              this.logger.warn(
+                `[getMerchants] Retryable error (attempt ${attempt + 1}/${maxRetries}): ${error.message}. Retrying in ${delay}ms...`
+              );
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            
+            // If not retryable or last attempt, throw immediately
+            throw error;
+          }
+        }
+        
+        // If we exhausted all retries, throw the last error
+        throw lastError;
+      } catch (error) {
+        this.logger.error('Error fetching merchants from Google Sheets:', error);
+        throw error;
+      }
+    }, 'getMerchants');
+  }
+
+  // Internal method without lock (used by sync which already has lock)
+  private async getMerchantsInternal(): Promise<any[]> {
+    // Check if sheets is initialized
+    if (!this.sheets) {
+      throw new Error('Google Sheets service not initialized');
     }
+
+    const spreadsheetId = appConfig.spreadsheetId;
+    
+    // Retry logic with exponential backoff
+    let lastError: any;
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await this.sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'Merchants!A:M',
+        });
+
+        const rows = response.data.values;
+        if (!rows || rows.length <= 1) {
+          return [];
+        }
+
+        // Skip header row
+        // Columns mapping (after removing lastInteractionDate):
+        // A: name, B: storeId, C: address, D: street, E: area, F: state, G: zipcode
+        // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs
+        const merchants = rows.slice(1).map((row: any[], index: number) => {
+          let historyLogs: any[] = [];
+          if (row[11]) {
+            try {
+              historyLogs = JSON.parse(row[11]);
+            } catch (e) {
+              this.logger.warn(`Invalid history_logs JSON at row ${index + 2}`);
+            }
+          }
+          let supportLogs: any[] = [];
+          if (row[12]) {
+            try {
+              supportLogs = JSON.parse(row[12]);
+            } catch (e) {
+              this.logger.warn(`Invalid support_logs JSON at row ${index + 2}`);
+            }
+          }
+          
+          // Get lastInteractionDate from latest call log if available
+          let lastInteractionDate = '';
+          if (supportLogs && supportLogs.length > 0) {
+            // Sort by date and time (newest first)
+            const sortedLogs = [...supportLogs].sort((a: any, b: any) => {
+              // Try to parse date (MM/DD/YYYY or YYYY-MM-DD)
+              const parseDate = (dateStr: string) => {
+                if (!dateStr) return null;
+                if (dateStr.includes('/')) {
+                  const parts = dateStr.split('/');
+                  if (parts.length === 3) {
+                    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                  }
+                }
+                return new Date(dateStr);
+              };
+              const dateA = parseDate(a.date);
+              const dateB = parseDate(b.date);
+              if (!dateA && !dateB) return 0;
+              if (!dateA) return 1;
+              if (!dateB) return -1;
+              const dateCompare = dateB.getTime() - dateA.getTime();
+              if (dateCompare !== 0) return dateCompare;
+              if (a.time && b.time) return b.time.localeCompare(a.time);
+              return 0;
+            });
+            const latestLog = sortedLogs[0];
+            if (latestLog.date) {
+              // Convert MM/DD/YYYY to YYYY-MM-DD
+              if (latestLog.date.includes('/')) {
+                const parts = latestLog.date.split('/');
+                if (parts.length === 3) {
+                  lastInteractionDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                } else {
+                  lastInteractionDate = latestLog.date;
+                }
+              } else {
+                lastInteractionDate = latestLog.date;
+              }
+            }
+          }
+          
+          return {
+            id: index + 1,
+            name: row[0] || '',
+            storeId: row[1] || '', // Cột B: Store ID
+            address: row[2] || '',
+            street: row[3] || '',
+            area: row[4] || '',
+            state: row[5] || '',
+            zipcode: row[6] || '',
+            lastInteractionDate: lastInteractionDate || '', // From call logs, not from sheet
+            platform: row[7] || '', // H (was I)
+            phone: row[8] || '', // I (was J)
+            lastModifiedAt: row[9] || '', // J (was K)
+            lastModifiedBy: row[10] || '', // K (was L)
+            historyLogs,
+            supportLogs,
+          };
+        });
+
+        return merchants;
+      } catch (error: any) {
+        lastError = error;
+        const statusCode = error?.response?.status || error?.code;
+        const isRetryable = statusCode === 500 || statusCode === 503 || statusCode === 429 || 
+                          error?.message?.includes('rate limit') || 
+                          error?.message?.includes('quota exceeded');
+        
+        if (isRetryable && attempt < maxRetries - 1) {
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+          this.logger.warn(
+            `[getMerchantsInternal] Retryable error (attempt ${attempt + 1}/${maxRetries}): ${error.message}. Retrying in ${delay}ms...`
+          );
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // If not retryable or last attempt, throw immediately
+        throw error;
+      }
+    }
+    
+    // If we exhausted all retries, throw the last error
+    throw lastError;
   }
 
   async addMerchant(merchant: any, meta: { by: string; at?: string }): Promise<void> {
@@ -635,23 +826,25 @@ export class GoogleSheetsService {
 
   // Sync call logs to merchants
   async syncCallLogsToMerchants(userEmail: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
-    try {
-      if (!this.sheets) {
-        throw new Error('Google Sheets service not initialized');
-      }
+    return this.withLock(async () => {
+      try {
+        if (!this.sheets) {
+          throw new Error('Google Sheets service not initialized');
+        }
 
-      // Read call logs
-      this.logSync(`[Sync Call Logs] Bắt đầu đọc call logs từ sheet Call Logs...`);
-      const callLogs = await this.readCallLogs();
-      this.logSync(`[Sync Call Logs] 📊 TỔNG SỐ CALL LOGS ĐÃ ĐỌC ĐƯỢC: ${callLogs.length} call logs từ sheet Call Logs`);
-      
-      if (callLogs.length === 0) {
-        this.logSync(`[Sync Call Logs] Không có call logs nào để sync`);
-        return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
-      }
+        // Read call logs
+        this.logSync(`[Sync Call Logs] Bắt đầu đọc call logs từ sheet Call Logs...`);
+        const callLogs = await this.readCallLogs();
+        this.logSync(`[Sync Call Logs] 📊 TỔNG SỐ CALL LOGS ĐÃ ĐỌC ĐƯỢC: ${callLogs.length} call logs từ sheet Call Logs`);
+        
+        if (callLogs.length === 0) {
+          this.logSync(`[Sync Call Logs] Không có call logs nào để sync`);
+          return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
+        }
 
-      // Get all merchants
-      const merchants = await this.getMerchants();
+        // Get all merchants (without lock to avoid deadlock since we're already in lock)
+        // We need to call the internal implementation
+        const merchants = await this.getMerchantsInternal();
       this.logSync(`Total merchants found: ${merchants.length}`);
       
       // Create a map: numericId -> array of merchants (multiple merchants can have same numeric ID)
@@ -947,11 +1140,12 @@ export class GoogleSheetsService {
       this.writeToLogFile(`Final Results: Matched=${matched}, Updated=${updated}, Errors=${errors}, TotalCallLogsAdded=${totalCallLogsAdded}\n`);
       
       return { matched, updated, errors, totalCallLogsAdded };
-    } catch (error) {
-      this.errorSync('Error syncing call logs to merchants', error);
-      this.writeToLogFile(`\n=== Call Logs Sync Failed at ${new Date().toISOString()} ===\n`);
-      throw error;
-    }
+      } catch (error) {
+        this.errorSync('Error syncing call logs to merchants', error);
+        this.writeToLogFile(`\n=== Call Logs Sync Failed at ${new Date().toISOString()} ===\n`);
+        throw error;
+      }
+    }, 'syncCallLogsToMerchants');
   }
 
   async getAuthorizedEmails(): Promise<string[]> {

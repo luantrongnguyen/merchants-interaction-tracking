@@ -80,10 +80,17 @@ body {
 }
 
 
+.app-layout {
+  display: flex;
+  min-height: calc(100vh - 80px); /* Subtract header height */
+}
+
 .app-main {
-  max-width: 1600px;
+  flex: 1;
+  max-width: calc(100vw - 250px); /* Subtract sidebar width */
   margin: 0 auto;
   padding: 2rem 1rem;
+  overflow-x: hidden;
 }
 
 .app-content {
@@ -91,6 +98,28 @@ body {
   grid-template-columns: 320px 1fr;
   gap: 1.5rem;
   align-items: start;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .app-main {
+    max-width: 100%;
+    padding: 1rem;
+  }
+
+  .app-content {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stats-section {
+    position: relative;
+    top: 0;
+  }
 }
 
 .stats-section {
