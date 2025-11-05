@@ -21,14 +21,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (!isAuthenticated && !bypassAuth) {
-    return (
-      <div className="app-container">
-        <div className="blank-page">
-        </div>
-      </div>
-    );
-  }
+  // if (!isAuthenticated && !bypassAuth) {
+  //   return (
+  //     <div className="app-container">
+  //       <div className="blank-page">
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return <>{children}</>;
 };
