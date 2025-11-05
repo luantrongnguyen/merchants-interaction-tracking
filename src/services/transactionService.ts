@@ -65,7 +65,7 @@ class TransactionService {
     const token = localStorage.getItem('auth_token');
     const isDevMode = process.env.REACT_APP_BYPASS_AUTH === 'true';
     if (!isDevMode && !token) {
-      throw new Error('Vui lòng đăng nhập để truy cập dữ liệu.');
+      throw new Error('Please log in to access data.');
     }
 
     try {

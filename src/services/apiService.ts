@@ -44,7 +44,7 @@ class ApiService {
     const token = localStorage.getItem('auth_token');
     
     if (!isDevMode && !isAuthEndpoint && !token) {
-      throw new Error('Vui lòng đăng nhập để truy cập dữ liệu.');
+      throw new Error('Please log in to access data.');
     }
     
     const requestOptions: RequestInit = {
@@ -75,7 +75,7 @@ class ApiService {
         if (response.status === 401) {
           // Unauthorized - clear auth token and redirect to login
           localStorage.removeItem('auth_token');
-          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+          throw new Error('Session expired. Please log in again.');
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -83,7 +83,7 @@ class ApiService {
       return response.json();
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+        throw new Error('Unable to connect to server. Please check your network connection.');
       }
       throw error;
     }

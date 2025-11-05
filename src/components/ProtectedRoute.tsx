@@ -18,7 +18,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         <main className="app-main">
           <div className="loading">
             <div className="spinner"></div>
-            <p>Đang kiểm tra quyền truy cập...</p>
+            <p>Checking access permissions...</p>
           </div>
         </main>
       </>
@@ -30,7 +30,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return (
       <main className="app-main">
         <div className="blank-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Vui lòng đăng nhập để tiếp tục</p>
+          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Please log in to continue</p>
         </div>
       </main>
     );

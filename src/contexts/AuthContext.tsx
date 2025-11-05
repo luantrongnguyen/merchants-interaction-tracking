@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           window.location.reload();
         }, 100);
       } else {
-        throw new Error(response.message || 'Đăng nhập thất bại');
+        throw new Error(response.message || 'Login failed');
       }
     } catch (error) {
       // Show user-friendly error message
@@ -135,9 +135,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         typeof (error as any).message === 'string' &&
         (error as any).message.includes('mangoforsalon.com')
       ) {
-        alert('Chỉ email có domain @mangoforsalon.com mới được truy cập hệ thống.');
+        alert('Only emails with @mangoforsalon.com domain are allowed to access the system.');
       } else {
-        alert('Đăng nhập thất bại. Vui lòng thử lại.');
+        alert('Login failed. Please try again.');
       }
       throw error;
     }

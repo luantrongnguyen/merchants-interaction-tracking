@@ -62,11 +62,11 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
       <div className="header-progress-bar results-bar">
         <div className="header-progress-content">
           <div className="results-summary-inline">
-            {updatedCount > 0 && <span className="summary-success">✅ {updatedCount} cập nhật</span>}
-            {addedCount > 0 && <span className="summary-success">➕ {addedCount} đã thêm</span>}
-            {totalCallLogsAdded > 0 && <span className="summary-success">📞 {totalCallLogsAdded} call logs đã sync</span>}
-            {skippedCount > 0 && <span className="summary-skipped">⏭️ {skippedCount} bỏ qua</span>}
-            {errorCount > 0 && <span className="summary-error">❌ {errorCount} lỗi</span>}
+            {updatedCount > 0 && <span className="summary-success">✅ {updatedCount} updated</span>}
+            {addedCount > 0 && <span className="summary-success">➕ {addedCount} added</span>}
+            {totalCallLogsAdded > 0 && <span className="summary-success">📞 {totalCallLogsAdded} call logs synced</span>}
+            {skippedCount > 0 && <span className="summary-skipped">⏭️ {skippedCount} skipped</span>}
+            {errorCount > 0 && <span className="summary-error">❌ {errorCount} errors</span>}
           </div>
           <button className="header-close-btn" onClick={() => { setShowResults(false); onClose(); }}>×</button>
         </div>
@@ -81,7 +81,7 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
       <div className="header-progress-content">
         <div className="header-progress-info">
           <span className="header-progress-text">
-            {currentMerchant || 'Đang khởi tạo...'}
+            {currentMerchant || 'Initializing...'}
           </span>
           {currentIndex > 0 && totalMerchants > 0 && (
             <span className="header-progress-count">
@@ -101,9 +101,9 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
             className="header-stop-btn" 
             onClick={onStop}
             disabled={shouldStop}
-            title="Dừng cập nhật"
+            title="Stop update"
           >
-            {shouldStop ? 'Đang dừng...' : 'Dừng'}
+            {shouldStop ? 'Stopping...' : 'Stop'}
           </button>
         </div>
       </div>

@@ -65,7 +65,7 @@ function App() {
   const loadMerchants = async () => {
     // Kiểm tra authentication trước khi gọi API
     if (!isAuthenticated) {
-      setError('Vui lòng đăng nhập để truy cập dữ liệu.');
+      setError('Please log in to access data.');
       setLoading(false);
       return;
     }
@@ -175,14 +175,14 @@ function App() {
   };
 
   const handleSyncMerchants = async () => {
-    if (!window.confirm('Bạn có chắc muốn đồng bộ danh sách merchant mới nhất từ hệ thống?')) {
+    if (!window.confirm('Are you sure you want to sync the latest merchant list from the system?')) {
       return;
     }
 
     setIsSyncing(true);
     setSyncProgress(0);
     setSyncCurrentIndex(0);
-    setSyncCurrentMerchant('Đang kết nối đến server...');
+    setSyncCurrentMerchant('Connecting to server...');
     setSyncTotalMerchants(100); // Estimate
     setSyncResults([]);
 
@@ -196,7 +196,7 @@ function App() {
       }, 300);
 
       // Call sync API (this may take a while)
-      setSyncCurrentMerchant('Đang đồng bộ với server...');
+      setSyncCurrentMerchant('Syncing with server...');
       setSyncProgress(20);
       
       const result = await apiService.syncMerchants();
@@ -208,18 +208,18 @@ function App() {
       
       await loadMerchants();
       setSyncProgress(100);
-      setSyncCurrentMerchant('Hoàn tất!');
+      setSyncCurrentMerchant('Completed!');
 
       // Build results
       const finalResults: Array<{merchant: string, storeId: string, success: boolean, message: string, added?: boolean}> = [];
       for (let i = 0; i < result.added; i++) {
-        finalResults.push({ merchant: '', storeId: '', success: true, message: 'Đã thêm', added: true });
+        finalResults.push({ merchant: '', storeId: '', success: true, message: 'Added', added: true });
       }
       for (let i = 0; i < result.skipped; i++) {
-        finalResults.push({ merchant: '', storeId: '', success: true, message: 'Đã bỏ qua', added: false });
+        finalResults.push({ merchant: '', storeId: '', success: true, message: 'Skipped', added: false });
       }
       for (let i = 0; i < result.errors; i++) {
-        finalResults.push({ merchant: '', storeId: '', success: false, message: 'Lỗi' });
+        finalResults.push({ merchant: '', storeId: '', success: false, message: 'Error' });
       }
       setSyncResults(finalResults);
       
@@ -230,18 +230,18 @@ function App() {
     } catch (err: any) {
       if (progressInterval) clearInterval(progressInterval);
       setIsSyncing(false);
-      setError(err.message || 'Không thể đồng bộ merchants. Vui lòng thử lại.');
+      setError(err.message || 'Unable to sync merchants. Please try again.');
     }
   };
 
   const handleSyncCallLogs = async () => {
-    if (!window.confirm('Bạn có chắc muốn đồng bộ call logs từ Call Logs sheet?')) {
+    if (!window.confirm('Are you sure you want to sync call logs from Call Logs sheet?')) {
       return;
     }
 
     setIsSyncingCallLogs(true);
     setSyncCallLogsProgress(0);
-    setSyncCallLogsCurrent('Đang đọc Call Logs sheet...');
+    setSyncCallLogsCurrent('Reading Call Logs sheet...');
     setSyncCallLogsResults([]);
     setSyncCallLogsTotalAdded(0);
 
@@ -254,20 +254,20 @@ function App() {
       }, 300);
 
       // Call sync API (this may take a while)
-      setSyncCallLogsCurrent('Đang đồng bộ với server...');
+      setSyncCallLogsCurrent('Syncing with server...');
       setSyncCallLogsProgress(20);
 
       const result = await apiService.syncCallLogs();
 
       setSyncCallLogsProgress(90);
-      setSyncCallLogsCurrent('Đang cập nhật merchants...');
+      setSyncCallLogsCurrent('Updating merchants...');
 
       // Finalize progress and reload once
       if (progressInterval) clearInterval(progressInterval);
 
       await loadMerchants();
       setSyncCallLogsProgress(100);
-      setSyncCallLogsCurrent('Hoàn tất!');
+      setSyncCallLogsCurrent('Completed!');
 
       // Build results with total call logs added
       const finalResults: Array<{merchant: string, storeId: string, success: boolean, message: string, updated?: boolean, callLogsAdded?: number}> = [];
@@ -277,19 +277,19 @@ function App() {
           merchant: '', 
           storeId: '', 
           success: true, 
-          message: `Đã sync ${result.totalCallLogsAdded} call logs mới`, 
+          message: `Synced ${result.totalCallLogsAdded} new call logs`, 
           updated: true,
           callLogsAdded: result.totalCallLogsAdded
         });
       }
       for (let i = 0; i < result.updated; i++) {
-        finalResults.push({ merchant: '', storeId: '', success: true, message: 'Đã cập nhật', updated: true });
+        finalResults.push({ merchant: '', storeId: '', success: true, message: 'Updated', updated: true });
       }
       for (let i = 0; i < result.matched - result.updated; i++) {
-        finalResults.push({ merchant: '', storeId: '', success: true, message: 'Không có logs mới', updated: false });
+        finalResults.push({ merchant: '', storeId: '', success: true, message: 'No new logs', updated: false });
       }
       for (let i = 0; i < result.errors; i++) {
-        finalResults.push({ merchant: '', storeId: '', success: false, message: 'Lỗi' });
+        finalResults.push({ merchant: '', storeId: '', success: false, message: 'Error' });
       }
       setSyncCallLogsResults(finalResults);
       setSyncCallLogsTotalAdded(result.totalCallLogsAdded || 0);
@@ -301,7 +301,7 @@ function App() {
     } catch (err: any) {
       if (progressInterval) clearInterval(progressInterval);
       setIsSyncingCallLogs(false);
-      setError(err.message || 'Không thể đồng bộ call logs. Vui lòng thử lại.');
+      setError(err.message || 'Unable to sync call logs. Please try again.');
     }
   };
 
@@ -342,7 +342,7 @@ function App() {
     
     if (!latestDate) {
       console.log(`  ⚠️  No transactions found`);
-      return { updated: false, message: 'Không có transaction nào' };
+      return { updated: false, message: 'No transactions' };
     }
 
     // So sánh với lastInteractionDate hiện tại
@@ -405,7 +405,7 @@ function App() {
 
     return { 
       updated: true, 
-      message: `Đã cập nhật từ ${currentDate} sang ${latestDate}` 
+      message: `Updated from ${currentDate} to ${latestDate}` 
     };
   };
 
@@ -428,7 +428,7 @@ function App() {
 
     if (total === 0) {
       setIsUpdating(false);
-      setError('Không có merchant nào có Store ID để cập nhật.');
+      setError('No merchants have Store ID to update.');
       return;
     }
 
@@ -437,7 +437,7 @@ function App() {
     for (let i = 0; i < merchantsToUpdate.length; i++) {
       // Kiểm tra nếu user muốn dừng
       if (shouldStopRef.current) {
-        setError('Đã dừng cập nhật theo yêu cầu người dùng.');
+        setError('Update stopped by user request.');
         break;
       }
 
@@ -622,15 +622,15 @@ function App() {
         <div className="header-content">
           <h1>Merchant Tracking</h1>
           <div className="header-actions">
-            {!isUpdating && !isSyncing && !isSyncingCallLogs && (
+            {isAuthenticated && !isUpdating && !isSyncing && !isSyncingCallLogs && (
               <>
                 <button 
                   onClick={handleSyncMerchants}
                   className="btn-primary header-sync-btn"
-                  title="Lấy danh sách merchant mới nhất từ hệ thống (đang tạm vô hiệu hóa)"
+                  title="Get latest merchant list from system (temporarily disabled)"
                   disabled={true}
                 >
-                  Lấy danh sách merchant mới nhất
+                  Get Latest Merchant List
                 </button>
 
                 <button 
@@ -645,7 +645,7 @@ function App() {
                 <button 
                   onClick={() => setIsUpdatePasscodeOpen(true)} 
                   className="btn-primary header-update-btn"
-                  title="Cập nhật Last Interaction Date từ transaction API (đang tạm vô hiệu hóa)"
+                  title="Update Last Interaction Date from transaction API (temporarily disabled)"
                   disabled={true}
                 >
                   Weekly Update
@@ -671,9 +671,9 @@ function App() {
                 <button 
                   onClick={logout}
                   className="btn-secondary logout-btn"
-                  title="Đăng xuất"
+                  title="Logout"
                 >
-                  Đăng xuất
+                  Logout
                 </button>
               </div>
             )}
@@ -685,7 +685,7 @@ function App() {
         <HeaderProgressBar
           isUpdating={true}
           progress={isUpdating ? updateProgress : (isSyncing ? Math.max(syncProgress, 1) : Math.max(syncCallLogsProgress, 1))}
-          currentMerchant={isUpdating ? currentMerchant : (isSyncing ? (syncCurrentMerchant || 'Đang đồng bộ merchants...') : (syncCallLogsCurrent || 'Đang đồng bộ call logs...'))}
+          currentMerchant={isUpdating ? currentMerchant : (isSyncing ? (syncCurrentMerchant || 'Syncing merchants...') : (syncCallLogsCurrent || 'Syncing call logs...'))}
           currentIndex={isUpdating ? currentIndex : (isSyncing ? syncCurrentIndex : 0)}
           totalMerchants={isUpdating ? totalMerchants : (isSyncing ? (syncTotalMerchants || 100) : 100)}
           shouldStop={shouldStop}
@@ -730,7 +730,7 @@ function App() {
                   Refresh
                 </button>
                 <button onClick={() => setShowDashboard(prev => !prev)} className="btn-secondary">
-                  {showDashboard ? 'Quay lại danh sách' : 'Dashboard'}
+                  {showDashboard ? 'Back to List' : 'Dashboard'}
                 </button>
               </div>
 
