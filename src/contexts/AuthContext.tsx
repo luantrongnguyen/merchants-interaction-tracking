@@ -27,8 +27,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
   
   // Khởi tạo state dựa trên việc có token hay không để tránh loading không cần thiết
-  const initialToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const shouldStartLoading = initialToken !== null || bypassAuth;
+  // Kiểm tra ngay khi khởi tạo component
+  const getInitialToken = () => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('auth_token');
+  };
+  
+  const initialToken = getInitialToken();
+  const shouldStartLoading = (initialToken !== null && initialToken !== '') || bypassAuth;
   
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -38,12 +44,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Kiểm tra token trước - không cần set loading nếu không có token
     const token = localStorage.getItem('auth_token');
     
-    if (!token && !bypassAuth) {
-      // Không có token và không phải dev mode - set unauthenticated ngay, không cần loading
-      setUser(null);
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      return;
+    // Nếu không có token, set ngay lập tức mà không cần async
+    if (!token || token.trim() === '') {
+      if (!bypassAuth) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {

@@ -10,7 +10,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
 
-  // Nếu đang loading, hiển thị loading trong main content
+  // Nếu đang loading, hiển thị loading trong main content (header vẫn hiển thị bên ngoài)
   if (isLoading) {
     return (
       <main className="app-main">
@@ -22,12 +22,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  // Nếu chưa đăng nhập, hiển thị blank page với GoogleAuth button (đã có trong header)
+  // Nếu chưa đăng nhập, hiển thị blank page (header với GoogleAuth button vẫn hiển thị)
   if (!isAuthenticated && !bypassAuth) {
     return (
       <main className="app-main">
-        <div className="blank-page">
-          {/* GoogleAuth đã được render trong header, không cần render ở đây */}
+        <div className="blank-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Vui lòng đăng nhập để tiếp tục</p>
         </div>
       </main>
     );
