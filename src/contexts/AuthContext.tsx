@@ -157,7 +157,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    checkAuth();
+    // Chỉ gọi checkAuth nếu có token hoặc bypassAuth
+    // Nếu không có token, không cần gọi checkAuth vì đã set state đúng từ đầu
+    const token = localStorage.getItem('auth_token');
+    if (token && token.trim() !== '') {
+      checkAuth();
+    } else if (bypassAuth) {
+      checkAuth();
+    }
+    // Nếu không có token và không bypass, state đã được set đúng từ đầu (isLoading = false)
   }, []);
 
   const value: AuthContextType = {

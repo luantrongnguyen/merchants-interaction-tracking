@@ -11,14 +11,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
 
   // Nếu đang loading, hiển thị loading trong main content (header vẫn hiển thị bên ngoài)
+  // Chỉ hiển thị loading nếu thực sự đang kiểm tra (có token)
   if (isLoading) {
     return (
-      <main className="app-main">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Đang kiểm tra quyền truy cập...</p>
-        </div>
-      </main>
+      <>
+        <main className="app-main">
+          <div className="loading">
+            <div className="spinner"></div>
+            <p>Đang kiểm tra quyền truy cập...</p>
+          </div>
+        </main>
+      </>
     );
   }
 
