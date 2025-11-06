@@ -115,15 +115,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (userData: User) => {
     try {
+      console.log('Attempting login for:', userData.email);
       const response = await apiService.login(userData);
+      console.log('Login response:', response);
+      
       if (response.success) {
+        console.log('Login successful, setting user:', userData.email);
         setUser(userData);
         setIsAuthenticated(true);
         // No reload needed - keep the same URL
       } else {
+        console.error('Login failed - response not successful:', response);
         throw new Error(response.message || 'Login failed');
       }
     } catch (error) {
+      console.error('Login error:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        userData: { email: userData.email, name: userData.name }
+      });
+      
       // Show user-friendly error message
       if (
         typeof error === 'object' &&
@@ -134,7 +145,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ) {
         alert('Only emails with @mangoforsalon.com domain are allowed to access the system.');
       } else {
-        alert('Login failed. Please try again.');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        alert(`Login failed: ${errorMessage}. Please try again.`);
       }
       throw error;
     }

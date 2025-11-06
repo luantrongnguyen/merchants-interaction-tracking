@@ -77,17 +77,43 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
     
     // Decode JWT token to get user info
     try {
-      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      if (!response || !response.credential) {
+        console.error('Invalid credential response:', response);
+        alert('Invalid login response. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Decode JWT token
+      const parts = response.credential.split('.');
+      if (parts.length !== 3) {
+        console.error('Invalid JWT format:', response.credential.substring(0, 50));
+        alert('Invalid login token format. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      const payload = JSON.parse(atob(parts[1]));
+      console.log('Decoded JWT payload:', payload);
+      
+      if (!payload.email) {
+        console.error('Email not found in JWT payload:', payload);
+        alert('Email information not found in login response. Please try again.');
+        setIsLoading(false);
+        return;
+      }
       
       const userInfo = {
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture,
-        sub: payload.sub
+        email: (payload.email || '').trim().toLowerCase(),
+        name: payload.name || '',
+        picture: payload.picture || '',
+        sub: payload.sub || ''
       };
       
+      console.log('User info extracted:', { ...userInfo, email: userInfo.email });
+      
       // Check domain before attempting login
-      if (!userInfo.email.toLowerCase().endsWith('@mangoforsalon.com')) {
+      if (!userInfo.email.endsWith('@mangoforsalon.com')) {
         alert('Only emails with @mangoforsalon.com domain are allowed.');
         setIsLoading(false);
         return;
@@ -95,8 +121,13 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
       
       onLogin(userInfo);
     } catch (error) {
-      alert('Error processing login information. Please try again.');
-    } finally {
+      console.error('Error processing login information:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        response: response ? { hasCredential: !!response.credential } : null
+      });
+      alert('Error processing login information. Please try again. If the problem persists, please contact support.');
       setIsLoading(false);
     }
   };
