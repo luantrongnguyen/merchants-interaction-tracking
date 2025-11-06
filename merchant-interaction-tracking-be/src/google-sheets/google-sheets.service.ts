@@ -10,8 +10,11 @@ export class GoogleSheetsService {
   private sheets: any;
   private auth: any;
   private logFilePath: string;
-  // Mutex to prevent concurrent Google Sheets operations
-  private operationLock: Promise<void> = Promise.resolve();
+  // Read-write lock to allow concurrent reads but exclusive writes
+  private readLock: Promise<void> = Promise.resolve();
+  private writeLock: Promise<void> = Promise.resolve();
+  private activeReads: number = 0;
+  private isWriting: boolean = false;
 
   constructor() {
     this.initializeAuth();
@@ -102,170 +105,69 @@ export class GoogleSheetsService {
     ];
   }
 
-  // Helper method to acquire lock and execute operation
-  private async withLock<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
-    const currentLock = this.operationLock;
-    let releaseLock: () => void;
-    const newLock = new Promise<void>((resolve) => {
-      releaseLock = resolve;
+  // Helper method to acquire read lock (allows concurrent reads)
+  private async withReadLock<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
+    // Wait for any ongoing write to complete
+    await this.writeLock;
+    
+    // Increment active reads counter
+    this.activeReads++;
+    this.logger.debug(`[ReadLock] Acquired read lock for: ${operationName} (active reads: ${this.activeReads})`);
+    
+    try {
+      return await operation();
+    } finally {
+      this.activeReads--;
+      this.logger.debug(`[ReadLock] Released read lock for: ${operationName} (active reads: ${this.activeReads})`);
+    }
+  }
+
+  // Helper method to acquire write lock (exclusive, blocks reads and writes)
+  private async withWriteLock<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
+    const currentWriteLock = this.writeLock;
+    let releaseWriteLock: () => void;
+    const newWriteLock = new Promise<void>((resolve) => {
+      releaseWriteLock = resolve;
     });
 
-    this.operationLock = currentLock.then(async () => {
-      this.logger.debug(`[Lock] Acquired lock for: ${operationName}`);
+    this.writeLock = currentWriteLock.then(async () => {
+      // Wait for all active reads to complete
+      while (this.activeReads > 0) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      
+      this.isWriting = true;
+      this.logger.debug(`[WriteLock] Acquired write lock for: ${operationName}`);
       try {
-        await newLock;
+        await newWriteLock;
       } finally {
-        this.logger.debug(`[Lock] Released lock for: ${operationName}`);
+        this.isWriting = false;
+        this.logger.debug(`[WriteLock] Released write lock for: ${operationName}`);
       }
     });
 
     try {
-      await currentLock;
+      await currentWriteLock;
       return await operation();
     } finally {
-      releaseLock!();
+      releaseWriteLock!();
     }
   }
 
   async getMerchants(): Promise<any[]> {
-    return this.withLock(async () => {
-      try {
-        // Check if sheets is initialized
-        if (!this.sheets) {
-          throw new Error('Google Sheets service not initialized');
-        }
-
-        const spreadsheetId = appConfig.spreadsheetId;
-        
-        // Retry logic with exponential backoff
-        let lastError: any;
-        const maxRetries = 3;
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-          try {
-            const response = await this.sheets.spreadsheets.values.get({
-              spreadsheetId,
-              range: 'Merchants!A:M',
-            });
-
-            const rows = response.data.values;
-            if (!rows || rows.length <= 1) {
-              return [];
-            }
-
-      // Skip header row
-      // Columns mapping (after removing lastInteractionDate):
-      // A: name, B: storeId, C: address, D: street, E: area, F: state, G: zipcode
-      // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs
-      const merchants = rows.slice(1).map((row: any[], index: number) => {
-        let historyLogs: any[] = [];
-        if (row[11]) {
-          try {
-            historyLogs = JSON.parse(row[11]);
-          } catch (e) {
-            this.logger.warn(`Invalid history_logs JSON at row ${index + 2}`);
-          }
-        }
-        let supportLogs: any[] = [];
-        if (row[12]) {
-          try {
-            supportLogs = JSON.parse(row[12]);
-          } catch (e) {
-            this.logger.warn(`Invalid support_logs JSON at row ${index + 2}`);
-          }
-        }
-        
-        // Get lastInteractionDate from latest call log if available
-        let lastInteractionDate = '';
-        if (supportLogs && supportLogs.length > 0) {
-          // Sort by date and time (newest first)
-          const sortedLogs = [...supportLogs].sort((a: any, b: any) => {
-            // Try to parse date (MM/DD/YYYY or YYYY-MM-DD)
-            const parseDate = (dateStr: string) => {
-              if (!dateStr) return null;
-              if (dateStr.includes('/')) {
-                const parts = dateStr.split('/');
-                if (parts.length === 3) {
-                  return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-                }
-              }
-              return new Date(dateStr);
-            };
-            const dateA = parseDate(a.date);
-            const dateB = parseDate(b.date);
-            if (!dateA && !dateB) return 0;
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-            const dateCompare = dateB.getTime() - dateA.getTime();
-            if (dateCompare !== 0) return dateCompare;
-            if (a.time && b.time) return b.time.localeCompare(a.time);
-            return 0;
-          });
-          const latestLog = sortedLogs[0];
-          if (latestLog.date) {
-            // Convert MM/DD/YYYY to YYYY-MM-DD
-            if (latestLog.date.includes('/')) {
-              const parts = latestLog.date.split('/');
-              if (parts.length === 3) {
-                lastInteractionDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-              } else {
-                lastInteractionDate = latestLog.date;
-              }
-            } else {
-              lastInteractionDate = latestLog.date;
-            }
-          }
-        }
-        
-        return {
-        id: index + 1,
-        name: row[0] || '',
-        storeId: row[1] || '', // Cột B: Store ID
-        address: row[2] || '',
-        street: row[3] || '',
-        area: row[4] || '',
-        state: row[5] || '',
-        zipcode: row[6] || '',
-        lastInteractionDate: lastInteractionDate || '', // From call logs, not from sheet
-        platform: row[7] || '', // H (was I)
-        phone: row[8] || '', // I (was J)
-        lastModifiedAt: row[9] || '', // J (was K)
-        lastModifiedBy: row[10] || '', // K (was L)
-        historyLogs,
-        supportLogs,
-      };});
-
-            return merchants;
-          } catch (error: any) {
-            lastError = error;
-            const statusCode = error?.response?.status || error?.code;
-            const isRetryable = statusCode === 500 || statusCode === 503 || statusCode === 429 || 
-                              error?.message?.includes('rate limit') || 
-                              error?.message?.includes('quota exceeded');
-            
-            if (isRetryable && attempt < maxRetries - 1) {
-              const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
-              this.logger.warn(
-                `[getMerchants] Retryable error (attempt ${attempt + 1}/${maxRetries}): ${error.message}. Retrying in ${delay}ms...`
-              );
-              await new Promise(resolve => setTimeout(resolve, delay));
-              continue;
-            }
-            
-            // If not retryable or last attempt, throw immediately
-            throw error;
-          }
-        }
-        
-        // If we exhausted all retries, throw the last error
-        throw lastError;
-      } catch (error) {
-        this.logger.error('Error fetching merchants from Google Sheets:', error);
-        throw error;
-      }
-    }, 'getMerchants');
+    // Read operations can run concurrently - only wait if write is in progress
+    if (this.isWriting) {
+      await this.writeLock;
+    }
+    
+    try {
+      return await this.getMerchantsInternal();
+    } catch (error) {
+      this.logger.error('Error fetching merchants from Google Sheets:', error);
+      throw error;
+    }
   }
 
-  // Internal method without lock (used by sync which already has lock)
   private async getMerchantsInternal(): Promise<any[]> {
     // Check if sheets is initialized
     if (!this.sheets) {
@@ -399,7 +301,8 @@ export class GoogleSheetsService {
   }
 
   async addMerchant(merchant: any, meta: { by: string; at?: string }): Promise<void> {
-    try {
+    return this.withWriteLock(async () => {
+      try {
       if (!this.sheets) {
         throw new Error('Google Sheets service not initialized');
       }
@@ -431,14 +334,16 @@ export class GoogleSheetsService {
       });
 
       this.logger.log('Merchant added to Google Sheets');
-    } catch (error) {
-      this.logger.error('Error adding merchant to Google Sheets:', error);
-      throw error;
-    }
+      } catch (error) {
+        this.logger.error('Error adding merchant to Google Sheets:', error);
+        throw error;
+      }
+    }, 'addMerchant');
   }
 
   async updateMerchant(id: number, merchant: any, meta: { by: string; at?: string }): Promise<void> {
-    try {
+    return this.withWriteLock(async () => {
+      try {
       if (!this.sheets) {
         throw new Error('Google Sheets service not initialized');
       }
@@ -531,14 +436,16 @@ export class GoogleSheetsService {
 
       this.logger.log(`[GoogleSheets] Update successful! Updated cells:`, updateResult.data.updatedCells);
       this.logger.log(`Merchant ${id} updated in Google Sheets`);
-    } catch (error) {
-      this.logger.error(`[GoogleSheets] Error updating merchant ${id}:`, error);
-      throw error;
-    }
+      } catch (error) {
+        this.logger.error(`[GoogleSheets] Error updating merchant ${id}:`, error);
+        throw error;
+      }
+    }, 'updateMerchant');
   }
 
   async deleteMerchant(id: number): Promise<void> {
-    try {
+    return this.withWriteLock(async () => {
+      try {
       if (!this.sheets) {
         throw new Error('Google Sheets service not initialized');
       }
@@ -565,10 +472,11 @@ export class GoogleSheetsService {
       });
 
       this.logger.log(`Merchant ${id} deleted from Google Sheets`);
-    } catch (error) {
-      this.logger.error('Error deleting merchant from Google Sheets:', error);
-      throw error;
-    }
+      } catch (error) {
+        this.logger.error('Error deleting merchant from Google Sheets:', error);
+        throw error;
+      }
+    }, 'deleteMerchant');
   }
 
   async getMerchantStoreIds(): Promise<Set<string>> {
@@ -826,7 +734,7 @@ export class GoogleSheetsService {
 
   // Sync call logs to merchants
   async syncCallLogsToMerchants(userEmail: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
-    return this.withLock(async () => {
+    return this.withWriteLock(async () => {
       try {
         if (!this.sheets) {
           throw new Error('Google Sheets service not initialized');

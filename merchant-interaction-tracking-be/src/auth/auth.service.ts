@@ -18,22 +18,30 @@ export class AuthService {
 
   async validateUser(user: User): Promise<boolean> {
     try {
-      // Check if email has @mangoforsalon.com domain
-      const isMangoDomain = user.email.toLowerCase().endsWith('@mangoforsalon.com');
+      // Normalize email: trim whitespace and convert to lowercase
+      const normalizedEmail = (user.email || '').trim().toLowerCase();
       
-      if (!isMangoDomain) {
-        console.log(`Unauthorized access attempt from: ${user.email} - Not a Mango domain`);
+      if (!normalizedEmail) {
+        console.log(`Unauthorized access attempt: Empty email`);
         return false;
       }
       
-      console.log(`Authorized access from: ${user.email} - Mango domain confirmed`);
+      // Check if email has @mangoforsalon.com domain
+      const isMangoDomain = normalizedEmail.endsWith('@mangoforsalon.com');
+      
+      if (!isMangoDomain) {
+        console.log(`Unauthorized access attempt from: ${normalizedEmail} - Not a Mango domain`);
+        return false;
+      }
+      
+      console.log(`Authorized access from: ${normalizedEmail} - Mango domain confirmed`);
       return true;
       
       // Optional: Get authorized emails from Google Sheets for additional validation
       // const authorizedEmails = await this.googleSheetsService.getAuthorizedEmails();
-      // const isAuthorized = authorizedEmails.includes(user.email.toLowerCase());
+      // const isAuthorized = authorizedEmails.includes(normalizedEmail);
       // if (!isAuthorized) {
-      //   console.log(`Unauthorized access attempt from: ${user.email} - Not in authorized list`);
+      //   console.log(`Unauthorized access attempt from: ${normalizedEmail} - Not in authorized list`);
       //   return false;
       // }
     } catch (error) {
@@ -43,6 +51,10 @@ export class AuthService {
   }
 
   async login(user: User) {
+    // Normalize email before validation
+    const normalizedEmail = (user.email || '').trim().toLowerCase();
+    user.email = normalizedEmail;
+    
     const isValid = await this.validateUser(user);
     
     if (!isValid) {

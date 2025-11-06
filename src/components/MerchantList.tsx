@@ -36,9 +36,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
               <th>No</th>
               <th>Name</th>
               <th>ID</th>
-              <th>Address</th>
-              <th>Platform</th>
-              <th>Phone</th>
+              <th>Total Interactions</th>
               <th>Last Interaction</th>
               <th>Status</th>
               <th>Actions</th>
@@ -61,23 +59,10 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                 <td>
                   <span className="store-id">{merchant.storeId || '-'}</span>
                 </td>
-                <td className="address-cell">
-                  <div className="address-info">
-                    <div>{merchant.address}</div>
-                    {merchant.area && (
-                      <div className="area-info">{merchant.area}</div>
-                    )}
-                    <div className="location-info">
-                      {merchant.state}
-                      {merchant.zipcode && ` - ${merchant.zipcode}`}
-                    </div>
-                  </div>
-                </td>
                 <td>
-                  <span className="platform-badge">{merchant.platform}</span>
-                </td>
-                <td>
-                  <span className="phone-info">{merchant.phone}</span>
+                  <span className="interactions-count">
+                    {merchant.supportLogs ? merchant.supportLogs.length : 0}
+                  </span>
                 </td>
                 <td>
                   <div className="date-info">

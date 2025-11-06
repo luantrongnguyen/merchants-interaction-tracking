@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { MerchantWithStatus } from '../types/merchant';
-import { Pie, Bar } from 'react-chartjs-2';
+import { Pie, Bar, Line } from 'react-chartjs-2';
 import {
 	Chart as ChartJS,
 	ArcElement,
@@ -8,11 +8,13 @@ import {
 	Legend,
 	CategoryScale,
 	LinearScale,
-	BarElement
+	BarElement,
+	LineElement,
+	PointElement
 } from 'chart.js';
 import './Dashboard.css';
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement);
 
 interface DashboardProps {
 	merchants: MerchantWithStatus[];
@@ -25,8 +27,9 @@ const COLORS = [
 	'#E67300', '#8B0707', '#651067', '#329262', '#5574A6'
 ];
 
-const Dashboard: React.FC<DashboardProps> = ({ merchants }) => {
+	const Dashboard: React.FC<DashboardProps> = ({ merchants }) => {
 	const [range, setRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
+	const [terminalRange, setTerminalRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
 
 	const { labels, counts, categoryMap } = useMemo(() => {
 		const categoryCountMap = new Map<string, number>();
@@ -153,6 +156,65 @@ const Dashboard: React.FC<DashboardProps> = ({ merchants }) => {
 		}
 	} as const;
 
+	// ---------- Terminal Issues Over Time ----------
+	const terminalKeywords = ['terminal', 'disconnected', 'processing', 'connection', 'connectivity', 'network', 'offline', 'online'];
+	const isTerminalRelated = (category: string | undefined): boolean => {
+		if (!category) return false;
+		const lowerCategory = category.toLowerCase();
+		return terminalKeywords.some(keyword => lowerCategory.includes(keyword));
+	};
+
+	const terminalTimeAgg = useMemo(() => {
+		const map = new Map<string, number>();
+		merchants.forEach(m => {
+			(m.supportLogs || []).forEach(log => {
+				if (!isTerminalRelated(log.category)) return;
+				const d = parseDate(log.date);
+				if (!d) return;
+				let key = '';
+				switch (terminalRange) {
+					case 'day': key = getDayKey(d); break;
+					case 'week': key = getWeekKey(d); break;
+					case 'month': key = getMonthKey(d); break;
+					case 'year': key = getYearKey(d); break;
+				}
+				map.set(key, (map.get(key) || 0) + 1);
+			});
+		});
+		const keys = Array.from(map.keys()).sort();
+		return { labels: keys, counts: keys.map(k => map.get(k) || 0) };
+	}, [merchants, terminalRange]);
+
+	const terminalLineData = {
+		labels: terminalTimeAgg.labels,
+		datasets: [
+			{
+				label: 'Terminal Issues',
+				data: terminalTimeAgg.counts,
+				borderColor: '#EF4444',
+				backgroundColor: 'rgba(239, 68, 68, 0.1)',
+				borderWidth: 2,
+				fill: true,
+				tension: 0.4,
+			},
+		],
+	};
+
+	const terminalLineOptions = {
+		plugins: {
+			legend: { display: true },
+			tooltip: {
+				callbacks: {
+					label: (ctx: any) => `Terminal Issues: ${ctx.parsed.y}`,
+				},
+			},
+		},
+		maintainAspectRatio: false,
+		scales: {
+			y: { beginAtZero: true }
+		}
+	} as const;
+
 	// ---------- Leaderboards: top merchants by interactions/issues ----------
 	const leaderboards = useMemo(() => {
 		const byMerchant = merchants.map(m => {
@@ -205,6 +267,24 @@ const Dashboard: React.FC<DashboardProps> = ({ merchants }) => {
 					<div className="empty-state">Không có dữ liệu interactions.</div>
 				) : (
 					<Bar data={barData} options={barOptions} />
+				)}
+			</div>
+
+			{/* Terminal Issues Over Time */}
+			<h2 style={{ marginTop: 24 }}>Terminal issues (disconnected, processing, ...) over time</h2>
+			<div style={{ marginBottom: 8 }}>
+				<select value={terminalRange} onChange={e => setTerminalRange(e.target.value as any)}>
+					<option value="day">Day</option>
+					<option value="week">Week</option>
+					<option value="month">Month</option>
+					<option value="year">Year</option>
+				</select>
+			</div>
+			<div className="chart-wrapper" style={{ height: 380 }}>
+				{terminalTimeAgg.labels.length === 0 ? (
+					<div className="empty-state">No terminal-related interactions found.</div>
+				) : (
+					<Line data={terminalLineData} options={terminalLineOptions} />
 				)}
 			</div>
 

@@ -279,8 +279,7 @@
   z-index: 50;
 }
 
-.modal-content.history-modal,
-.modal-content.call-logs-modal {
+.modal-content.history-modal {
   width: 960px;
   max-width: 96vw;
   max-height: 86vh;
@@ -289,6 +288,27 @@
   box-shadow: 0 10px 25px rgba(0,0,0,0.15);
   display: flex;
   flex-direction: column;
+}
+
+/* Overlay adjustment for call logs modal to account for header and sidebar */
+.modal-overlay:has(.call-logs-modal) {
+  padding-top: 80px; /* Header height */
+  padding-left: 250px; /* Sidebar width */
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content.call-logs-modal {
+  width: 960px;
+  max-width: calc(100% - 2rem); /* Account for padding */
+  max-height: calc(100vh - 80px - 2rem); /* Subtract header height and padding */
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  position: relative;
 }
 
 .modal-header {
@@ -427,10 +447,20 @@
     min-width: 150px;
   }
   
-  .modal-content.history-modal,
-  .modal-content.call-logs-modal {
+  .modal-content.history-modal {
     width: 96vw;
     max-height: 86vh;
+  }
+  
+  .modal-content.call-logs-modal {
+    width: 96vw;
+    max-width: calc(96vw - 20px);
+    max-height: calc(86vh - 80px);
+  }
+  
+  .modal-overlay:has(.call-logs-modal) {
+    padding-top: 80px;
+    padding-left: 0;
   }
   
   .call-log-header {

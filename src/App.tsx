@@ -49,11 +49,12 @@ function App() {
       const data = await apiService.getMerchants();
       const merchantsWithStatus = data.map(calculateMerchantStatus);
       
-      // Sort by lastInteractionDate (oldest first)
+      // Sort by total interactions (descending - most interactions first)
       const sortedMerchants = merchantsWithStatus.sort((a, b) => {
-        const dateA = new Date(a.lastInteractionDate);
-        const dateB = new Date(b.lastInteractionDate);
-        return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+        const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
+        const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
+        // Descending order (most interactions first)
+        return interactionsB - interactionsA;
       });
       
       setMerchants(sortedMerchants);
@@ -156,11 +157,11 @@ function App() {
       });
     }
 
-    // Sort by lastInteractionDate (oldest first)
+    // Sort by total interactions (descending - most interactions first)
     filtered = filtered.sort((a, b) => {
-      const dateA = new Date(a.lastInteractionDate);
-      const dateB = new Date(b.lastInteractionDate);
-      return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+      const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
+      const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
+      return interactionsB - interactionsA;
     });
 
     setFilteredMerchants(filtered);
@@ -191,11 +192,11 @@ function App() {
       });
     }
 
-    // Sort by lastInteractionDate (oldest first)
+    // Sort by total interactions (descending - most interactions first)
     filtered = filtered.sort((a, b) => {
-      const dateA = new Date(a.lastInteractionDate);
-      const dateB = new Date(b.lastInteractionDate);
-      return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+      const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
+      const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
+      return interactionsB - interactionsA;
     });
 
     setFilteredMerchants(filtered);
@@ -226,11 +227,11 @@ function App() {
       });
     }
 
-    // Sort by lastInteractionDate (oldest first)
+    // Sort by total interactions (descending - most interactions first)
     filtered = filtered.sort((a, b) => {
-      const dateA = new Date(a.lastInteractionDate);
-      const dateB = new Date(b.lastInteractionDate);
-      return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
+      const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
+      const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
+      return interactionsB - interactionsA;
     });
 
     setFilteredMerchants(filtered);
