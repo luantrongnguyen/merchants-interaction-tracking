@@ -93,8 +93,36 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, isAuthentica
         return;
       }
 
-      const payload = JSON.parse(atob(parts[1]));
-      console.log('Decoded JWT payload:', payload);
+      // Helper function to decode base64 (handles both standard and URL-safe base64)
+      const decodeBase64 = (str: string): string => {
+        try {
+          // Replace URL-safe characters with standard base64 characters
+          const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+          // Add padding if needed
+          const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+          return atob(padded);
+        } catch (error) {
+          console.error('Base64 decode error:', error);
+          throw new Error('Failed to decode authentication token');
+        }
+      };
+
+      let payload;
+      try {
+        const decodedPayload = decodeBase64(parts[1]);
+        payload = JSON.parse(decodedPayload);
+        console.log('Decoded JWT payload:', payload);
+      } catch (decodeError) {
+        console.error('Error decoding JWT payload:', decodeError);
+        console.error('JWT parts:', {
+          header: parts[0]?.substring(0, 20),
+          payload: parts[1]?.substring(0, 50),
+          signature: parts[2]?.substring(0, 20)
+        });
+        alert('Failed to decode login token. Please try again.');
+        setIsLoading(false);
+        return;
+      }
       
       if (!payload.email) {
         console.error('Email not found in JWT payload:', payload);
