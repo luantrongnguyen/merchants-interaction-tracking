@@ -41,7 +41,7 @@ let SchedulerService = SchedulerService_1 = class SchedulerService {
 };
 exports.SchedulerService = SchedulerService;
 __decorate([
-    (0, schedule_1.Cron)(schedule_1.CronExpression.EVERY_5_MINUTES),
+    (0, schedule_1.Cron)('0 */30 * * * *'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
