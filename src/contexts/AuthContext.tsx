@@ -119,10 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success) {
         setUser(userData);
         setIsAuthenticated(true);
-        // Wait a bit for token to be stored, then reload
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
+        // No reload needed - keep the same URL
       } else {
         throw new Error(response.message || 'Login failed');
       }
