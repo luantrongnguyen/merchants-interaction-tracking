@@ -140,6 +140,9 @@ export class AIService {
     merchants: MerchantData[]
   ): Promise<string> {
     try {
+      // Check if question is about a specific merchant
+      const specificMerchant = this.findSpecificMerchant(question, merchants);
+      
       // Prepare summary data for OpenAI (to avoid token limits)
       const summary = {
         totalMerchants: analysis.totalMerchants,
@@ -151,7 +154,34 @@ export class AIService {
         topMerchants: analysis.merchantsByInteractions.slice(0, 10),
       };
 
-      const prompt = `You are an AI assistant helping analyze merchant interaction data. 
+      // Build prompt based on whether it's about a specific merchant
+      let prompt: string;
+      
+      if (specificMerchant) {
+        // Include detailed interaction data for specific merchant
+        const interactions = specificMerchant.supportLogs || [];
+        const interactionsText = interactions.length > 0
+          ? interactions.map((log: any, idx: number) => 
+              `${idx + 1}. ${log.date} ${log.time || ''} - ${log.issue}${log.category ? ` (${log.category})` : ''}${log.supporter ? ` - Supporter: ${log.supporter}` : ''}`
+            ).join('\n')
+          : 'No interactions found.';
+        
+        prompt = `Answer about merchant: ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}
+
+Merchant Details:
+- Status: ${specificMerchant.status || 'unknown'}
+- Last Interaction: ${specificMerchant.lastInteractionDate || 'N/A'}
+- Total Interactions: ${interactions.length}
+
+Interaction Details:
+${interactionsText}
+
+Question: ${question}
+
+Provide detailed answer about this merchant's interactions. Use markdown formatting.`;
+      } else {
+        // General analysis with summary data
+        prompt = `You are an AI assistant helping analyze merchant interaction data. 
 
 Data Summary:
 - Total Merchants: ${summary.totalMerchants}
@@ -165,6 +195,7 @@ Data Summary:
 User Question: ${question}
 
 Please provide a helpful, insightful analysis based on this data. Be concise but informative. Use markdown formatting for better readability.`;
+      }
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -211,6 +242,9 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
     merchants: MerchantData[]
   ): Promise<string> {
     try {
+      // Check if question is about a specific merchant
+      const specificMerchant = this.findSpecificMerchant(question, merchants);
+      
       // Prepare summary data for Claude (to avoid token limits)
       const summary = {
         totalMerchants: analysis.totalMerchants,
@@ -222,7 +256,34 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
         topMerchants: analysis.merchantsByInteractions.slice(0, 10),
       };
 
-      const prompt = `You are an AI assistant helping analyze merchant interaction data. 
+      // Build prompt based on whether it's about a specific merchant
+      let prompt: string;
+      
+      if (specificMerchant) {
+        // Include detailed interaction data for specific merchant
+        const interactions = specificMerchant.supportLogs || [];
+        const interactionsText = interactions.length > 0
+          ? interactions.map((log: any, idx: number) => 
+              `${idx + 1}. ${log.date} ${log.time || ''} - ${log.issue}${log.category ? ` (${log.category})` : ''}${log.supporter ? ` - Supporter: ${log.supporter}` : ''}`
+            ).join('\n')
+          : 'No interactions found.';
+        
+        prompt = `Answer about merchant: ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}
+
+Merchant Details:
+- Status: ${specificMerchant.status || 'unknown'}
+- Last Interaction: ${specificMerchant.lastInteractionDate || 'N/A'}
+- Total Interactions: ${interactions.length}
+
+Interaction Details:
+${interactionsText}
+
+Question: ${question}
+
+Provide detailed answer about this merchant's interactions. Use markdown formatting.`;
+      } else {
+        // General analysis with summary data
+        prompt = `You are an AI assistant helping analyze merchant interaction data. 
 
 Data Summary:
 - Total Merchants: ${summary.totalMerchants}
@@ -236,6 +297,7 @@ Data Summary:
 User Question: ${question}
 
 Please provide a helpful, insightful analysis based on this data. Be concise but informative. Use markdown formatting for better readability.`;
+      }
 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -278,6 +340,9 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
     merchants: MerchantData[]
   ): Promise<string> {
     try {
+      // Check if question is about a specific merchant
+      const specificMerchant = this.findSpecificMerchant(question, merchants);
+      
       // Prepare summary data for Gemini (to avoid token limits)
       const summary = {
         totalMerchants: analysis.totalMerchants,
@@ -289,8 +354,34 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
         topMerchants: analysis.merchantsByInteractions.slice(0, 5), // Reduced from 10 to 5
       };
 
-      // Optimized prompt - shorter to save tokens for response
-      const prompt = `Analyze merchant data and answer concisely.
+      // Build prompt based on whether it's about a specific merchant
+      let prompt: string;
+      
+      if (specificMerchant) {
+        // Include detailed interaction data for specific merchant
+        const interactions = specificMerchant.supportLogs || [];
+        const interactionsText = interactions.length > 0
+          ? interactions.map((log: any, idx: number) => 
+              `${idx + 1}. ${log.date} ${log.time || ''} - ${log.issue}${log.category ? ` (${log.category})` : ''}${log.supporter ? ` - Supporter: ${log.supporter}` : ''}`
+            ).join('\n')
+          : 'No interactions found.';
+        
+        prompt = `Answer about merchant: ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}
+
+Merchant Details:
+- Status: ${specificMerchant.status || 'unknown'}
+- Last Interaction: ${specificMerchant.lastInteractionDate || 'N/A'}
+- Total Interactions: ${interactions.length}
+
+Interaction Details:
+${interactionsText}
+
+Question: ${question}
+
+Provide detailed answer about this merchant's interactions. Use markdown formatting.`;
+      } else {
+        // General analysis with summary data
+        prompt = `Analyze merchant data and answer concisely.
 
 Data:
 - Merchants: ${summary.totalMerchants}, Interactions: ${summary.totalInteractions}
@@ -302,6 +393,7 @@ Data:
 Question: ${question}
 
 Answer in markdown. Be concise and focus on key insights.`;
+      }
 
       // Try different models and API endpoints
       // Based on available models from Google AI Studio
@@ -487,12 +579,134 @@ Answer in markdown. Be concise and focus on key insights.`;
     };
   }
 
+  // Find specific merchant mentioned in question
+  private findSpecificMerchant(question: string, merchants: MerchantData[]): MerchantData | null {
+    const lowerQuestion = question.toLowerCase().trim();
+    
+    // Normalize function: remove special chars, normalize spaces, handle apostrophes
+    const normalize = (text: string): string => {
+      return text
+        .toLowerCase()
+        .replace(/[''"]/g, "'") // Normalize apostrophes
+        .replace(/[_\s]+/g, ' ') // Replace underscores and multiple spaces with single space
+        .trim();
+    };
+    
+    // Extract potential identifiers from question (numbers, city names, state codes)
+    const questionWords = lowerQuestion.split(/[\s_]+/);
+    const questionNumbers = questionWords.filter(w => /^\d+$/.test(w));
+    const questionStates = questionWords.filter(w => /^(al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy)$/i.test(w));
+    
+    this.logger.log(`[FindMerchant] Searching for merchant in question: "${question}"`);
+    this.logger.log(`[FindMerchant] Extracted numbers: ${questionNumbers.join(', ')}, states: ${questionStates.join(', ')}`);
+    
+    // Try to find merchant by multiple strategies
+    for (const merchant of merchants) {
+      const merchantName = merchant.name;
+      const normalizedMerchantName = normalize(merchantName);
+      const normalizedQuestion = normalize(lowerQuestion);
+      
+      // Strategy 1: Exact normalized match (after removing underscores and normalizing)
+      if (normalizedQuestion.includes(normalizedMerchantName) || normalizedMerchantName.includes(normalizedQuestion)) {
+        this.logger.log(`[FindMerchant] ✅ Found by exact normalized match: "${merchantName}"`);
+        return merchant;
+      }
+      
+      // Strategy 2: Match by storeId if question contains numbers
+      if (merchant.storeId && questionNumbers.length > 0) {
+        const storeIdNumber = merchant.storeId.replace(/[^0-9]/g, ''); // Extract numbers from storeId
+        if (storeIdNumber && questionNumbers.includes(storeIdNumber)) {
+          this.logger.log(`[FindMerchant] ✅ Found by storeId match: "${merchantName}" (Store ID: ${merchant.storeId})`);
+          return merchant;
+        }
+      }
+      
+      // Strategy 3: Extract parts from merchant name (format: Name_StoreID_City_State)
+      const merchantParts = merchantName.split('_');
+      if (merchantParts.length >= 2) {
+        const merchantNamePart = normalize(merchantParts[0]); // Business name
+        const merchantStoreId = merchantParts.length > 1 ? merchantParts[1].replace(/[^0-9]/g, '') : '';
+        const merchantCity = merchantParts.length > 2 ? normalize(merchantParts[merchantParts.length - 2]) : '';
+        const merchantState = merchantParts.length > 3 ? normalize(merchantParts[merchantParts.length - 1]) : '';
+        
+        // Check if question matches business name part
+        if (merchantNamePart.length > 3 && (normalizedQuestion.includes(merchantNamePart) || merchantNamePart.includes(normalizedQuestion))) {
+          // Also check if storeId, city, or state matches (if provided in question)
+          let additionalMatch = true;
+          
+          if (merchantStoreId && questionNumbers.length > 0) {
+            additionalMatch = questionNumbers.includes(merchantStoreId);
+          }
+          if (merchantCity && merchantCity.length > 2 && !normalizedQuestion.includes(merchantCity)) {
+            // City mentioned but doesn't match - less likely to be correct
+            additionalMatch = false;
+          }
+          if (merchantState && questionStates.length > 0 && !questionStates.includes(merchantState)) {
+            // State mentioned but doesn't match - less likely to be correct
+            additionalMatch = false;
+          }
+          
+          if (additionalMatch) {
+            this.logger.log(`[FindMerchant] ✅ Found by name part match: "${merchantName}" (matched: ${merchantNamePart})`);
+            return merchant;
+          }
+        }
+      }
+      
+      // Strategy 4: Fuzzy match on significant words (3+ characters)
+      const merchantWords = normalizedMerchantName.split(/\s+/).filter(word => word.length >= 3);
+      const questionSignificantWords = normalizedQuestion.split(/\s+/).filter(word => word.length >= 3);
+      
+      if (merchantWords.length > 0 && questionSignificantWords.length > 0) {
+        const matches = merchantWords.filter(word => 
+          questionSignificantWords.some(qw => qw.includes(word) || word.includes(qw))
+        );
+        
+        // If 60% or more of significant words match, consider it a match
+        const matchRatio = matches.length / merchantWords.length;
+        if (matchRatio >= 0.6) {
+          this.logger.log(`[FindMerchant] ✅ Found by fuzzy word match: "${merchantName}" (${matches.length}/${merchantWords.length} words matched)`);
+          return merchant;
+        }
+      }
+    }
+    
+    this.logger.warn(`[FindMerchant] ❌ No merchant found matching: "${question}"`);
+    this.logger.warn(`[FindMerchant] Available merchants (first 10): ${merchants.slice(0, 10).map(m => m.name).join(', ')}`);
+    
+    return null;
+  }
+
   private generateInsightFromAnalysis(
     question: string,
     analysis: any,
     merchants: MerchantData[]
   ): string {
     const lowerQuestion = question.toLowerCase();
+    
+    // Check if question is about a specific merchant
+    const specificMerchant = this.findSpecificMerchant(question, merchants);
+    
+    if (specificMerchant) {
+      const interactions = specificMerchant.supportLogs || [];
+      if (interactions.length > 0) {
+        const interactionsText = interactions.map((log: any, idx: number) => 
+          `${idx + 1}. **${log.date}** ${log.time || ''} - ${log.issue}${log.category ? ` (${log.category})` : ''}${log.supporter ? ` - Supporter: ${log.supporter}` : ''}`
+        ).join('\n');
+        
+        return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}\n\n` +
+          `**Status:** ${specificMerchant.status || 'unknown'}\n` +
+          `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
+          `**Total Interactions:** ${interactions.length}\n\n` +
+          `### Interaction Details:\n\n${interactionsText}`;
+      } else {
+        return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}\n\n` +
+          `**Status:** ${specificMerchant.status || 'unknown'}\n` +
+          `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
+          `**Total Interactions:** 0\n\n` +
+          `No interactions found for this merchant.`;
+      }
+    }
 
     // Top merchants by interactions
     if (lowerQuestion.includes('top merchant') || lowerQuestion.includes('most interaction')) {
