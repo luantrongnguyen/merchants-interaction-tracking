@@ -134,11 +134,9 @@ export class GoogleSheetsService {
     });
 
     this.writeLock = currentWriteLock.then(async () => {
-      // Wait for all active reads to complete
-      while (this.activeReads > 0) {
-        await new Promise(resolve => setTimeout(resolve, 10));
-      }
-      
+      // Don't wait for reads - allow reads to continue while writing
+      // This allows reads to proceed without blocking
+      // Reads may see slightly stale data, but that's acceptable
       this.isWriting = true;
       this.logger.debug(`[WriteLock] Acquired write lock for: ${operationName}`);
       try {
@@ -158,11 +156,9 @@ export class GoogleSheetsService {
   }
 
   async getMerchants(): Promise<any[]> {
-    // Read operations can run concurrently - only wait if write is in progress
-    if (this.isWriting) {
-      await this.writeLock;
-    }
-    
+    // Read operations can run concurrently without any lock
+    // They will read the current state of the sheet, which may be slightly stale
+    // but this is acceptable for read operations
     try {
       return await this.getMerchantsInternal();
     } catch (error) {
