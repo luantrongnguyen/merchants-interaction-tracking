@@ -15,6 +15,9 @@ export class GoogleSheetsService {
   private writeLock: Promise<void> = Promise.resolve();
   private activeReads: number = 0;
   private isWriting: boolean = false;
+  // Track last sync position for incremental reading
+  private lastSyncSheetName: string | null = null;
+  private lastSyncRowIndex: number = 1; // Start from row 2 (after header)
 
   constructor() {
     this.initializeAuth();
@@ -530,7 +533,7 @@ export class GoogleSheetsService {
   }
 
   // Read call logs from the last sheet
-  async readCallLogs(): Promise<Array<{
+  async readCallLogs(startFromIndex?: number): Promise<Array<{
     id: string;
     numericId: string;
     date: string;
@@ -547,30 +550,92 @@ export class GoogleSheetsService {
       const spreadsheetId = appConfig.callLogsSpreadsheetId;
       const lastSheetName = await this.getLastSheetName(spreadsheetId);
       
-      this.logSync(`Reading call logs from sheet: ${lastSheetName}`);
-
-      // Read all rows to get columns B, C, F, H, M (date, time, ID, issue, Supporter)
-      // Read range A:M to ensure we get all columns
-      const response = await this.sheets.spreadsheets.values.get({
+      // Check if sheet name changed
+      const shouldResetIndex = this.lastSyncSheetName !== lastSheetName;
+      
+      if (shouldResetIndex) {
+        this.logSync(`[Call Logs] Sheet name changed from "${this.lastSyncSheetName}" to "${lastSheetName}", resetting index to start from beginning`);
+        this.lastSyncSheetName = lastSheetName;
+        this.lastSyncRowIndex = 1; // Start from row 2 (after header)
+      }
+      
+      // Use provided startFromIndex or use lastSyncRowIndex
+      let startIndex = startFromIndex !== undefined ? startFromIndex : this.lastSyncRowIndex;
+      
+      // First, get total row count to check if we need to reset
+      const totalRowsResponse = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `${lastSheetName}!A:M`,
+        range: `${lastSheetName}!A:A`, // Just get column A to count rows
       });
+      
+      const totalRows = totalRowsResponse.data.values ? totalRowsResponse.data.values.length - 1 : 0; // Exclude header
+      
+      // If total rows is less than startIndex, reset to beginning
+      if (totalRows < startIndex) {
+        this.logSync(`[Call Logs] Total rows (${totalRows}) is less than start index (${startIndex}), resetting to start from beginning`);
+        this.lastSyncRowIndex = 1;
+        startIndex = 1;
+      }
+      
+      let rows: any[][];
+      let totalRowsRead: number;
+      let isIncrementalRead = false;
+      
+      if (startIndex === 1 || shouldResetIndex) {
+        // Read all rows from beginning
+        this.logSync(`Reading call logs from sheet: ${lastSheetName}, starting from beginning`);
+        
+        const response = await this.sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${lastSheetName}!A:M`,
+        });
 
-      const rows = response.data.values;
-      if (!rows || rows.length <= 1) {
-        this.logSync(`[Call Logs] No rows found in sheet ${lastSheetName} (only ${rows?.length || 0} rows)`);
-        return [];
+        rows = response.data.values;
+        if (!rows || rows.length <= 1) {
+          this.logSync(`[Call Logs] No rows found in sheet ${lastSheetName} (only ${rows?.length || 0} rows)`);
+          return [];
+        }
+
+        totalRowsRead = rows.length - 1; // Exclude header row
+        this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows từ sheet ${lastSheetName} (có header row)`);
+        
+        // Update lastSyncRowIndex to total rows read
+        this.lastSyncRowIndex = totalRowsRead;
+      } else {
+        // Read only new rows from startIndex (incremental read)
+        // Calculate range: start from row (startIndex + 2) because: startIndex is 0-based data row, +1 for header, +1 for 1-based sheet indexing
+        const startRow = startIndex + 2; // +2 because: startIndex (0-based) + 1 (header) + 1 (1-based sheet)
+        const range = `${lastSheetName}!A${startRow}:M`;
+        
+        this.logSync(`Reading call logs from sheet: ${lastSheetName}, starting from row ${startRow} (incremental read, index ${startIndex})`);
+        
+        const response = await this.sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: range,
+        });
+
+        rows = response.data.values;
+        if (!rows || rows.length === 0) {
+          this.logSync(`[Call Logs] No new rows found from row ${startRow} onwards`);
+          return [];
+        }
+
+        totalRowsRead = rows.length;
+        this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows mới từ sheet ${lastSheetName} (từ row ${startRow})`);
+        
+        // Update lastSyncRowIndex to new position
+        this.lastSyncRowIndex = startIndex + totalRowsRead;
+        isIncrementalRead = true;
       }
 
-      const totalRowsRead = rows.length - 1; // Exclude header row
-      this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows từ sheet ${lastSheetName} (có header row)`);
-
+      // Map rows to call log objects
       // Skip header row and map to columns: B(1), C(2), F(5), H(7), I(8: Category), M(12)
       let lastValidDate = ''; // Track last valid date for forward fill
-      const callLogsBeforeFilter = rows.slice(1)
+      const callLogsBeforeFilter = (isIncrementalRead ? rows : rows.slice(1))
         .map((row: any[], index: number) => {
+          const actualRowIndex = isIncrementalRead ? (startIndex + index) : index; // Actual 0-based data row index
           const id = row[5] || ''; // F (index 5)
-          const numericId = this.extractNumericId(id, `Call Log row ${index + 2}`);
+          const numericId = this.extractNumericId(id, `Call Log row ${actualRowIndex + 2}`);
           
           // Get date from column B
           let date = row[1] || ''; // B (index 1)
@@ -592,7 +657,7 @@ export class GoogleSheetsService {
             supporter: row[12] || '', // M (index 12)
             numericId: numericId,
             rawRow: row, // Keep raw row for debugging
-            rowIndex: index + 2, // Actual row number in sheet (1-based + header)
+            rowIndex: actualRowIndex + 2, // Actual row number in sheet (1-based + header)
             originalDate: row[1] || '', // Keep original date value for logging
           };
         });
@@ -713,6 +778,7 @@ export class GoogleSheetsService {
       }
       
       this.logSync(`[Call Logs] 📊 SỐ CALL LOGS ĐÃ ĐỌC ĐƯỢC TỪ SHEET: ${callLogs.length} call logs (sau khi filter, ${filteredCount}/${totalRowsRead} rows đã bị loại bỏ do thiếu dữ liệu)`);
+      this.logSync(`[Call Logs] 📊 Last sync position: Sheet="${this.lastSyncSheetName}", Row Index=${this.lastSyncRowIndex}`);
       
       // Log sample of call logs
       if (callLogs.length > 0) {

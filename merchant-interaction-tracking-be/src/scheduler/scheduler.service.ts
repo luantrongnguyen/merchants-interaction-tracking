@@ -8,8 +8,8 @@ export class SchedulerService {
 
   constructor(private readonly sheetsService: GoogleSheetsService) {}
 
-  // Chạy mỗi 30 phút
-  @Cron('0 */30 * * * *') // Every 30 minutes
+  // Chạy mỗi 10 phút
+  @Cron('0 */10 * * * *') // Every 10 minutes
   async autoSyncCallLogs() {
     try {
       // Tính giờ hiện tại theo múi giờ Việt Nam (UTC+7)
