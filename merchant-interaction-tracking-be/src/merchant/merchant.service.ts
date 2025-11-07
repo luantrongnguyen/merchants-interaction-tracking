@@ -130,4 +130,8 @@ export class MerchantService {
   async syncCallLogs(userEmail: string): Promise<{ matched: number; updated: number; errors: number }> {
     return await this.googleSheetsService.syncCallLogsToMerchants(userEmail);
   }
+
+  async syncAllCallLogs(userEmail: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
+    return await this.googleSheetsService.syncAllCallLogsToMerchants(userEmail);
+  }
 }

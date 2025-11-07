@@ -40,13 +40,17 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
     // Hiển thị results khi update xong và có results
     if (!isUpdating && updateResults.length > 0) {
       setShowResults(true);
-      // Tự động ẩn sau 10 giây
+      // Tự động ẩn sau 10 giây (hoặc 5 giây cho sync operation)
+      const timeout = totalMerchants === 0 ? 5000 : 10000;
       const timer = setTimeout(() => {
         setShowResults(false);
-      }, 10000);
+      }, timeout);
       return () => clearTimeout(timer);
+    } else if (isUpdating) {
+      // Reset showResults khi bắt đầu update mới
+      setShowResults(false);
     }
-  }, [isUpdating, updateResults]);
+  }, [isUpdating, updateResults, totalMerchants]);
 
   // Hiển thị results sau khi update xong
   if (!isUpdating && showResults && updateResults.length > 0) {
@@ -58,15 +62,28 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
     // Calculate total call logs added (from results with callLogsAdded property)
     const totalCallLogsAdded = updateResults.reduce((sum, r) => sum + (r.callLogsAdded || 0), 0);
 
+    // Check if this is a sync operation (has callLogsAdded but no merchant count)
+    const isSyncOperation = totalCallLogsAdded > 0 && totalMerchants === 0;
+
     return (
       <div className="header-progress-bar results-bar">
         <div className="header-progress-content">
           <div className="results-summary-inline">
-            {updatedCount > 0 && <span className="summary-success">✅ {updatedCount} updated</span>}
-            {addedCount > 0 && <span className="summary-success">➕ {addedCount} added</span>}
-            {totalCallLogsAdded > 0 && <span className="summary-success">📞 {totalCallLogsAdded} call logs synced</span>}
-            {skippedCount > 0 && <span className="summary-skipped">⏭️ {skippedCount} skipped</span>}
-            {errorCount > 0 && <span className="summary-error">❌ {errorCount} errors</span>}
+            {isSyncOperation ? (
+              <>
+                {totalCallLogsAdded > 0 && <span className="summary-success">📞 {totalCallLogsAdded} call logs synced</span>}
+                {updatedCount > 0 && <span className="summary-success">✅ {updatedCount} merchants updated</span>}
+                {errorCount > 0 && <span className="summary-error">❌ {errorCount} errors</span>}
+              </>
+            ) : (
+              <>
+                {updatedCount > 0 && <span className="summary-success">✅ {updatedCount} updated</span>}
+                {addedCount > 0 && <span className="summary-success">➕ {addedCount} added</span>}
+                {totalCallLogsAdded > 0 && <span className="summary-success">📞 {totalCallLogsAdded} call logs synced</span>}
+                {skippedCount > 0 && <span className="summary-skipped">⏭️ {skippedCount} skipped</span>}
+                {errorCount > 0 && <span className="summary-error">❌ {errorCount} errors</span>}
+              </>
+            )}
           </div>
           <button className="header-close-btn" onClick={() => { setShowResults(false); onClose(); }}>×</button>
         </div>
@@ -83,11 +100,15 @@ const HeaderProgressBar: React.FC<HeaderProgressBarProps> = ({
           <span className="header-progress-text">
             {currentMerchant || 'Initializing...'}
           </span>
-          {currentIndex > 0 && totalMerchants > 0 && (
+          {currentIndex > 0 && totalMerchants > 0 ? (
             <span className="header-progress-count">
               ({currentIndex} / {totalMerchants})
             </span>
-          )}
+          ) : totalMerchants === 0 && currentMerchant ? (
+            <span className="header-progress-count">
+              Sync in progress...
+            </span>
+          ) : null}
         </div>
         <div className="header-progress-bar-container">
           <div 

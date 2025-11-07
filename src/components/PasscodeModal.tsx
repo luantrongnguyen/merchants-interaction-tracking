@@ -5,7 +5,7 @@ import './PasscodeModal.css';
 interface PasscodeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (passcode?: string) => void;
   title: string;
 }
 
@@ -22,9 +22,10 @@ const PasscodeModal: React.FC<PasscodeModalProps> = ({
     e.preventDefault();
     if (passcode === CONFIG.PASSSCODE) {
       setError('');
-      onSuccess();
-      onClose();
+      const validatedPasscode = passcode;
       setPasscode('');
+      onSuccess(validatedPasscode);
+      onClose();
     } else {
       setError('Invalid authentication code');
     }

@@ -6,6 +6,7 @@ import apiService from './services/apiService';
 import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
 import Header from './components/Header';
+import HeaderProgressBar from './components/HeaderProgressBar';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
@@ -25,7 +26,18 @@ function App() {
   const [isPasscodeOpen, setIsPasscodeOpen] = useState(false);
   const [editingMerchant, setEditingMerchant] = useState<MerchantWithStatus | undefined>();
   const [formTitle, setFormTitle] = useState('');
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [pendingAction, setPendingAction] = useState<((passcode?: string) => Promise<void>) | null>(null);
+
+  // Sync manual states
+  const [isSyncingManual, setIsSyncingManual] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [syncStatus, setSyncStatus] = useState('');
+  const [syncResults, setSyncResults] = useState<{
+    matched: number;
+    updated: number;
+    errors: number;
+    totalCallLogsAdded: number;
+  } | null>(null);
 
 
   useEffect(() => {
@@ -81,7 +93,9 @@ function App() {
   };
 
   const handleDeleteMerchant = (id: number) => {
-    setPendingAction(() => () => deleteMerchant(id));
+    setPendingAction(() => async () => {
+      await deleteMerchant(id);
+    });
     setIsPasscodeOpen(true);
   };
 
@@ -112,10 +126,11 @@ function App() {
     }
   };
 
-  const handlePasscodeSuccess = async () => {
+  const handlePasscodeSuccess = async (passcode?: string) => {
     if (pendingAction) {
       try {
-        await pendingAction();
+        // Pass passcode to the action if it needs it
+        await pendingAction(passcode);
         setPendingAction(null);
         setIsPasscodeOpen(false); // Close modal after successful action
       } catch (error) {
@@ -129,6 +144,76 @@ function App() {
   const handlePasscodeClose = () => {
     setIsPasscodeOpen(false);
     setPendingAction(null);
+  };
+
+  const handleSyncCallLogsManual = () => {
+    setPendingAction(() => async (passcode?: string) => {
+      try {
+        if (!passcode) {
+          throw new Error('Passcode is required');
+        }
+        
+        // Start sync with progress
+        setIsSyncingManual(true);
+        setSyncProgress(0);
+        setSyncStatus('Đang khởi tạo sync...');
+        setSyncResults(null);
+        
+        // Simulate progress updates
+        const progressInterval = setInterval(() => {
+          setSyncProgress(prev => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 5;
+          });
+        }, 500);
+
+        try {
+          setSyncStatus('Đang đọc call logs từ tất cả sheets...');
+          const result = await apiService.syncCallLogsManual(passcode);
+          
+          clearInterval(progressInterval);
+          setSyncProgress(100);
+          setSyncStatus('Hoàn thành!');
+          setSyncResults(result);
+          setError(null);
+          
+          // Reload merchants after sync
+          await loadMerchants();
+          
+          // Auto hide after 5 seconds
+          setTimeout(() => {
+            setIsSyncingManual(false);
+            setSyncProgress(0);
+            setSyncStatus('');
+            setSyncResults(null);
+          }, 5000);
+        } catch (syncErr) {
+          clearInterval(progressInterval);
+          setIsSyncingManual(false);
+          setSyncProgress(0);
+          setSyncStatus('');
+          throw syncErr;
+        }
+      } catch (err) {
+        setIsSyncingManual(false);
+        setSyncProgress(0);
+        setSyncStatus('');
+        const errorMessage = err instanceof Error ? err.message : 'Unable to sync call logs manually. Please try again.';
+        setError(errorMessage);
+        throw err;
+      }
+    });
+    setIsPasscodeOpen(true);
+  };
+
+  const handleCloseSyncResults = () => {
+    setIsSyncingManual(false);
+    setSyncProgress(0);
+    setSyncStatus('');
+    setSyncResults(null);
   };
 
 
@@ -256,7 +341,28 @@ function App() {
 
   return (
     <div className="app-container">
-      <Header />
+      <Header onSyncCallLogsManual={handleSyncCallLogsManual} />
+      
+      {(isSyncingManual || syncResults) && (
+        <HeaderProgressBar
+          isUpdating={isSyncingManual}
+          progress={syncProgress}
+          currentMerchant={syncStatus || 'Đang sync call logs từ tất cả sheets...'}
+          currentIndex={0}
+          totalMerchants={0}
+          shouldStop={false}
+          updateResults={syncResults ? [{
+            merchant: 'Sync Call Logs Manual',
+            storeId: '',
+            success: syncResults.errors === 0,
+            message: `Matched: ${syncResults.matched}, Updated: ${syncResults.updated}, Errors: ${syncResults.errors}`,
+            updated: syncResults.updated > 0,
+            callLogsAdded: syncResults.totalCallLogsAdded,
+          }] : []}
+          onStop={() => {}}
+          onClose={handleCloseSyncResults}
+        />
+      )}
 
       <ProtectedRoute>
         <Layout>
@@ -302,7 +408,7 @@ function App() {
           isOpen={isPasscodeOpen}
           onClose={handlePasscodeClose}
           onSuccess={handlePasscodeSuccess}
-          title="Authentication Required"
+          title={pendingAction ? "Authentication Required" : "Authentication Required"}
         />
 
       </ProtectedRoute>

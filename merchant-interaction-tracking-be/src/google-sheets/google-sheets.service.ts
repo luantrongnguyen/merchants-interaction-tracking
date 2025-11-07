@@ -528,6 +528,111 @@ export class GoogleSheetsService {
     }
   }
 
+  // Get all sheet names from Call Logs spreadsheet (excluding the first sheet)
+  private async getAllSheetNames(spreadsheetId: string): Promise<string[]> {
+    try {
+      const metadata = await this.sheets.spreadsheets.get({
+        spreadsheetId,
+      });
+      const sheets = metadata.data.sheets || [];
+      if (sheets.length <= 1) {
+        this.logSync(`[Call Logs] Only ${sheets.length} sheet(s) found, skipping first sheet`);
+        return [];
+      }
+      // Get all sheets except the first one (index 0)
+      const sheetNames = sheets.slice(1).map(sheet => sheet.properties.title);
+      this.logSync(`[Call Logs] Found ${sheetNames.length} sheets (excluding first): ${sheetNames.join(', ')}`);
+      return sheetNames;
+    } catch (error) {
+      this.logger.error('Error getting all sheet names:', error);
+      throw error;
+    }
+  }
+
+  // Read call logs from a specific sheet
+  private async readCallLogsFromSheet(spreadsheetId: string, sheetName: string): Promise<Array<{
+    id: string;
+    numericId: string;
+    date: string;
+    time: string;
+    issue: string;
+    category?: string;
+    supporter: string;
+  }>> {
+    try {
+      this.logSync(`[Call Logs] Đang đọc call logs từ sheet: ${sheetName}`);
+      
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A:M`,
+      });
+
+      const rows = response.data.values;
+      if (!rows || rows.length <= 1) {
+        this.logSync(`[Call Logs] No rows found in sheet ${sheetName} (only ${rows?.length || 0} rows)`);
+        return [];
+      }
+
+      const totalRowsRead = rows.length - 1; // Exclude header row
+      this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows từ sheet ${sheetName}`);
+
+      // Map rows to call log objects
+      // Skip header row and map to columns: B(1), C(2), F(5), H(7), I(8: Category), M(12)
+      let lastValidDate = ''; // Track last valid date for forward fill
+      const callLogsBeforeFilter = rows.slice(1) // Skip header row
+        .map((row: any[], index: number) => {
+          const actualRowIndex = index;
+          const id = row[5] || ''; // F (index 5)
+          const numericId = this.extractNumericId(id, `Call Log row ${actualRowIndex + 2} in sheet ${sheetName}`);
+          
+          // Get date from column B
+          let date = row[1] || ''; // B (index 1)
+          
+          // Forward fill: if date is empty, use last valid date
+          if (!date && lastValidDate) {
+            date = lastValidDate;
+          } else if (date) {
+            // Update last valid date when we find a new one
+            lastValidDate = date;
+          }
+          
+          return {
+            date: date,
+            time: row[2] || '', // C (index 2)
+            id: id,
+            issue: row[7] || '', // H (index 7)
+            category: row[8] || '', // I (index 8)
+            supporter: row[12] || '', // M (index 12)
+            numericId: numericId,
+            rawRow: row,
+            rowIndex: actualRowIndex + 2,
+            originalDate: row[1] || '',
+            sheetName: sheetName, // Track which sheet this log came from
+          };
+        });
+      
+      // Filter valid call logs
+      const callLogs = callLogsBeforeFilter.filter((log) => {
+        const hasId = !!log.id;
+        const hasDate = !!log.date;
+        const hasTime = !!log.time;
+        const hasNumericId = !!log.numericId;
+        return hasId && hasDate && hasTime && hasNumericId;
+      }).map((log: any) => {
+        // Remove rawRow, rowIndex, originalDate, and sheetName before returning
+        const { rawRow, rowIndex, originalDate, sheetName, ...cleanLog } = log;
+        return cleanLog;
+      });
+
+      this.logSync(`[Call Logs] 📊 Sheet ${sheetName}: ${callLogs.length} call logs hợp lệ (từ ${totalRowsRead} rows)`);
+      
+      return callLogs;
+    } catch (error) {
+      this.logger.error(`Error reading call logs from sheet ${sheetName}:`, error);
+      throw error;
+    }
+  }
+
   // Read call logs from the last sheet
   async readCallLogs(startFromIndex?: number): Promise<Array<{
     id: string;
@@ -547,100 +652,40 @@ export class GoogleSheetsService {
       const lastSheetName = await this.getLastSheetName(spreadsheetId);
       
       // Check if sheet name changed
-      const shouldResetIndex = this.lastSyncSheetName !== lastSheetName;
+      const sheetChanged = this.lastSyncSheetName !== lastSheetName;
       
-      if (shouldResetIndex) {
-        this.logSync(`[Call Logs] Sheet name changed from "${this.lastSyncSheetName}" to "${lastSheetName}", resetting index to start from beginning`);
+      if (sheetChanged) {
+        this.logSync(`[Call Logs] Sheet name changed from "${this.lastSyncSheetName}" to "${lastSheetName}"`);
         this.lastSyncSheetName = lastSheetName;
-        this.lastSyncRowIndex = 1; // Start from row 2 (after header)
       }
       
-      // Use provided startFromIndex or calculate from lastSyncRowIndex
-      // If lastSyncRowIndex >= 5, start from lastSyncRowIndex - 5 to re-read last 5 rows
-      // This ensures we don't miss any data that might have been inserted
-      let startIndex: number;
-      if (startFromIndex !== undefined) {
-        startIndex = startFromIndex;
-      } else if (this.lastSyncRowIndex >= 5) {
-        startIndex = this.lastSyncRowIndex - 5;
-        this.logSync(`[Call Logs] Starting from index ${startIndex} (lastSyncRowIndex=${this.lastSyncRowIndex} - 5) to re-read last 5 rows`);
-      } else {
-        startIndex = 1; // Start from beginning if lastSyncRowIndex < 5
-        this.logSync(`[Call Logs] Starting from beginning (lastSyncRowIndex=${this.lastSyncRowIndex} < 5)`);
-      }
+      // Always read all rows from the latest sheet (date mới nhất)
+      // Không sync từ index lần trước, mà sync tất cả trong sheet mới nhất
+      this.logSync(`[Call Logs] Đang đọc tất cả call logs từ sheet mới nhất: ${lastSheetName}`);
       
-      // First, get total row count to check if we need to reset
-      const totalRowsResponse = await this.sheets.spreadsheets.values.get({
+      const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `${lastSheetName}!A:A`, // Just get column A to count rows
+        range: `${lastSheetName}!A:M`,
       });
-      
-      const totalRows = totalRowsResponse.data.values ? totalRowsResponse.data.values.length - 1 : 0; // Exclude header
-      
-      // If total rows is less than startIndex, reset to beginning
-      if (totalRows < startIndex) {
-        this.logSync(`[Call Logs] Total rows (${totalRows}) is less than start index (${startIndex}), resetting to start from beginning`);
-        this.lastSyncRowIndex = 1;
-        startIndex = 1;
+
+      const rows = response.data.values;
+      if (!rows || rows.length <= 1) {
+        this.logSync(`[Call Logs] No rows found in sheet ${lastSheetName} (only ${rows?.length || 0} rows)`);
+        return [];
       }
+
+      const totalRowsRead = rows.length - 1; // Exclude header row
+      this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows từ sheet ${lastSheetName} (có header row)`);
       
-      let rows: any[][];
-      let totalRowsRead: number;
-      let isIncrementalRead = false;
-      
-      if (startIndex === 1 || shouldResetIndex) {
-        // Read all rows from beginning
-        this.logSync(`Reading call logs from sheet: ${lastSheetName}, starting from beginning`);
-        
-        const response = await this.sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: `${lastSheetName}!A:M`,
-        });
-
-        rows = response.data.values;
-        if (!rows || rows.length <= 1) {
-          this.logSync(`[Call Logs] No rows found in sheet ${lastSheetName} (only ${rows?.length || 0} rows)`);
-          return [];
-        }
-
-        totalRowsRead = rows.length - 1; // Exclude header row
-        this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows từ sheet ${lastSheetName} (có header row)`);
-        
-        // Update lastSyncRowIndex to total rows read
-        this.lastSyncRowIndex = totalRowsRead;
-      } else {
-        // Read only new rows from startIndex (incremental read)
-        // Calculate range: start from row (startIndex + 2) because: startIndex is 0-based data row, +1 for header, +1 for 1-based sheet indexing
-        const startRow = startIndex + 2; // +2 because: startIndex (0-based) + 1 (header) + 1 (1-based sheet)
-        const range = `${lastSheetName}!A${startRow}:M`;
-        
-        this.logSync(`Reading call logs from sheet: ${lastSheetName}, starting from row ${startRow} (incremental read, index ${startIndex})`);
-        
-        const response = await this.sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: range,
-        });
-
-        rows = response.data.values;
-        if (!rows || rows.length === 0) {
-          this.logSync(`[Call Logs] No new rows found from row ${startRow} onwards`);
-          return [];
-        }
-
-        totalRowsRead = rows.length;
-        this.logSync(`[Call Logs] 📊 Đã đọc được ${totalRowsRead} rows mới từ sheet ${lastSheetName} (từ row ${startRow})`);
-        
-        // Update lastSyncRowIndex to new position
-        this.lastSyncRowIndex = startIndex + totalRowsRead;
-        isIncrementalRead = true;
-      }
+      // Update lastSyncRowIndex for tracking (but we always read from beginning)
+      this.lastSyncRowIndex = totalRowsRead;
 
       // Map rows to call log objects
       // Skip header row and map to columns: B(1), C(2), F(5), H(7), I(8: Category), M(12)
       let lastValidDate = ''; // Track last valid date for forward fill
-      const callLogsBeforeFilter = (isIncrementalRead ? rows : rows.slice(1))
+      const callLogsBeforeFilter = rows.slice(1) // Skip header row
         .map((row: any[], index: number) => {
-          const actualRowIndex = isIncrementalRead ? (startIndex + index) : index; // Actual 0-based data row index
+          const actualRowIndex = index; // Actual 0-based data row index (starting from 0 after skipping header)
           const id = row[5] || ''; // F (index 5)
           const numericId = this.extractNumericId(id, `Call Log row ${actualRowIndex + 2}`);
           
@@ -785,7 +830,7 @@ export class GoogleSheetsService {
       }
       
       this.logSync(`[Call Logs] 📊 SỐ CALL LOGS ĐÃ ĐỌC ĐƯỢC TỪ SHEET: ${callLogs.length} call logs (sau khi filter, ${filteredCount}/${totalRowsRead} rows đã bị loại bỏ do thiếu dữ liệu)`);
-      this.logSync(`[Call Logs] 📊 Last sync position: Sheet="${this.lastSyncSheetName}", Row Index=${this.lastSyncRowIndex}`);
+      this.logSync(`[Call Logs] 📊 Đã sync tất cả từ sheet mới nhất: Sheet="${this.lastSyncSheetName}", Tổng ${totalRowsRead} rows`);
       
       // Log sample of call logs
       if (callLogs.length > 0) {
@@ -1127,6 +1172,251 @@ export class GoogleSheetsService {
         throw error;
       }
     }, 'syncCallLogsToMerchants');
+  }
+
+  // Sync call logs from all sheets (except the first one) to merchants
+  async syncAllCallLogsToMerchants(userEmail: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
+    return this.withWriteLock(async () => {
+      try {
+        if (!this.sheets) {
+          throw new Error('Google Sheets service not initialized');
+        }
+
+        const spreadsheetId = appConfig.callLogsSpreadsheetId;
+        
+        // Get all sheet names (excluding the first sheet)
+        this.logSync(`[Sync All Call Logs] Bắt đầu sync từ tất cả sheets (trừ sheet đầu tiên)...`);
+        const sheetNames = await this.getAllSheetNames(spreadsheetId);
+        
+        if (sheetNames.length === 0) {
+          this.logSync(`[Sync All Call Logs] Không có sheets nào để sync (trừ sheet đầu tiên)`);
+          return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
+        }
+
+        // Read call logs from all sheets
+        const allCallLogs: Array<{
+          id: string;
+          numericId: string;
+          date: string;
+          time: string;
+          issue: string;
+          category?: string;
+          supporter: string;
+        }> = [];
+
+        for (const sheetName of sheetNames) {
+          try {
+            const callLogs = await this.readCallLogsFromSheet(spreadsheetId, sheetName);
+            allCallLogs.push(...callLogs);
+            this.logSync(`[Sync All Call Logs] Đã đọc ${callLogs.length} call logs từ sheet ${sheetName}`);
+          } catch (error) {
+            this.errorSync(`[Sync All Call Logs] Lỗi khi đọc sheet ${sheetName}`, error);
+            // Continue with other sheets even if one fails
+          }
+        }
+
+        this.logSync(`[Sync All Call Logs] 📊 TỔNG SỐ CALL LOGS ĐÃ ĐỌC ĐƯỢC: ${allCallLogs.length} call logs từ ${sheetNames.length} sheets`);
+        
+        if (allCallLogs.length === 0) {
+          this.logSync(`[Sync All Call Logs] Không có call logs nào để sync`);
+          return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
+        }
+
+        // Get all merchants
+        const merchants = await this.getMerchantsInternal();
+        this.logSync(`Total merchants found: ${merchants.length}`);
+        
+        // Create a map: numericId -> array of merchants
+        const merchantMap = new Map<string, Array<typeof merchants[0]>>();
+        this.logSync(`[ID Matching] Building merchant map by numeric ID:`);
+        merchants.forEach(merchant => {
+          if (merchant.storeId) {
+            const numericId = this.extractNumericId(merchant.storeId, `Merchant ${merchant.name}`);
+            if (numericId) {
+              if (!merchantMap.has(numericId)) {
+                merchantMap.set(numericId, []);
+              }
+              merchantMap.get(numericId)!.push(merchant);
+            }
+          }
+        });
+        this.logSync(`Total unique numeric IDs in merchant map: ${merchantMap.size}`);
+
+        // Log all unique numeric IDs from call logs
+        const uniqueCallLogIds = new Set(allCallLogs.map(log => log.numericId));
+        this.logSync(`[ID Matching] Unique numeric IDs from call logs (${uniqueCallLogIds.size})`);
+
+        let matched = 0;
+        let updated = 0;
+        let errors = 0;
+        let totalCallLogsAdded = 0;
+
+        // Group call logs by merchant numeric ID
+        const logsByMerchant = new Map<string, typeof allCallLogs>();
+        allCallLogs.forEach(log => {
+          if (!logsByMerchant.has(log.numericId)) {
+            logsByMerchant.set(log.numericId, []);
+          }
+          logsByMerchant.get(log.numericId)!.push(log);
+        });
+        
+        this.logSync(`[ID Matching] Grouped call logs into ${logsByMerchant.size} unique merchant IDs`);
+
+        // Update each merchant's support_logs (same logic as syncCallLogsToMerchants)
+        for (const [numericId, logs] of logsByMerchant.entries()) {
+          this.logSync(`[ID Matching] Processing numeric ID: ${numericId} with ${logs.length} call logs`);
+          
+          const matchedMerchants = merchantMap.get(numericId);
+          if (!matchedMerchants || matchedMerchants.length === 0) {
+            this.warnSync(`  ❌ No merchant found for numeric ID: ${numericId}`);
+            continue;
+          }
+
+          this.logSync(`  ✅ Found ${matchedMerchants.length} matching merchant(s) with numeric ID ${numericId}`);
+          matched += matchedMerchants.length;
+
+          // Update all merchants with the same numeric ID
+          for (const merchant of matchedMerchants) {
+            if (!merchant.id) {
+              this.warnSync(`  ⚠️ Skipping merchant ${merchant.name} (Store ID: ${merchant.storeId}) - no id field`);
+              continue;
+            }
+
+            try {
+              const actualRowIndex = merchant.id + 1;
+              
+              this.logSync(`[Sync All Call Logs] Processing merchant: ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`);
+              this.logSync(`  - Found ${logs.length} call logs to process for this merchant`);
+            
+              // Read current row including support_logs
+              const current = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: appConfig.spreadsheetId,
+                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+              });
+              
+              const row = current.data.values?.[0] || [];
+              
+              if (row.length === 0) {
+                this.warnSync(`Row ${actualRowIndex} is empty, skipping...`);
+                continue;
+              }
+              
+              // Parse existing support_logs
+              let existingLogs: Array<{ date: string; time: string; issue: string; category?: string; supporter: string }> = [];
+              if (row[12]) {
+                try {
+                  existingLogs = JSON.parse(row[12]);
+                  this.logSync(`Found ${existingLogs.length} existing support logs for merchant ${merchant.storeId}`);
+                } catch (e) {
+                  this.warnSync(`Invalid support_logs JSON at row ${actualRowIndex}: ${row[12]}`);
+                }
+              }
+
+              // Create map of existing logs by date|time
+              const existingMap = new Map<string, { date: string; time: string; issue: string; category?: string; supporter: string }>();
+              existingLogs.forEach(log => {
+                existingMap.set(`${log.date}|${log.time}`, log);
+              });
+
+              // Track updates vs additions
+              let updatedExisting = 0;
+              const additions: Array<{ date: string; time: string; issue: string; category?: string; supporter: string }> = [];
+
+              // Upsert each log from sheets
+              logs.forEach(log => {
+                const key = `${log.date}|${log.time}`;
+                const existing = existingMap.get(key);
+                if (existing) {
+                  // Update missing category if available from sheet
+                  const hasExistingCategory = typeof existing.category === 'string' && existing.category.trim() !== '';
+                  const hasIncomingCategory = typeof log.category === 'string' && log.category.trim() !== '';
+                  if (!hasExistingCategory && hasIncomingCategory) {
+                    existing.category = log.category;
+                    updatedExisting++;
+                  }
+                } else {
+                  additions.push({
+                    date: log.date,
+                    time: log.time,
+                    issue: log.issue || '',
+                    category: log.category || '',
+                    supporter: log.supporter || '',
+                  });
+                }
+              });
+
+              if (additions.length === 0 && updatedExisting === 0) {
+                this.logSync(`Merchant ${merchant.storeId} (ID: ${numericId}): No changes`);
+                continue;
+              }
+
+              // Combine existing (possibly updated) with new additions
+              const allLogs = [...existingLogs, ...additions];
+              const supportLogsJson = JSON.stringify(allLogs);
+
+              // Ensure row has all 13 columns
+              const valuesArray = [
+                row[0] || '', // name (A)
+                row[1] || '', // storeId (B)
+                row[2] || '', // address (C)
+                row[3] || '', // street (D)
+                row[4] || '', // area (E)
+                row[5] || '', // state (F)
+                row[6] || '', // zipcode (G)
+                row[7] || '', // platform (H)
+                row[8] || '', // phone (I)
+                row[9] || '', // lastModifiedAt (J)
+                row[10] || '', // lastModifiedBy (K)
+                row[11] || '[]', // historyLogs (L)
+                supportLogsJson, // support_logs (M)
+              ];
+              
+              while (valuesArray.length < 13) {
+                valuesArray.push('');
+              }
+
+              // Update the row with new support_logs
+              const values = [valuesArray];
+
+              await this.sheets.spreadsheets.values.update({
+                spreadsheetId: appConfig.spreadsheetId,
+                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                valueInputOption: 'RAW',
+                resource: { values },
+              });
+
+              updated++;
+              totalCallLogsAdded += additions.length;
+              this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${additions.length} call logs, updated ${updatedExisting} existing, total ${allLogs.length} logs`);
+            } catch (error) {
+              errors++;
+              this.errorSync(`❌ Error updating support_logs for merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
+            }
+          }
+        }
+
+        // Summary log
+        this.logSync(`[Sync All Call Logs Summary] 📊 TỔNG KẾT:`);
+        this.logSync(`  - Tổng số sheets đã sync: ${sheetNames.length} sheets`);
+        this.logSync(`  - Tổng số merchant có call logs match: ${matched}`);
+        this.logSync(`  - Tổng số merchant đã update thành công: ${updated}`);
+        this.logSync(`  - Tổng số merchant có lỗi: ${errors}`);
+        this.logSync(`  - Tổng số call logs đã thêm mới: ${totalCallLogsAdded}`);
+        this.logSync(`  - Tổng số merchant trong hệ thống: ${merchants.length}`);
+        this.logSync(`  - Tổng số unique numeric IDs từ call logs: ${uniqueCallLogIds.size}`);
+        this.logSync(`  - Tổng số call logs đã đọc: ${allCallLogs.length}`);
+        
+        // Write footer to log file
+        this.writeToLogFile(`\n=== Sync All Call Logs Completed at ${new Date().toISOString()} ===\n`);
+        this.writeToLogFile(`Final Results: Matched=${matched}, Updated=${updated}, Errors=${errors}, TotalCallLogsAdded=${totalCallLogsAdded}\n`);
+        
+        return { matched, updated, errors, totalCallLogsAdded };
+      } catch (error) {
+        this.errorSync('Error syncing all call logs to merchants', error);
+        this.writeToLogFile(`\n=== Sync All Call Logs Failed at ${new Date().toISOString()} ===\n`);
+        throw error;
+      }
+    }, 'syncAllCallLogsToMerchants');
   }
 
   async getAuthorizedEmails(): Promise<string[]> {

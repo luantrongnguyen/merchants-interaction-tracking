@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Req, UnauthorizedException } from '@nestjs/common';
 import { MerchantService } from './merchant.service';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
+import { SyncCallLogsManualDto } from './dto/sync-call-logs-manual.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { appConfig } from '../config/app.config';
 
 @Controller('merchants')
 @UseGuards(JwtAuthGuard)
@@ -56,5 +58,16 @@ export class MerchantController {
   async syncCallLogs(@Req() req: any) {
     const email = req?.user?.email || 'unknown@mangoforsalon.com';
     return this.merchantService.syncCallLogs(email);
+  }
+
+  @Post('sync-call-logs-manual')
+  async syncCallLogsManual(@Body() dto: SyncCallLogsManualDto, @Req() req: any) {
+    // Validate passcode
+    if (dto.passcode !== appConfig.passcode) {
+      throw new UnauthorizedException('Invalid passcode');
+    }
+    
+    const email = req?.user?.email || 'unknown@mangoforsalon.com';
+    return this.merchantService.syncAllCallLogs(email);
   }
 }

@@ -146,6 +146,13 @@ class ApiService {
     });
   }
 
+  async syncCallLogsManual(passcode: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
+    return this.request<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }>('/merchants/sync-call-logs-manual', {
+      method: 'POST',
+      body: JSON.stringify({ passcode }),
+    });
+  }
+
   // Authentication methods
   async login(user: User): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/auth/login', {
