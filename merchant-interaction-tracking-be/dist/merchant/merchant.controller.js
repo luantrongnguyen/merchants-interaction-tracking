@@ -17,7 +17,9 @@ const common_1 = require("@nestjs/common");
 const merchant_service_1 = require("./merchant.service");
 const create_merchant_dto_1 = require("./dto/create-merchant.dto");
 const update_merchant_dto_1 = require("./dto/update-merchant.dto");
+const sync_call_logs_manual_dto_1 = require("./dto/sync-call-logs-manual.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const app_config_1 = require("../config/app.config");
 let MerchantController = class MerchantController {
     merchantService;
     constructor(merchantService) {
@@ -54,6 +56,37 @@ let MerchantController = class MerchantController {
     async syncCallLogs(req) {
         const email = req?.user?.email || 'unknown@mangoforsalon.com';
         return this.merchantService.syncCallLogs(email);
+    }
+    async syncCallLogsManual(dto, req) {
+        try {
+            if (!dto || !dto.passcode) {
+                throw new common_1.UnauthorizedException('Passcode is required');
+            }
+            if (dto.passcode !== app_config_1.appConfig.passcode) {
+                throw new common_1.UnauthorizedException('Invalid passcode');
+            }
+            const email = req?.user?.email || 'unknown@mangoforsalon.com';
+            console.log(`[MerchantController] Starting manual sync for user: ${email}`);
+            const result = await this.merchantService.syncAllCallLogs(email);
+            console.log(`[MerchantController] Manual sync completed:`, result);
+            return result;
+        }
+        catch (error) {
+            console.error('[MerchantController] Error in syncCallLogsManual:', error);
+            console.error('[MerchantController] Error stack:', error?.stack);
+            if (error instanceof common_1.UnauthorizedException) {
+                throw error;
+            }
+            if (error instanceof common_1.HttpException) {
+                throw error;
+            }
+            const errorMessage = error?.message || 'Internal server error';
+            throw new common_1.HttpException({
+                statusCode: common_1.HttpStatus.INTERNAL_SERVER_ERROR,
+                message: errorMessage,
+                error: 'Internal Server Error',
+            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 };
 exports.MerchantController = MerchantController;
@@ -108,6 +141,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], MerchantController.prototype, "syncCallLogs", null);
+__decorate([
+    (0, common_1.Post)('sync-call-logs-manual'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [sync_call_logs_manual_dto_1.SyncCallLogsManualDto, Object]),
+    __metadata("design:returntype", Promise)
+], MerchantController.prototype, "syncCallLogsManual", null);
 exports.MerchantController = MerchantController = __decorate([
     (0, common_1.Controller)('merchants'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

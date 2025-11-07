@@ -22,12 +22,17 @@ let AuthService = class AuthService {
     }
     async validateUser(user) {
         try {
-            const isMangoDomain = user.email.toLowerCase().endsWith('@mangoforsalon.com');
-            if (!isMangoDomain) {
-                console.log(`Unauthorized access attempt from: ${user.email} - Not a Mango domain`);
+            const normalizedEmail = (user.email || '').trim().toLowerCase();
+            if (!normalizedEmail) {
+                console.log(`Unauthorized access attempt: Empty email`);
                 return false;
             }
-            console.log(`Authorized access from: ${user.email} - Mango domain confirmed`);
+            const isMangoDomain = normalizedEmail.endsWith('@mangoforsalon.com');
+            if (!isMangoDomain) {
+                console.log(`Unauthorized access attempt from: ${normalizedEmail} - Not a Mango domain`);
+                return false;
+            }
+            console.log(`Authorized access from: ${normalizedEmail} - Mango domain confirmed`);
             return true;
         }
         catch (error) {
@@ -36,6 +41,8 @@ let AuthService = class AuthService {
         }
     }
     async login(user) {
+        const normalizedEmail = (user.email || '').trim().toLowerCase();
+        user.email = normalizedEmail;
         const isValid = await this.validateUser(user);
         if (!isValid) {
             throw new common_1.UnauthorizedException('Chỉ email có domain @mangoforsalon.com mới được truy cập hệ thống');

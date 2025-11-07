@@ -180,6 +180,19 @@ class ApiService {
   async checkAuth(): Promise<AuthResponse> {
     return this.request<AuthResponse>('/auth/check');
   }
+
+  async getAIInsight(question: string, merchants: any[]) {
+    // Backend will fetch merchant data itself, so we only send the question
+    const response = await this.request<{
+      insight: string;
+    }>('/ai/insight', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        question,
+      }),
+    });
+    return response;
+  }
 }
 
 const apiService = new ApiService();

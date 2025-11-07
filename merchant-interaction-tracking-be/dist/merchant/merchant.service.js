@@ -117,6 +117,9 @@ let MerchantService = class MerchantService {
     async syncCallLogs(userEmail) {
         return await this.googleSheetsService.syncCallLogsToMerchants(userEmail);
     }
+    async syncAllCallLogs(userEmail) {
+        return await this.googleSheetsService.syncAllCallLogsToMerchants(userEmail);
+    }
 };
 exports.MerchantService = MerchantService;
 exports.MerchantService = MerchantService = __decorate([

@@ -1,0 +1,107 @@
+.greeting-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  animation: slideInDown 0.5s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.greeting-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.greeting-icon {
+  font-size: 2rem;
+  animation: wave 2s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(20deg);
+  }
+  75% {
+    transform: rotate(-20deg);
+  }
+}
+
+.greeting-text {
+  flex: 1;
+}
+
+.greeting-main {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: white;
+}
+
+.greeting-main .user-name {
+  color: #ffd700;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.greeting-message {
+  font-size: 0.95rem;
+  opacity: 0.95;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .greeting-banner {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .greeting-icon {
+    font-size: 1.5rem;
+  }
+
+  .greeting-main {
+    font-size: 1.1rem;
+  }
+
+  .greeting-message {
+    font-size: 0.85rem;
+  }
+
+  .greeting-content {
+    gap: 0.75rem;
+  }
+}
+
+/* Light theme variation */
+@media (prefers-color-scheme: light) {
+  .greeting-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+}
+
+/* Dark theme variation */
+@media (prefers-color-scheme: dark) {
+  .greeting-banner {
+    background: linear-gradient(135deg, #4c63d2 0%, #5a3d7a 100%);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+}
+

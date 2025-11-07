@@ -512,9 +512,31 @@ export class GoogleSheetsService {
   // Get the last sheet name from Call Logs spreadsheet
   private async getLastSheetName(spreadsheetId: string): Promise<string> {
     try {
-      const metadata = await this.sheets.spreadsheets.get({
-        spreadsheetId,
-      });
+      // Retry logic for rate limit errors
+      let retryCount = 0;
+      const maxRetries = 3;
+      let metadata;
+      
+      while (retryCount < maxRetries) {
+        try {
+          metadata = await this.sheets.spreadsheets.get({
+            spreadsheetId,
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          const statusCode = error?.response?.status || error?.code;
+          if (statusCode === 429 && retryCount < maxRetries - 1) {
+            // Rate limit exceeded - wait longer and retry
+            const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+            this.warnSync(`[getLastSheetName] Rate limit exceeded, waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retryCount++;
+          } else {
+            throw error;
+          }
+        }
+      }
+      
       const sheets = metadata.data.sheets || [];
       if (sheets.length === 0) {
         throw new Error('No sheets found in Call Logs spreadsheet');
@@ -531,21 +553,61 @@ export class GoogleSheetsService {
   // Get all sheet names from Call Logs spreadsheet (excluding the first sheet)
   private async getAllSheetNames(spreadsheetId: string): Promise<string[]> {
     try {
-      const metadata = await this.sheets.spreadsheets.get({
-        spreadsheetId,
-      });
+      if (!this.sheets) {
+        throw new Error('Google Sheets service not initialized');
+      }
+      
+      // Retry logic for rate limit errors
+      let retryCount = 0;
+      const maxRetries = 3;
+      let metadata;
+      
+      while (retryCount < maxRetries) {
+        try {
+          metadata = await this.sheets.spreadsheets.get({
+            spreadsheetId,
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          const statusCode = error?.response?.status || error?.code;
+          if (statusCode === 429 && retryCount < maxRetries - 1) {
+            // Rate limit exceeded - wait longer and retry
+            const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+            this.warnSync(`[getAllSheetNames] Rate limit exceeded, waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retryCount++;
+          } else {
+            throw error;
+          }
+        }
+      }
+      
+      if (!metadata || !metadata.data) {
+        throw new Error('Invalid response from Google Sheets API');
+      }
+      
       const sheets = metadata.data.sheets || [];
+      if (sheets.length === 0) {
+        this.logSync(`[Call Logs] No sheets found in spreadsheet`);
+        return [];
+      }
+      
       if (sheets.length <= 1) {
         this.logSync(`[Call Logs] Only ${sheets.length} sheet(s) found, skipping first sheet`);
         return [];
       }
+      
       // Get all sheets except the first one (index 0)
-      const sheetNames = sheets.slice(1).map(sheet => sheet.properties.title);
+      const sheetNames = sheets.slice(1)
+        .map(sheet => sheet?.properties?.title)
+        .filter((title): title is string => !!title);
+      
       this.logSync(`[Call Logs] Found ${sheetNames.length} sheets (excluding first): ${sheetNames.join(', ')}`);
       return sheetNames;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Error getting all sheet names:', error);
-      throw error;
+      this.errorSync('Error getting all sheet names', error);
+      throw new Error(`Failed to get sheet names: ${error?.message || 'Unknown error'}`);
     }
   }
 
@@ -562,10 +624,31 @@ export class GoogleSheetsService {
     try {
       this.logSync(`[Call Logs] Đang đọc call logs từ sheet: ${sheetName}`);
       
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${sheetName}!A:M`,
-      });
+      // Retry logic for rate limit errors
+      let retryCount = 0;
+      const maxRetries = 3;
+      let response;
+      
+      while (retryCount < maxRetries) {
+        try {
+          response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `${sheetName}!A:M`,
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          const statusCode = error?.response?.status || error?.code;
+          if (statusCode === 429 && retryCount < maxRetries - 1) {
+            // Rate limit exceeded - wait longer and retry
+            const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+            this.warnSync(`[readCallLogsFromSheet] Rate limit exceeded when reading sheet ${sheetName}, waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retryCount++;
+          } else {
+            throw error;
+          }
+        }
+      }
 
       const rows = response.data.values;
       if (!rows || rows.length <= 1) {
@@ -663,10 +746,32 @@ export class GoogleSheetsService {
       // Không sync từ index lần trước, mà sync tất cả trong sheet mới nhất
       this.logSync(`[Call Logs] Đang đọc tất cả call logs từ sheet mới nhất: ${lastSheetName}`);
       
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${lastSheetName}!A:M`,
-      });
+      // Retry logic for rate limit errors when reading call logs
+      let retryCount = 0;
+      const maxRetries = 3;
+      let response;
+      
+      while (retryCount < maxRetries) {
+        try {
+          response = await this.sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `${lastSheetName}!A:M`,
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          const statusCode = error?.response?.status || error?.code;
+          if (statusCode === 429 && retryCount < maxRetries - 1) {
+            // Rate limit exceeded - wait longer and retry
+            const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+            this.warnSync(`[Call Logs] Rate limit exceeded when reading sheet ${lastSheetName}, waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            retryCount++;
+          } else {
+            // Other error or max retries reached
+            throw error;
+          }
+        }
+      }
 
       const rows = response.data.values;
       if (!rows || rows.length <= 1) {
@@ -999,33 +1104,17 @@ export class GoogleSheetsService {
             this.logSync(`  - merchant.id = ${merchant.id}, actualRowIndex in sheet = ${actualRowIndex}`);
             this.logSync(`  - Found ${logs.length} call logs to process for this merchant`);
           
-          // Read current row including support_logs (column M, index 12)
-          const current = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: appConfig.spreadsheetId,
-            range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
-          });
-          
-          const row = current.data.values?.[0] || [];
-          
-          if (row.length === 0) {
-            this.warnSync(`Row ${actualRowIndex} is empty, skipping...`);
-            continue;
-          }
-          
-          this.logSync(`Row ${actualRowIndex} has ${row.length} columns`);
-          
-          // Parse existing support_logs (column M, index 12)
-          let existingLogs: Array<{ date: string; time: string; issue: string; category?: string; supporter: string }> = [];
-          if (row[12]) {
-            try {
-              existingLogs = JSON.parse(row[12]);
-              this.logSync(`Found ${existingLogs.length} existing support logs for merchant ${merchant.storeId}`);
-            } catch (e) {
-              this.warnSync(`Invalid support_logs JSON at row ${actualRowIndex}: ${row[12]}`);
+            // Use existing supportLogs from merchant object (already loaded from getMerchantsInternal)
+            // This avoids an extra API call per merchant and prevents rate limiting
+            let existingLogs: Array<{ date: string; time: string; issue: string; category?: string; supporter: string }> = [];
+            if (merchant.supportLogs && Array.isArray(merchant.supportLogs)) {
+              existingLogs = merchant.supportLogs;
+              this.logSync(`Found ${existingLogs.length} existing support logs for merchant ${merchant.storeId} (from cache)`);
+            } else {
+              // Fallback: if supportLogs not in cache, use empty array (shouldn't happen normally)
+              this.warnSync(`Merchant ${merchant.storeId} has no supportLogs in cache, using empty array`);
+              existingLogs = [];
             }
-          } else {
-            this.logSync(`No existing support_logs found for merchant ${merchant.storeId}, will create new`);
-          }
 
           // Create map of existing logs by date|time for easy update
           const existingMap = new Map<string, { date: string; time: string; issue: string; category?: string; supporter: string }>();
@@ -1084,20 +1173,21 @@ export class GoogleSheetsService {
           this.logSync(`Preparing to update row ${actualRowIndex} with ${allLogs.length} total support logs (${additions.length} new, ${updatedExisting} updated)`);
           this.logSync(`Support logs JSON length: ${supportLogsJson.length} characters`);
 
-          // Ensure row has all 13 columns (A through M, without lastInteractionDate)
+          // Build valuesArray from merchant data (already available from getMerchantsInternal)
+          // This avoids reading the row again, reducing API calls
           const valuesArray = [
-            row[0] || '', // name (A)
-            row[1] || '', // storeId (B)
-            row[2] || '', // address (C)
-            row[3] || '', // street (D)
-            row[4] || '', // area (E)
-            row[5] || '', // state (F)
-            row[6] || '', // zipcode (G)
-            row[7] || '', // platform (H)
-            row[8] || '', // phone (I)
-            row[9] || '', // lastModifiedAt (J)
-            row[10] || '', // lastModifiedBy (K)
-            row[11] || '[]', // historyLogs (L)
+            merchant.name || '', // name (A)
+            merchant.storeId || '', // storeId (B)
+            merchant.address || '', // address (C)
+            merchant.street || '', // street (D)
+            merchant.area || '', // area (E)
+            merchant.state || '', // state (F)
+            merchant.zipcode || '', // zipcode (G)
+            merchant.platform || '', // platform (H)
+            merchant.phone || '', // phone (I)
+            merchant.lastModifiedAt || new Date().toISOString().slice(0, 10), // lastModifiedAt (J)
+            merchant.lastModifiedBy || userEmail, // lastModifiedBy (K)
+            merchant.historyLogs ? JSON.stringify(merchant.historyLogs) : '[]', // historyLogs (L)
             supportLogsJson, // support_logs (M)
           ];
           
@@ -1109,44 +1199,60 @@ export class GoogleSheetsService {
           // Update the row with new support_logs
           const values = [valuesArray];
 
-          this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:M${actualRowIndex}`);
-          
-          const updateResult = await this.sheets.spreadsheets.values.update({
-            spreadsheetId: appConfig.spreadsheetId,
-            range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
-            valueInputOption: 'RAW',
-            resource: { values },
-          });
+          // Add delay to avoid rate limit (60 requests/minute = max 1 request/second)
+          // But we'll be more conservative: wait 1.5 seconds between updates
+          await new Promise(resolve => setTimeout(resolve, 1500));
 
-          if (updateResult.data) {
-            this.logSync(`Update response: updatedCells=${updateResult.data.updatedCells}, updatedRows=${updateResult.data.updatedRows}, updatedColumns=${updateResult.data.updatedColumns}`);
-          } else {
-            this.warnSync(`Update response is empty, but no error thrown`);
+          // Retry logic for rate limit errors
+          let retryCount = 0;
+          const maxRetries = 3;
+          let updateSuccess = false;
+          
+          while (retryCount < maxRetries && !updateSuccess) {
+            try {
+              this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:M${actualRowIndex} (attempt ${retryCount + 1}/${maxRetries})`);
+              
+              const updateResult = await this.sheets.spreadsheets.values.update({
+                spreadsheetId: appConfig.spreadsheetId,
+                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                valueInputOption: 'RAW',
+                resource: { values },
+              });
+
+              if (updateResult.data) {
+                this.logSync(`Update response: updatedCells=${updateResult.data.updatedCells}, updatedRows=${updateResult.data.updatedRows}, updatedColumns=${updateResult.data.updatedColumns}`);
+              }
+              
+              updateSuccess = true;
+            } catch (updateError: any) {
+              const statusCode = updateError?.response?.status || updateError?.code;
+              if (statusCode === 429 && retryCount < maxRetries - 1) {
+                // Rate limit exceeded - wait longer and retry
+                const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+                this.warnSync(`Rate limit exceeded, waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                retryCount++;
+              } else {
+                throw updateError;
+              }
+            }
           }
 
           updated++;
           totalCallLogsAdded += additions.length; // Track total call logs added
           this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${additions.length} call logs, updated ${updatedExisting} existing, total ${allLogs.length} logs`);
-          
-          // Verify the update by reading back the row
-          const verifyResult = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: appConfig.spreadsheetId,
-            range: `Merchants!M${actualRowIndex}:M${actualRowIndex}`,
-          });
-          const verifyRow = verifyResult.data.values?.[0]?.[0];
-          if (verifyRow) {
-            try {
-              const verifyLogs = JSON.parse(verifyRow);
-              this.logSync(`✅ Verification: Row ${actualRowIndex} column M now contains ${verifyLogs.length} support logs`);
-            } catch (e) {
-              this.warnSync(`⚠️ Verification failed: Column M content is not valid JSON: ${verifyRow}`);
-            }
-          } else {
-            this.warnSync(`⚠️ Verification failed: Column M is empty after update`);
-          }
-        } catch (error) {
+        } catch (error: any) {
           errors++;
-          this.errorSync(`❌ Error updating support_logs for merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
+          const errorMessage = error?.message || JSON.stringify(error);
+          const statusCode = error?.response?.status || error?.code;
+          
+          if (statusCode === 429) {
+            this.errorSync(`❌ Rate limit exceeded when updating merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
+            // Wait longer before processing next merchant to avoid more rate limits
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+          } else {
+            this.errorSync(`❌ Error updating support_logs for merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
+          }
         }
         } // End of for (const merchant of matchedMerchants)
       } // End of for (const [numericId, logs] of logsByMerchant.entries())
@@ -1206,11 +1312,23 @@ export class GoogleSheetsService {
 
         for (const sheetName of sheetNames) {
           try {
+            // Add delay between reading sheets to avoid rate limit
+            // Google Sheets API allows 60 requests/minute, so we'll be conservative
+            if (allCallLogs.length > 0) {
+              await new Promise(resolve => setTimeout(resolve, 1200)); // Wait 1.2 seconds between sheets
+            }
+            
             const callLogs = await this.readCallLogsFromSheet(spreadsheetId, sheetName);
             allCallLogs.push(...callLogs);
             this.logSync(`[Sync All Call Logs] Đã đọc ${callLogs.length} call logs từ sheet ${sheetName}`);
-          } catch (error) {
-            this.errorSync(`[Sync All Call Logs] Lỗi khi đọc sheet ${sheetName}`, error);
+          } catch (error: any) {
+            const statusCode = error?.response?.status || error?.code;
+            if (statusCode === 429) {
+              this.errorSync(`[Sync All Call Logs] Rate limit exceeded when reading sheet ${sheetName}, waiting 10 seconds...`, error);
+              await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds before continuing
+            } else {
+              this.errorSync(`[Sync All Call Logs] Lỗi khi đọc sheet ${sheetName}`, error);
+            }
             // Continue with other sheets even if one fails
           }
         }
@@ -1222,12 +1340,15 @@ export class GoogleSheetsService {
           return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
         }
 
-        // Get all merchants
+        // Get all merchants (already has supportLogs from getMerchantsInternal)
         const merchants = await this.getMerchantsInternal();
         this.logSync(`Total merchants found: ${merchants.length}`);
         
         // Create a map: numericId -> array of merchants
         const merchantMap = new Map<string, Array<typeof merchants[0]>>();
+        // Also create a map by merchant.id for quick lookup
+        const merchantByIdMap = new Map<number, typeof merchants[0]>();
+        
         this.logSync(`[ID Matching] Building merchant map by numeric ID:`);
         merchants.forEach(merchant => {
           if (merchant.storeId) {
@@ -1238,6 +1359,9 @@ export class GoogleSheetsService {
               }
               merchantMap.get(numericId)!.push(merchant);
             }
+          }
+          if (merchant.id) {
+            merchantByIdMap.set(merchant.id, merchant);
           }
         });
         this.logSync(`Total unique numeric IDs in merchant map: ${merchantMap.size}`);
@@ -1288,28 +1412,16 @@ export class GoogleSheetsService {
               this.logSync(`[Sync All Call Logs] Processing merchant: ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`);
               this.logSync(`  - Found ${logs.length} call logs to process for this merchant`);
             
-              // Read current row including support_logs
-              const current = await this.sheets.spreadsheets.values.get({
-                spreadsheetId: appConfig.spreadsheetId,
-                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
-              });
-              
-              const row = current.data.values?.[0] || [];
-              
-              if (row.length === 0) {
-                this.warnSync(`Row ${actualRowIndex} is empty, skipping...`);
-                continue;
-              }
-              
-              // Parse existing support_logs
+              // Use existing supportLogs from merchant object (already loaded from getMerchantsInternal)
+              // This avoids an extra API call per merchant
               let existingLogs: Array<{ date: string; time: string; issue: string; category?: string; supporter: string }> = [];
-              if (row[12]) {
-                try {
-                  existingLogs = JSON.parse(row[12]);
-                  this.logSync(`Found ${existingLogs.length} existing support logs for merchant ${merchant.storeId}`);
-                } catch (e) {
-                  this.warnSync(`Invalid support_logs JSON at row ${actualRowIndex}: ${row[12]}`);
-                }
+              if (merchant.supportLogs && Array.isArray(merchant.supportLogs)) {
+                existingLogs = merchant.supportLogs;
+                this.logSync(`Found ${existingLogs.length} existing support logs for merchant ${merchant.storeId} (from cache)`);
+              } else {
+                // Fallback: if supportLogs not in cache, use empty array (shouldn't happen normally)
+                this.warnSync(`Merchant ${merchant.storeId} has no supportLogs in cache, using empty array`);
+                existingLogs = [];
               }
 
               // Create map of existing logs by date|time
@@ -1354,20 +1466,20 @@ export class GoogleSheetsService {
               const allLogs = [...existingLogs, ...additions];
               const supportLogsJson = JSON.stringify(allLogs);
 
-              // Ensure row has all 13 columns
+              // Build valuesArray from merchant data (already available from getMerchantsInternal)
               const valuesArray = [
-                row[0] || '', // name (A)
-                row[1] || '', // storeId (B)
-                row[2] || '', // address (C)
-                row[3] || '', // street (D)
-                row[4] || '', // area (E)
-                row[5] || '', // state (F)
-                row[6] || '', // zipcode (G)
-                row[7] || '', // platform (H)
-                row[8] || '', // phone (I)
-                row[9] || '', // lastModifiedAt (J)
-                row[10] || '', // lastModifiedBy (K)
-                row[11] || '[]', // historyLogs (L)
+                merchant.name || '', // name (A)
+                merchant.storeId || '', // storeId (B)
+                merchant.address || '', // address (C)
+                merchant.street || '', // street (D)
+                merchant.area || '', // area (E)
+                merchant.state || '', // state (F)
+                merchant.zipcode || '', // zipcode (G)
+                merchant.platform || '', // platform (H)
+                merchant.phone || '', // phone (I)
+                merchant.lastModifiedAt || new Date().toISOString().slice(0, 10), // lastModifiedAt (J)
+                merchant.lastModifiedBy || userEmail, // lastModifiedBy (K)
+                merchant.historyLogs ? JSON.stringify(merchant.historyLogs) : '[]', // historyLogs (L)
                 supportLogsJson, // support_logs (M)
               ];
               
@@ -1378,19 +1490,53 @@ export class GoogleSheetsService {
               // Update the row with new support_logs
               const values = [valuesArray];
 
-              await this.sheets.spreadsheets.values.update({
-                spreadsheetId: appConfig.spreadsheetId,
-                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
-                valueInputOption: 'RAW',
-                resource: { values },
-              });
+              // Add delay to avoid rate limit (60 requests/minute = max 1 request/second)
+              // But we'll be more conservative: wait 1.5 seconds between updates
+              await new Promise(resolve => setTimeout(resolve, 1500));
+
+              // Retry logic for rate limit errors
+              let retryCount = 0;
+              const maxRetries = 3;
+              let updateSuccess = false;
+              
+              while (retryCount < maxRetries && !updateSuccess) {
+                try {
+                  await this.sheets.spreadsheets.values.update({
+                    spreadsheetId: appConfig.spreadsheetId,
+                    range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                    valueInputOption: 'RAW',
+                    resource: { values },
+                  });
+                  updateSuccess = true;
+                } catch (updateError: any) {
+                  const statusCode = updateError?.response?.status || updateError?.code;
+                  if (statusCode === 429 && retryCount < maxRetries - 1) {
+                    // Rate limit exceeded - wait longer and retry
+                    const waitTime = Math.pow(2, retryCount) * 2000; // Exponential backoff: 2s, 4s, 8s
+                    this.warnSync(`Rate limit exceeded, waiting ${waitTime}ms before retry ${retryCount + 1}/${maxRetries}`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    retryCount++;
+                  } else {
+                    throw updateError;
+                  }
+                }
+              }
 
               updated++;
               totalCallLogsAdded += additions.length;
               this.logSync(`✅ Successfully updated support_logs for merchant ${merchant.storeId} (row ${actualRowIndex}): added ${additions.length} call logs, updated ${updatedExisting} existing, total ${allLogs.length} logs`);
-            } catch (error) {
+            } catch (error: any) {
               errors++;
-              this.errorSync(`❌ Error updating support_logs for merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
+              const errorMessage = error?.message || JSON.stringify(error);
+              const statusCode = error?.response?.status || error?.code;
+              
+              if (statusCode === 429) {
+                this.errorSync(`❌ Rate limit exceeded when updating merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
+                // Wait longer before processing next merchant to avoid more rate limits
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+              } else {
+                this.errorSync(`❌ Error updating support_logs for merchant ${merchant.name} (Store ID: ${merchant.storeId}, Numeric ID: ${numericId})`, error);
+              }
             }
           }
         }
@@ -1411,10 +1557,13 @@ export class GoogleSheetsService {
         this.writeToLogFile(`Final Results: Matched=${matched}, Updated=${updated}, Errors=${errors}, TotalCallLogsAdded=${totalCallLogsAdded}\n`);
         
         return { matched, updated, errors, totalCallLogsAdded };
-      } catch (error) {
+      } catch (error: any) {
+        const errorMessage = error?.message || JSON.stringify(error) || 'Unknown error';
         this.errorSync('Error syncing all call logs to merchants', error);
         this.writeToLogFile(`\n=== Sync All Call Logs Failed at ${new Date().toISOString()} ===\n`);
-        throw error;
+        this.writeToLogFile(`Error: ${errorMessage}\n`);
+        this.logger.error('[syncAllCallLogsToMerchants] Full error:', error);
+        throw new Error(`Sync all call logs failed: ${errorMessage}`);
       }
     }, 'syncAllCallLogsToMerchants');
   }

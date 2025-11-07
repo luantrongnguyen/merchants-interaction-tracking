@@ -19,4 +19,10 @@ export declare class MerchantService {
         updated: number;
         errors: number;
     }>;
+    syncAllCallLogs(userEmail: string): Promise<{
+        matched: number;
+        updated: number;
+        errors: number;
+        totalCallLogsAdded: number;
+    }>;
 }

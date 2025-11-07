@@ -15,6 +15,7 @@ const merchant_module_1 = require("./merchant/merchant.module");
 const google_sheets_module_1 = require("./google-sheets/google-sheets.module");
 const auth_module_1 = require("./auth/auth.module");
 const ims_proxy_module_1 = require("./ims-proxy/ims-proxy.module");
+const ai_module_1 = require("./ai/ai.module");
 const schedule_1 = require("@nestjs/schedule");
 const scheduler_service_1 = require("./scheduler/scheduler.service");
 let AppModule = class AppModule {
@@ -25,12 +26,15 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
+                envFilePath: '.env',
+                expandVariables: true,
             }),
             google_sheets_module_1.GoogleSheetsModule,
             schedule_1.ScheduleModule.forRoot(),
             auth_module_1.AuthModule,
             merchant_module_1.MerchantModule,
             ims_proxy_module_1.ImsProxyModule,
+            ai_module_1.AIModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService, scheduler_service_1.SchedulerService],

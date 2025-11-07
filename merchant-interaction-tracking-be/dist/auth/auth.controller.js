@@ -23,13 +23,19 @@ let AuthController = class AuthController {
     }
     async login(loginDto) {
         try {
+            if (loginDto.user && loginDto.user.email) {
+                loginDto.user.email = loginDto.user.email.trim().toLowerCase();
+            }
+            console.log(`Login attempt from: ${loginDto.user?.email || 'unknown'}`);
             const result = await this.authService.login(loginDto.user);
+            console.log(`Login successful for: ${loginDto.user?.email || 'unknown'}`);
             return {
                 success: true,
                 ...result
             };
         }
         catch (error) {
+            console.error(`Login failed for: ${loginDto.user?.email || 'unknown'}`, error.message);
             return {
                 success: false,
                 message: error.message || 'Đăng nhập thất bại'

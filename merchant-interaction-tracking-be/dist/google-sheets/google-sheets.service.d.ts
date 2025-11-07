@@ -3,7 +3,12 @@ export declare class GoogleSheetsService {
     private sheets;
     private auth;
     private logFilePath;
-    private operationLock;
+    private readLock;
+    private writeLock;
+    private activeReads;
+    private isWriting;
+    private lastSyncSheetName;
+    private lastSyncRowIndex;
     constructor();
     private initializeLogFile;
     private writeToLogFile;
@@ -12,7 +17,8 @@ export declare class GoogleSheetsService {
     private errorSync;
     private initializeAuth;
     private getMockMerchants;
-    private withLock;
+    private withReadLock;
+    private withWriteLock;
     getMerchants(): Promise<any[]>;
     private getMerchantsInternal;
     addMerchant(merchant: any, meta: {
@@ -27,7 +33,9 @@ export declare class GoogleSheetsService {
     getMerchantStoreIds(): Promise<Set<string>>;
     private extractNumericId;
     private getLastSheetName;
-    readCallLogs(): Promise<Array<{
+    private getAllSheetNames;
+    private readCallLogsFromSheet;
+    readCallLogs(startFromIndex?: number): Promise<Array<{
         id: string;
         numericId: string;
         date: string;
@@ -37,6 +45,12 @@ export declare class GoogleSheetsService {
         supporter: string;
     }>>;
     syncCallLogsToMerchants(userEmail: string): Promise<{
+        matched: number;
+        updated: number;
+        errors: number;
+        totalCallLogsAdded: number;
+    }>;
+    syncAllCallLogsToMerchants(userEmail: string): Promise<{
         matched: number;
         updated: number;
         errors: number;

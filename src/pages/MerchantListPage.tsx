@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MerchantList from '../components/MerchantList';
 import SearchFilter from '../components/SearchFilter';
 import StatsPanel from '../components/StatsPanel';
+import GreetingBanner from '../components/GreetingBanner';
+import ChatBox from '../components/ChatBox';
 import { MerchantWithStatus } from '../types/merchant';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MerchantListPageProps {
   merchants: MerchantWithStatus[];
@@ -25,6 +28,9 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { user } = useAuth();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
   return (
     <>
       {error && (
@@ -42,6 +48,7 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
         </div>
         
         <div className="main-content">
+          <GreetingBanner userName={user?.name || user?.email} />
           <SearchFilter
             onSearch={onSearch}
             onFilter={onFilter}
@@ -55,6 +62,23 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
           />
         </div>
       </div>
+
+      {!isChatOpen && (
+        <button 
+          className="chatbox-toggle-btn" 
+          onClick={() => setIsChatOpen(true)}
+          aria-label="Open AI chat"
+          title="Ask AI about your data"
+        >
+          🤖
+        </button>
+      )}
+
+      <ChatBox 
+        merchants={merchants} 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
     </>
   );
 };
