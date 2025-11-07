@@ -6,7 +6,6 @@ import apiService from './services/apiService';
 import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
 import Header from './components/Header';
-import HeaderProgressBar from './components/HeaderProgressBar';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
@@ -341,28 +340,14 @@ function App() {
 
   return (
     <div className="app-container">
-      <Header onSyncCallLogsManual={handleSyncCallLogsManual} />
-      
-      {(isSyncingManual || syncResults) && (
-        <HeaderProgressBar
-          isUpdating={isSyncingManual}
-          progress={syncProgress}
-          currentMerchant={syncStatus || 'Đang sync call logs từ tất cả sheets...'}
-          currentIndex={0}
-          totalMerchants={0}
-          shouldStop={false}
-          updateResults={syncResults ? [{
-            merchant: 'Sync Call Logs Manual',
-            storeId: '',
-            success: syncResults.errors === 0,
-            message: `Matched: ${syncResults.matched}, Updated: ${syncResults.updated}, Errors: ${syncResults.errors}`,
-            updated: syncResults.updated > 0,
-            callLogsAdded: syncResults.totalCallLogsAdded,
-          }] : []}
-          onStop={() => {}}
-          onClose={handleCloseSyncResults}
-        />
-      )}
+      <Header 
+        onSyncCallLogsManual={handleSyncCallLogsManual}
+        isSyncingManual={isSyncingManual}
+        syncProgress={syncProgress}
+        syncStatus={syncStatus}
+        syncResults={syncResults}
+        onCloseSyncResults={handleCloseSyncResults}
+      />
 
       <ProtectedRoute>
         <Layout>

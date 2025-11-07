@@ -1,12 +1,31 @@
 import React from 'react';
 import GoogleAuth from './GoogleAuth';
+import HeaderProgressBar from './HeaderProgressBar';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   onSyncCallLogsManual?: () => void;
+  // Progress bar props
+  isSyncingManual?: boolean;
+  syncProgress?: number;
+  syncStatus?: string;
+  syncResults?: {
+    matched: number;
+    updated: number;
+    errors: number;
+    totalCallLogsAdded: number;
+  } | null;
+  onCloseSyncResults?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSyncCallLogsManual }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  onSyncCallLogsManual,
+  isSyncingManual = false,
+  syncProgress = 0,
+  syncStatus = '',
+  syncResults = null,
+  onCloseSyncResults,
+}) => {
   const { user, isAuthenticated, login, logout } = useAuth();
 
   return (
@@ -52,6 +71,26 @@ const Header: React.FC<HeaderProps> = ({ onSyncCallLogsManual }) => {
           )}
         </div>
       </div>
+      {(isSyncingManual || syncResults) && (
+        <HeaderProgressBar
+          isUpdating={isSyncingManual}
+          progress={syncProgress}
+          currentMerchant={syncStatus || 'Đang sync call logs từ tất cả sheets...'}
+          currentIndex={0}
+          totalMerchants={0}
+          shouldStop={false}
+          updateResults={syncResults ? [{
+            merchant: 'Sync Call Logs Manual',
+            storeId: '',
+            success: syncResults.errors === 0,
+            message: `Matched: ${syncResults.matched}, Updated: ${syncResults.updated}, Errors: ${syncResults.errors}`,
+            updated: syncResults.updated > 0,
+            callLogsAdded: syncResults.totalCallLogsAdded,
+          }] : []}
+          onStop={() => {}}
+          onClose={onCloseSyncResults || (() => {})}
+        />
+      )}
     </header>
   );
 };

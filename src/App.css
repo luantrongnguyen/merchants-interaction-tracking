@@ -20,7 +20,7 @@ body {
 .app-header {
   background: white;
   border-bottom: 1px solid #e5e7eb;
-  padding: 1rem 0;
+  padding: 1rem 0 0 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: fixed;
   top: 0;
@@ -32,7 +32,7 @@ body {
 .header-content {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -88,7 +88,7 @@ body {
 .app-layout {
   display: flex;
   height: calc(100vh - 80px); /* Subtract header height */
-  margin-top: 80px; /* Header height */
+  margin-top: 80px; /* Header height - will adjust if progress bar is shown */
   overflow: hidden;
 }
 
