@@ -555,8 +555,19 @@ export class GoogleSheetsService {
         this.lastSyncRowIndex = 1; // Start from row 2 (after header)
       }
       
-      // Use provided startFromIndex or use lastSyncRowIndex
-      let startIndex = startFromIndex !== undefined ? startFromIndex : this.lastSyncRowIndex;
+      // Use provided startFromIndex or calculate from lastSyncRowIndex
+      // If lastSyncRowIndex >= 5, start from lastSyncRowIndex - 5 to re-read last 5 rows
+      // This ensures we don't miss any data that might have been inserted
+      let startIndex: number;
+      if (startFromIndex !== undefined) {
+        startIndex = startFromIndex;
+      } else if (this.lastSyncRowIndex >= 5) {
+        startIndex = this.lastSyncRowIndex - 5;
+        this.logSync(`[Call Logs] Starting from index ${startIndex} (lastSyncRowIndex=${this.lastSyncRowIndex} - 5) to re-read last 5 rows`);
+      } else {
+        startIndex = 1; // Start from beginning if lastSyncRowIndex < 5
+        this.logSync(`[Call Logs] Starting from beginning (lastSyncRowIndex=${this.lastSyncRowIndex} < 5)`);
+      }
       
       // First, get total row count to check if we need to reset
       const totalRowsResponse = await this.sheets.spreadsheets.values.get({
