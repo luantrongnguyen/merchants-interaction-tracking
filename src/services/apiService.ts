@@ -181,14 +181,15 @@ class ApiService {
     return this.request<AuthResponse>('/auth/check');
   }
 
-  async getAIInsight(question: string, merchants: any[]) {
-    // Backend will fetch merchant data itself, so we only send the question
+  async getAIInsight(question: string, merchants: any[], conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>) {
+    // Backend will fetch merchant data itself, so we only send the question and conversation history
     const response = await this.request<{
       insight: string;
     }>('/ai/insight', {
       method: 'POST',
       body: JSON.stringify({ 
         question,
+        conversationHistory: conversationHistory || [],
       }),
     });
     return response;

@@ -21,7 +21,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m your AI assistant. I can help you analyze merchant data and provide insights. Ask me anything about your merchants, interactions, trends, or statistics!',
+      content: 'Hello! I\'m your Merchants AI Assistance. I can help you analyze merchant data and provide insights. Ask me anything about your merchants, interactions, trends, or statistics!',
       timestamp: new Date(),
     },
   ]);
@@ -55,11 +55,20 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input.trim();
     setInput('');
     setIsLoading(true);
 
     try {
-      const response = await apiService.getAIInsight(input.trim(), merchants);
+      // Build conversation history (exclude the initial greeting message and current message)
+      const conversationHistory = messages
+        .filter(msg => msg.id !== '1') // Exclude initial greeting
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
+      const response = await apiService.getAIInsight(currentInput, merchants, conversationHistory);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -109,7 +118,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      const response = await apiService.getAIInsight(question, merchants);
+      // Build conversation history (exclude the initial greeting message and current message)
+      const conversationHistory = messages
+        .filter(msg => msg.id !== '1') // Exclude initial greeting
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
+      const response = await apiService.getAIInsight(question, merchants, conversationHistory);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -142,7 +159,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
               <span role="img" aria-label="AI">🤖</span>
             </div>
             <div className="chatbox-title">
-              <h3>AI Assistant</h3>
+              <h3>Merchants AI Assistance</h3>
               <p>Ask me about your merchant data</p>
             </div>
           </div>

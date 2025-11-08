@@ -24,7 +24,10 @@ export class AIController {
   @Post('insight')
   async getInsight(@Body() dto: AIInsightDto, @Req() req: any) {
     // Backend will fetch merchant data itself, so we don't need merchantData from frontend
-    const insight = await this.aiService.generateInsight(dto.question);
+    const insight = await this.aiService.generateInsight(
+      dto.question,
+      dto.conversationHistory || []
+    );
     
     return {
       insight,

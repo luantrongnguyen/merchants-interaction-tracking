@@ -50,7 +50,7 @@ export class AIService {
     }
   }
 
-  async generateInsight(question: string): Promise<string> {
+  async generateInsight(question: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []): Promise<string> {
     try {
       // Get merchant data from backend (don't rely on frontend data)
       const merchants = await this.merchantService.findAll();
@@ -100,7 +100,7 @@ export class AIService {
           const openaiKey = this.configService.get<string>('OPENAI_API_KEY') || appConfig.openaiApiKey;
           if (openaiKey) {
             this.logger.log('[AI Service] Using OpenAI');
-            return await this.generateInsightWithOpenAI(question, analysis, merchantData);
+            return await this.generateInsightWithOpenAI(question, analysis, merchantData, conversationHistory);
           }
           this.logger.warn('[AI Service] OpenAI provider selected but API key is missing');
           break;
@@ -108,26 +108,26 @@ export class AIService {
           const claudeKey = this.configService.get<string>('ANTHROPIC_API_KEY') || appConfig.anthropicApiKey;
           if (claudeKey) {
             this.logger.log('[AI Service] Using Claude');
-            return await this.generateInsightWithClaude(question, analysis, merchantData);
+            return await this.generateInsightWithClaude(question, analysis, merchantData, conversationHistory);
           }
           this.logger.warn('[AI Service] Claude provider selected but API key is missing');
           break;
         case 'gemini':
           if (this.googleApiKey) {
             this.logger.log('[AI Service] Using Google Gemini');
-            return await this.generateInsightWithGemini(question, analysis, merchantData);
+            return await this.generateInsightWithGemini(question, analysis, merchantData, conversationHistory);
           }
           this.logger.warn('[AI Service] Gemini provider selected but API key is missing');
           break;
         default:
           // Use rule-based analysis by default
           this.logger.log(`[AI Service] Using rule-based analysis (provider: ${this.aiProvider})`);
-          return this.generateInsightFromAnalysis(question, analysis, merchantData);
+          return this.generateInsightFromAnalysis(question, analysis, merchantData, conversationHistory);
       }
       
       // Fallback to rule-based if AI provider is configured but API key is missing
       this.logger.warn(`[AI Service] AI provider '${this.aiProvider}' is configured but API key is missing. Using rule-based analysis.`);
-      return this.generateInsightFromAnalysis(question, analysis, merchantData);
+      return this.generateInsightFromAnalysis(question, analysis, merchantData, conversationHistory);
     } catch (error) {
       this.logger.error('Error generating AI insight:', error);
       return 'I apologize, but I encountered an error while analyzing the data. Please try again or rephrase your question.';
@@ -137,9 +137,17 @@ export class AIService {
   private async generateInsightWithOpenAI(
     question: string,
     analysis: any,
-    merchants: MerchantData[]
+    merchants: MerchantData[],
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<string> {
     try {
+      // Get OpenAI API key
+      const openaiKey = this.configService.get<string>('OPENAI_API_KEY') || appConfig.openaiApiKey;
+      if (!openaiKey) {
+        this.logger.error('[OpenAI] API key not found');
+        throw new Error('OpenAI API key is not configured');
+      }
+
       // Check if question is about a specific merchant
       const specificMerchant = this.findSpecificMerchant(question, merchants);
       
@@ -161,61 +169,141 @@ export class AIService {
         // Include detailed interaction data for specific merchant
         const interactions = specificMerchant.supportLogs || [];
         const interactionsText = interactions.length > 0
-          ? interactions.map((log: any, idx: number) => 
-              `${idx + 1}. ${log.date} ${log.time || ''} - ${log.issue}${log.category ? ` (${log.category})` : ''}${log.supporter ? ` - Supporter: ${log.supporter}` : ''}`
-            ).join('\n')
-          : 'No interactions found.';
+          ? interactions.map((log: any, idx: number) => {
+              const logDate = log.date || 'Unknown date';
+              const logTime = log.time || '';
+              const logIssue = log.issue || 'No issue description';
+              const logSupporter = log.supporter || 'Unknown supporter';
+              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
+            }).join('\n\n')
+          : 'No call logs/interactions found for this merchant.';
         
-        prompt = `Answer about merchant: ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}
+        // Add conversation history context
+        let conversationContext = '';
+        if (conversationHistory && conversationHistory.length > 0) {
+          const recentHistory = conversationHistory.slice(-5);
+          conversationContext = '\n\n**Previous Conversation Context:**\n';
+          recentHistory.forEach((msg) => {
+            conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+          });
+          conversationContext += '\n**Instructions:** Remember the conversation context when answering.';
+        }
 
-Merchant Details:
-- Status: ${specificMerchant.status || 'unknown'}
-- Last Interaction: ${specificMerchant.lastInteractionDate || 'N/A'}
-- Total Interactions: ${interactions.length}
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant call logs data. Answer the following question about a specific merchant.${conversationContext}
 
-Interaction Details:
+**Merchant Information:**
+- **Name:** ${specificMerchant.name}${specificMerchant.storeId ? `\n- **Store ID:** ${specificMerchant.storeId}` : ''}
+- **Status:** ${specificMerchant.status || 'unknown'}
+- **Last Interaction Date:** ${specificMerchant.lastInteractionDate || 'N/A'}
+- **Total Call Logs:** ${interactions.length}
+
+**Call Logs Details:**
 ${interactionsText}
 
-Question: ${question}
+**User Question:** ${question}
 
-Provide detailed answer about this merchant's interactions. Use markdown formatting.`;
+**Instructions:**
+- Provide a detailed, informative answer based on the call logs data above
+- Reference specific call logs with dates, issues, and supporters when relevant
+- Remember and reference previous conversation context when relevant
+- Use markdown formatting for better readability
+- If the question is about call logs patterns, trends, or specific issues, analyze the call logs data provided
+- Be specific and cite the actual call log entries when answering`;
       } else {
+        // Check if question is about call logs
+        const lowerQuestion = question.toLowerCase();
+        const isAboutCallLogs = lowerQuestion.includes('call log') || lowerQuestion.includes('call log') || 
+                                lowerQuestion.includes('interaction detail') || lowerQuestion.includes('support log');
+        
+        let callLogsDetails = '';
+        if (isAboutCallLogs && merchants.length > 0) {
+          // Include sample call logs from top merchants with most interactions
+          const topMerchantsWithLogs = merchants
+            .filter(m => m.supportLogs && m.supportLogs.length > 0)
+            .sort((a, b) => (b.supportLogs?.length || 0) - (a.supportLogs?.length || 0))
+            .slice(0, 5);
+          
+          if (topMerchantsWithLogs.length > 0) {
+            callLogsDetails = '\n\n**Sample Call Logs from Top Merchants:**\n\n';
+            topMerchantsWithLogs.forEach((merchant, idx) => {
+              const logs = merchant.supportLogs || [];
+              callLogsDetails += `${idx + 1}. **${merchant.name}**${merchant.storeId ? ` (${merchant.storeId})` : ''} - ${logs.length} call logs:\n`;
+              // Show last 3 call logs for each merchant
+              logs.slice(-3).forEach((log: any, logIdx: number) => {
+                callLogsDetails += `   - ${log.date || 'Unknown'} ${log.time || ''}: ${log.issue || 'No issue'}${log.supporter ? ` (${log.supporter})` : ''}\n`;
+              });
+              callLogsDetails += '\n';
+            });
+          }
+        }
+
+        // Add conversation history context to prompt
+        let conversationContext = '';
+        if (conversationHistory && conversationHistory.length > 0) {
+          const recentHistory = conversationHistory.slice(-5); // Last 5 messages for context
+          conversationContext = '\n\n**Previous Conversation Context:**\n';
+          recentHistory.forEach((msg, idx) => {
+            conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+          });
+          conversationContext += '\n**Instructions:** Remember the conversation context above when answering the current question.';
+        }
+
         // General analysis with summary data
-        prompt = `You are an AI assistant helping analyze merchant interaction data. 
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant interaction and call logs data. Answer the following question.${conversationContext}
 
-Data Summary:
+**Summary Statistics:**
 - Total Merchants: ${summary.totalMerchants}
-- Total Interactions: ${summary.totalInteractions}
-- Status Distribution: Green: ${summary.statusDistribution.green}, Orange: ${summary.statusDistribution.orange}, Red: ${summary.statusDistribution.red}
+- Total Call Logs/Interactions: ${summary.totalInteractions}
+- Status Distribution: 🟢 Green: ${summary.statusDistribution.green}, 🟠 Orange: ${summary.statusDistribution.orange}, 🔴 Red: ${summary.statusDistribution.red}
 - Terminal Issues: ${summary.terminalIssues}
-- Recent Interactions (7 days): ${summary.recentInteractions}
-- Top Categories: ${summary.topCategories.map(([cat, count]: [string, number]) => `${cat} (${count})`).join(', ')}
-- Top Merchants by Interactions: ${summary.topMerchants.map((m: any) => `${m.name} (${m.interactions})`).join(', ')}
+- Recent Activity (Last 7 Days): ${summary.recentInteractions} interactions
+- Top Issue Categories: ${summary.topCategories.map(([cat, count]: [string, number]) => `${cat} (${count})`).join(', ')}
+- Top Merchants by Interactions: ${summary.topMerchants.map((m: any) => `${m.name} (${m.interactions} logs)`).join(', ')}${callLogsDetails}
 
-User Question: ${question}
+**User Question:** ${question}
 
-Please provide a helpful, insightful analysis based on this data. Be concise but informative. Use markdown formatting for better readability.`;
+**Instructions:**
+- Provide a helpful, insightful analysis based on the data above
+- If the question is about call logs, reference the sample call logs provided
+- Remember and reference previous conversation context when relevant
+- Use markdown formatting for better readability
+- Be concise but informative
+- Focus on key insights and patterns`;
       }
+
+      // Build messages array with conversation history
+      const messages: Array<{ role: string; content: string }> = [
+        {
+          role: 'system',
+          content: 'You are Merchants AI Assistance, a helpful AI assistant that analyzes merchant interaction data and provides insights. Remember the conversation context and provide coherent, context-aware responses.',
+        },
+      ];
+
+      // Add conversation history (limit to last 10 messages to avoid token limits)
+      const recentHistory = conversationHistory.slice(-10);
+      recentHistory.forEach(msg => {
+        messages.push({
+          role: msg.role,
+          content: msg.content,
+        });
+      });
+
+      // Add current question with context
+      messages.push({
+        role: 'user',
+        content: prompt,
+      });
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${appConfig.openaiApiKey}`,
+          'Authorization': `Bearer ${openaiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful AI assistant that analyzes merchant interaction data and provides insights.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 500,
+          model: 'gpt-4o-mini', // Using gpt-4o-mini for better performance and lower cost
+          messages: messages,
+          max_tokens: 4000, // Increased for longer, more detailed responses
           temperature: 0.7,
         }),
       });
@@ -224,22 +312,23 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
         const errorData = await response.json().catch(() => ({}));
         this.logger.error('OpenAI API error:', errorData);
         // Fallback to rule-based analysis
-        return this.generateInsightFromAnalysis(question, analysis, merchants);
+        return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || this.generateInsightFromAnalysis(question, analysis, merchants);
+      return data.choices[0]?.message?.content || this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     } catch (error) {
       this.logger.error('Error calling OpenAI API:', error);
       // Fallback to rule-based analysis
-      return this.generateInsightFromAnalysis(question, analysis, merchants);
+      return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     }
   }
 
   private async generateInsightWithClaude(
     question: string,
     analysis: any,
-    merchants: MerchantData[]
+    merchants: MerchantData[],
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<string> {
     try {
       // Check if question is about a specific merchant
@@ -268,7 +357,18 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
             ).join('\n')
           : 'No interactions found.';
         
-        prompt = `Answer about merchant: ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}
+        // Add conversation history context
+        let conversationContext = '';
+        if (conversationHistory && conversationHistory.length > 0) {
+          const recentHistory = conversationHistory.slice(-5);
+          conversationContext = '\n\n**Previous Conversation Context:**\n';
+          recentHistory.forEach((msg) => {
+            conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+          });
+          conversationContext += '\n**Instructions:** Remember the conversation context when answering.';
+        }
+
+        prompt = `Answer about merchant: ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}${conversationContext}
 
 Merchant Details:
 - Status: ${specificMerchant.status || 'unknown'}
@@ -280,10 +380,10 @@ ${interactionsText}
 
 Question: ${question}
 
-Provide detailed answer about this merchant's interactions. Use markdown formatting.`;
+Provide detailed answer about this merchant's interactions. Use markdown formatting. Remember the conversation context if provided.`;
       } else {
         // General analysis with summary data
-        prompt = `You are an AI assistant helping analyze merchant interaction data. 
+        prompt = `You are Merchants AI Assistance, an AI assistant helping analyze merchant interaction data. 
 
 Data Summary:
 - Total Merchants: ${summary.totalMerchants}
@@ -299,6 +399,24 @@ User Question: ${question}
 Please provide a helpful, insightful analysis based on this data. Be concise but informative. Use markdown formatting for better readability.`;
       }
 
+      // Build messages array with conversation history for Claude
+      const messages: Array<{ role: string; content: string }> = [];
+      
+      // Add conversation history (limit to last 10 messages to avoid token limits)
+      const recentHistory = conversationHistory.slice(-10);
+      recentHistory.forEach(msg => {
+        messages.push({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content,
+        });
+      });
+
+      // Add current question with context
+      messages.push({
+        role: 'user',
+        content: prompt,
+      });
+
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -309,12 +427,8 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
         body: JSON.stringify({
           model: 'claude-3-5-sonnet-20241022',
           max_tokens: 1024,
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
+          system: 'You are a helpful AI assistant that analyzes merchant interaction data and provides insights. Remember the conversation context and provide coherent, context-aware responses.',
+          messages: messages,
         }),
       });
 
@@ -322,22 +436,23 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
         const errorData = await response.json().catch(() => ({}));
         this.logger.error('Anthropic Claude API error:', errorData);
         // Fallback to rule-based analysis
-        return this.generateInsightFromAnalysis(question, analysis, merchants);
+        return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
       }
 
       const data = await response.json();
-      return data.content[0]?.text || this.generateInsightFromAnalysis(question, analysis, merchants);
+      return data.content[0]?.text || this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     } catch (error) {
       this.logger.error('Error calling Anthropic Claude API:', error);
       // Fallback to rule-based analysis
-      return this.generateInsightFromAnalysis(question, analysis, merchants);
+      return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     }
   }
 
   private async generateInsightWithGemini(
     question: string,
     analysis: any,
-    merchants: MerchantData[]
+    merchants: MerchantData[],
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): Promise<string> {
     try {
       // Check if question is about a specific merchant
@@ -371,7 +486,18 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
             }).join('\n\n')
           : 'No call logs/interactions found for this merchant.';
         
-        prompt = `You are an AI assistant analyzing merchant call logs data. Answer the following question about a specific merchant.
+        // Add conversation history context
+        let conversationContext = '';
+        if (conversationHistory && conversationHistory.length > 0) {
+          const recentHistory = conversationHistory.slice(-5);
+          conversationContext = '\n\n**Previous Conversation Context:**\n';
+          recentHistory.forEach((msg) => {
+            conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+          });
+          conversationContext += '\n**Instructions:** Remember the conversation context when answering.';
+        }
+
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant call logs data. Answer the following question about a specific merchant.${conversationContext}
 
 **Merchant Information:**
 - **Name:** ${specificMerchant.name}${specificMerchant.storeId ? `\n- **Store ID:** ${specificMerchant.storeId}` : ''}
@@ -387,6 +513,7 @@ ${interactionsText}
 **Instructions:**
 - Provide a detailed, informative answer based on the call logs data above
 - Reference specific call logs with dates, issues, and supporters when relevant
+- Remember and reference previous conversation context when relevant
 - Use markdown formatting for better readability
 - If the question is about call logs patterns, trends, or specific issues, analyze the call logs data provided
 - Be specific and cite the actual call log entries when answering`;
@@ -417,8 +544,19 @@ ${interactionsText}
           }
         }
         
+        // Add conversation history context to prompt
+        let conversationContext = '';
+        if (conversationHistory && conversationHistory.length > 0) {
+          const recentHistory = conversationHistory.slice(-5); // Last 5 messages for context
+          conversationContext = '\n\n**Previous Conversation Context:**\n';
+          recentHistory.forEach((msg, idx) => {
+            conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+          });
+          conversationContext += '\n**Instructions:** Remember the conversation context above when answering the current question.';
+        }
+
         // General analysis with summary data
-        prompt = `You are an AI assistant analyzing merchant interaction and call logs data. Answer the following question.
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant interaction and call logs data. Answer the following question.${conversationContext}
 
 **Summary Statistics:**
 - Total Merchants: ${summary.totalMerchants}
@@ -434,6 +572,7 @@ ${interactionsText}
 **Instructions:**
 - Provide a helpful, insightful analysis based on the data above
 - If the question is about call logs, reference the sample call logs provided
+- Remember and reference previous conversation context when relevant
 - Use markdown formatting for better readability
 - Be concise but informative
 - Focus on key insights and patterns`;
@@ -514,7 +653,7 @@ ${interactionsText}
         this.logger.error(`[Gemini] ❌ All models failed. Last error:`, lastError);
         this.logger.error(`[Gemini] Please check your API key and available models at: https://ai.google.dev/models`);
         // Fallback to rule-based analysis
-        return this.generateInsightFromAnalysis(question, analysis, merchants);
+        return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
       }
 
       const data = await response.json();
@@ -550,11 +689,11 @@ ${interactionsText}
       // If response structure is unexpected, fallback
       this.logger.warn('[Gemini] Unexpected response structure, falling back to rule-based analysis');
       this.logger.warn('[Gemini] Full response:', JSON.stringify(data, null, 2));
-      return this.generateInsightFromAnalysis(question, analysis, merchants);
+      return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     } catch (error) {
       this.logger.error('Error calling Google Gemini API:', error);
       // Fallback to rule-based analysis
-      return this.generateInsightFromAnalysis(question, analysis, merchants);
+      return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     }
   }
 
@@ -724,15 +863,36 @@ ${interactionsText}
   private generateInsightFromAnalysis(
     question: string,
     analysis: any,
-    merchants: MerchantData[]
+    merchants: MerchantData[],
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
   ): string {
     const lowerQuestion = question.toLowerCase();
+    
+    // Check if question references previous conversation
+    const hasContextReference = conversationHistory.length > 0 && (
+      lowerQuestion.includes('that') || 
+      lowerQuestion.includes('those') || 
+      lowerQuestion.includes('previous') ||
+      lowerQuestion.includes('earlier') ||
+      lowerQuestion.includes('before') ||
+      lowerQuestion.includes('mentioned')
+    );
     
     // Check if question is about a specific merchant
     const specificMerchant = this.findSpecificMerchant(question, merchants);
     
     if (specificMerchant) {
       const interactions = specificMerchant.supportLogs || [];
+      
+      // Add context from conversation history if relevant
+      let contextNote = '';
+      if (hasContextReference && conversationHistory.length > 0) {
+        const lastUserMsg = conversationHistory.filter(m => m.role === 'user').pop();
+        if (lastUserMsg) {
+          contextNote = `\n\n*(Referencing previous question: "${lastUserMsg.content.substring(0, 100)}...")*`;
+        }
+      }
+      
       if (interactions.length > 0) {
         const interactionsText = interactions.map((log: any, idx: number) => {
           const logDate = log.date || 'Unknown date';
@@ -742,17 +902,30 @@ ${interactionsText}
           return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
         }).join('\n\n');
         
-        return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}\n\n` +
+        return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}${contextNote}\n\n` +
           `**Status:** ${specificMerchant.status || 'unknown'}\n` +
           `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
           `**Total Call Logs:** ${interactions.length}\n\n` +
           `### Call Logs Details:\n\n${interactionsText}`;
       } else {
-        return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}\n\n` +
+        return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}${contextNote}\n\n` +
           `**Status:** ${specificMerchant.status || 'unknown'}\n` +
           `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
           `**Total Call Logs:** 0\n\n` +
           `No call logs found for this merchant.`;
+      }
+    }
+    
+    // If question references previous conversation, try to provide context-aware answer
+    if (hasContextReference && conversationHistory.length > 0) {
+      const lastAssistantMsg = conversationHistory.filter(m => m.role === 'assistant').pop();
+      const lastUserMsg = conversationHistory.filter(m => m.role === 'user').pop();
+      
+      if (lastAssistantMsg && lastUserMsg) {
+        return `Based on our previous conversation about "${lastUserMsg.content.substring(0, 100)}...", ` +
+          `here's the information you're looking for:\n\n` +
+          `${lastAssistantMsg.content.substring(0, 500)}...\n\n` +
+          `If you need more specific details, please let me know what aspect you'd like me to expand on.`;
       }
     }
 
