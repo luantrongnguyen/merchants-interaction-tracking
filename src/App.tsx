@@ -11,10 +11,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import MerchantListPage from './pages/MerchantListPage';
 import { useAuth } from './contexts/AuthContext';
+import ChristmasTheme from './components/ChristmasTheme';
 import './App.css';
+import './themes/christmas.css';
 
 function App() {
   const { user, isAuthenticated, login, logout } = useAuth();
+  const [isChristmasTheme, setIsChristmasTheme] = useState(false);
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
   const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
@@ -347,6 +350,8 @@ function App() {
         syncStatus={syncStatus}
         syncResults={syncResults}
         onCloseSyncResults={handleCloseSyncResults}
+        isChristmasTheme={isChristmasTheme}
+        onToggleChristmasTheme={() => setIsChristmasTheme(!isChristmasTheme)}
       />
 
       <ProtectedRoute>
@@ -396,6 +401,10 @@ function App() {
           title={pendingAction ? "Authentication Required" : "Authentication Required"}
         />
 
+        <ChristmasTheme 
+          enabled={isChristmasTheme}
+          onToggle={() => setIsChristmasTheme(!isChristmasTheme)}
+        />
       </ProtectedRoute>
     </div>
   );

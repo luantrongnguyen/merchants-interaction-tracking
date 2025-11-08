@@ -1,0 +1,733 @@
+/* Christmas Theme Styles */
+
+/* Christmas Color Variables */
+:root {
+  --christmas-red: #c8102e;
+  --christmas-green: #006b3c;
+  --christmas-gold: #ffd700;
+  --christmas-white: #ffffff;
+  --christmas-snow: #f8f9fa;
+  --christmas-dark-green: #004d2e;
+}
+
+/* Christmas Background Overlay */
+.christmas-theme {
+  position: relative;
+  overflow-x: hidden;
+}
+
+.christmas-theme::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(200, 16, 46, 0.03) 0%,
+    rgba(0, 107, 60, 0.03) 50%,
+    rgba(255, 215, 0, 0.02) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Snow Animation */
+.christmas-snow {
+  position: fixed;
+  top: -10px;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.snowflake {
+  position: absolute;
+  color: white;
+  font-size: 1em;
+  font-family: Arial;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+  animation: snowfall linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes snowfall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(100vh) translateX(50px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Christmas Header Styles */
+.christmas-theme .app-header {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-dark-green) 100%);
+  border-bottom: 3px solid var(--christmas-gold);
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+}
+
+.christmas-theme .app-header h1 {
+  color: var(--christmas-white);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.christmas-theme .app-header h1::before {
+  content: '🎄';
+  margin-right: 0.5rem;
+  animation: swing 3s ease-in-out infinite;
+}
+
+.christmas-theme .app-header h1::after {
+  content: '🎅';
+  margin-left: 0.5rem;
+  animation: swing 3s ease-in-out infinite 1.5s;
+}
+
+@keyframes swing {
+  0%, 100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+
+/* Christmas Theme - User Info in Header */
+.christmas-theme .header-user-info {
+  border-left-color: rgba(255, 215, 0, 0.3) !important;
+}
+
+.christmas-theme .header-user-info .user-name {
+  color: var(--christmas-gold) !important;
+  font-weight: 600 !important;
+  text-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(255, 215, 0, 0.4),
+    0 0 20px rgba(255, 215, 0, 0.2) !important;
+  letter-spacing: 0.3px;
+}
+
+.christmas-theme .header-user-info .user-avatar {
+  border-color: var(--christmas-gold) !important;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+/* Christmas Buttons */
+.christmas-theme .btn-primary {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, #e63946 100%);
+  color: var(--christmas-white);
+  border: 2px solid var(--christmas-gold);
+  box-shadow: 0 4px 8px rgba(200, 16, 46, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.christmas-theme .btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.christmas-theme .btn-primary:hover::before {
+  left: 100%;
+}
+
+.christmas-theme .btn-primary:hover {
+  background: linear-gradient(135deg, #e63946 0%, var(--christmas-red) 100%);
+  box-shadow: 0 6px 12px rgba(200, 16, 46, 0.6);
+  transform: translateY(-2px);
+}
+
+/* Christmas Cards */
+.christmas-theme .stats-card,
+.christmas-theme .merchant-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 240, 0.95) 100%);
+  border: 2px solid var(--christmas-green);
+  box-shadow: 0 4px 12px rgba(0, 107, 60, 0.2);
+  position: relative;
+}
+
+.christmas-theme .stats-card::before,
+.christmas-theme .merchant-card::before {
+  content: '❄️';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 1.5rem;
+  opacity: 0.6;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(10deg);
+  }
+}
+
+/* Christmas Sidebar */
+.christmas-theme .sidebar {
+  background: linear-gradient(180deg, var(--christmas-dark-green) 0%, var(--christmas-green) 100%);
+  border-right: 3px solid var(--christmas-gold);
+}
+
+.christmas-theme .sidebar a,
+.christmas-theme .sidebar button {
+  color: var(--christmas-white);
+  border-left: 3px solid transparent;
+  transition: all 0.3s;
+}
+
+.christmas-theme .sidebar a:hover,
+.christmas-theme .sidebar button:hover {
+  background: rgba(255, 215, 0, 0.2);
+  border-left-color: var(--christmas-gold);
+}
+
+.christmas-theme .sidebar a.active {
+  background: rgba(255, 215, 0, 0.3);
+  border-left-color: var(--christmas-gold);
+}
+
+/* Christmas Greeting Banner */
+.christmas-theme .greeting-banner {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+  border: 2px solid var(--christmas-gold);
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.4);
+  color: var(--christmas-white);
+}
+
+.christmas-theme .greeting-banner::before {
+  content: '🎄';
+  margin-right: 0.5rem;
+}
+
+/* Christmas Status Badges */
+.christmas-theme .status-badge.green {
+  background: var(--christmas-green);
+  color: var(--christmas-white);
+  box-shadow: 0 2px 6px rgba(0, 107, 60, 0.4);
+}
+
+.christmas-theme .status-badge.orange {
+  background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+  color: var(--christmas-white);
+  box-shadow: 0 2px 6px rgba(255, 140, 0, 0.4);
+}
+
+.christmas-theme .status-badge.red {
+  background: var(--christmas-red);
+  color: var(--christmas-white);
+  box-shadow: 0 2px 6px rgba(200, 16, 46, 0.4);
+}
+
+/* Christmas Loading Spinner */
+.christmas-theme .spinner {
+  border: 4px solid var(--christmas-green);
+  border-top: 4px solid var(--christmas-red);
+  border-right: 4px solid var(--christmas-gold);
+  animation: spin 1s linear infinite;
+}
+
+/* Christmas Decorations - Twinkling Stars */
+.christmas-stars {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.christmas-star {
+  position: absolute;
+  color: var(--christmas-gold);
+  font-size: 1.5rem;
+  animation: twinkle 2s ease-in-out infinite;
+  opacity: 0.7;
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Christmas Input Fields */
+.christmas-theme input,
+.christmas-theme textarea,
+.christmas-theme select {
+  border: 2px solid var(--christmas-green);
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.christmas-theme input:focus,
+.christmas-theme textarea:focus,
+.christmas-theme select:focus {
+  border-color: var(--christmas-red);
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
+  outline: none;
+}
+
+/* Christmas Modal */
+.christmas-theme .modal {
+  background: rgba(255, 255, 255, 0.98);
+  border: 3px solid var(--christmas-gold);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.christmas-theme .modal-header {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+  color: var(--christmas-white);
+  border-bottom: 2px solid var(--christmas-gold);
+}
+
+/* Christmas Progress Bar */
+.christmas-theme .progress-bar {
+  background: linear-gradient(90deg, var(--christmas-red) 0%, var(--christmas-gold) 50%, var(--christmas-green) 100%);
+  box-shadow: 0 2px 8px rgba(200, 16, 46, 0.4);
+  animation: progress-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes progress-shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Christmas Scrollbar */
+.christmas-theme ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.christmas-theme ::-webkit-scrollbar-track {
+  background: var(--christmas-snow);
+  border: 1px solid var(--christmas-green);
+}
+
+.christmas-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+  border-radius: 6px;
+  border: 2px solid var(--christmas-snow);
+}
+
+.christmas-theme ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--christmas-green) 0%, var(--christmas-red) 100%);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .christmas-theme .app-header h1::before,
+  .christmas-theme .app-header h1::after {
+    font-size: 1.2rem;
+  }
+  
+  .christmas-star {
+    font-size: 1rem;
+  }
+}
+
+/* Christmas Theme Toggle Button in Header */
+.christmas-theme .header-christmas-toggle {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+  color: var(--christmas-white);
+  border: 2px solid var(--christmas-gold);
+  box-shadow: 0 2px 8px rgba(200, 16, 46, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.christmas-theme .header-christmas-toggle:hover {
+  background: linear-gradient(135deg, var(--christmas-green) 0%, var(--christmas-red) 100%);
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.5);
+  transform: scale(1.15);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(200, 16, 46, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 12px rgba(200, 16, 46, 0.6);
+  }
+}
+
+/* Disable snow on mobile for performance */
+@media (max-width: 768px) {
+  .christmas-snow {
+    display: none;
+  }
+}
+
+/* ============================================
+   CHRISTMAS THEME - DASHBOARD PAGE
+   ============================================ */
+
+/* Dashboard Container */
+.christmas-theme .dashboard-container {
+  background: linear-gradient(135deg, rgba(255, 248, 240, 0.5) 0%, rgba(255, 245, 238, 0.3) 100%);
+}
+
+/* Chart Wrapper */
+.christmas-theme .chart-wrapper {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 2px solid var(--christmas-green);
+  box-shadow: 0 4px 16px rgba(0, 107, 60, 0.15);
+}
+
+/* Insights */
+.christmas-theme .insights {
+  background: linear-gradient(135deg, rgba(255, 248, 240, 0.95) 0%, rgba(255, 245, 238, 0.95) 100%);
+  border: 2px solid var(--christmas-gold);
+  box-shadow: 0 2px 12px rgba(255, 215, 0, 0.2);
+}
+
+.christmas-theme .insights h3 {
+  color: var(--christmas-red);
+  text-shadow: 0 1px 2px rgba(200, 16, 46, 0.2);
+}
+
+/* Leaderboards */
+.christmas-theme .board {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 2px solid var(--christmas-green);
+  box-shadow: 0 4px 12px rgba(0, 107, 60, 0.15);
+}
+
+.christmas-theme .board h3 {
+  color: var(--christmas-dark-green);
+  border-bottom: 2px solid var(--christmas-gold);
+  padding-bottom: 0.5rem;
+}
+
+/* Simple Table */
+.christmas-theme .simple-table th {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(200, 16, 46, 0.05) 100%);
+  color: var(--christmas-dark-green);
+  border-bottom: 2px solid var(--christmas-gold);
+}
+
+.christmas-theme .simple-table tr:hover {
+  background: rgba(255, 215, 0, 0.05);
+}
+
+/* ============================================
+   CHRISTMAS THEME - MERCHANT LIST PAGE
+   ============================================ */
+
+/* List Header */
+.christmas-theme .list-header h2 {
+  color: var(--christmas-dark-green);
+  text-shadow: 0 2px 4px rgba(0, 107, 60, 0.2);
+}
+
+.christmas-theme .list-header h2::before {
+  content: '🎄 ';
+}
+
+/* Table Container */
+.christmas-theme .table-container {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 2px solid var(--christmas-green);
+  box-shadow: 0 4px 16px rgba(0, 107, 60, 0.15);
+}
+
+/* Merchant Table */
+.christmas-theme .merchant-table th {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(200, 16, 46, 0.1) 100%);
+  color: var(--christmas-dark-green);
+  border-bottom: 2px solid var(--christmas-gold);
+  font-weight: 700;
+}
+
+.christmas-theme .merchant-table tr:hover {
+  background: linear-gradient(90deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 167, 38, 0.05) 100%);
+}
+
+.christmas-theme .merchant-table td {
+  border-bottom-color: rgba(255, 215, 0, 0.2);
+}
+
+/* Merchant Name */
+.christmas-theme .name-cell strong {
+  color: var(--christmas-dark-green);
+}
+
+/* Store ID */
+.christmas-theme .store-id {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 167, 38, 0.15) 100%);
+  border: 1px solid var(--christmas-gold);
+  color: var(--christmas-dark-green);
+}
+
+/* Platform Badge */
+.christmas-theme .platform-badge {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #1e40af;
+}
+
+/* Status Badges - Override existing styles */
+.christmas-theme .status-badge.green {
+  background: linear-gradient(135deg, var(--christmas-green) 0%, #008954 100%);
+  box-shadow: 0 2px 6px rgba(0, 107, 60, 0.4);
+}
+
+.christmas-theme .status-badge.orange {
+  background: linear-gradient(135deg, #ff8c00 0%, #ffa500 100%);
+  box-shadow: 0 2px 6px rgba(255, 140, 0, 0.4);
+}
+
+.christmas-theme .status-badge.red {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, #a00d24 100%);
+  box-shadow: 0 2px 6px rgba(200, 16, 46, 0.4);
+}
+
+/* Action Buttons */
+.christmas-theme .btn-edit {
+  border-color: var(--christmas-green);
+  color: var(--christmas-green);
+}
+
+.christmas-theme .btn-edit:hover {
+  background: linear-gradient(135deg, rgba(0, 107, 60, 0.1) 0%, rgba(0, 77, 46, 0.08) 100%);
+  border-color: var(--christmas-green);
+  box-shadow: 0 2px 8px rgba(0, 107, 60, 0.3);
+}
+
+.christmas-theme .btn-delete {
+  border-color: var(--christmas-red);
+  color: var(--christmas-red);
+}
+
+.christmas-theme .btn-delete:hover {
+  background: linear-gradient(135deg, rgba(200, 16, 46, 0.1) 0%, rgba(160, 13, 36, 0.08) 100%);
+  border-color: var(--christmas-red);
+  box-shadow: 0 2px 8px rgba(200, 16, 46, 0.3);
+}
+
+.christmas-theme .btn-history {
+  border-color: var(--christmas-gold);
+  color: #b8860b;
+}
+
+.christmas-theme .btn-history:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 167, 38, 0.1) 100%);
+  border-color: var(--christmas-gold);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+.christmas-theme .btn-call-logs {
+  border-color: var(--christmas-green);
+  color: var(--christmas-green);
+}
+
+.christmas-theme .btn-call-logs:hover {
+  background: linear-gradient(135deg, rgba(0, 107, 60, 0.1) 0%, rgba(0, 77, 46, 0.08) 100%);
+  border-color: var(--christmas-green);
+  box-shadow: 0 2px 8px rgba(0, 107, 60, 0.3);
+}
+
+/* ============================================
+   CHRISTMAS THEME - STATS PANEL & CARDS
+   ============================================ */
+
+.christmas-theme .stats-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 2px solid var(--christmas-green);
+  box-shadow: 0 4px 16px rgba(0, 107, 60, 0.15);
+}
+
+.christmas-theme .stats-panel__header h1 {
+  color: var(--christmas-dark-green);
+  text-shadow: 0 2px 4px rgba(0, 107, 60, 0.2);
+}
+
+.christmas-theme .stats-panel__header p {
+  color: var(--christmas-dark-green);
+  opacity: 0.8;
+}
+
+.christmas-theme .stats-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 2px solid var(--christmas-green);
+  box-shadow: 0 4px 12px rgba(0, 107, 60, 0.15);
+  border-left-width: 4px;
+}
+
+.christmas-theme .stats-card--green {
+  border-left-color: var(--christmas-green);
+  background: linear-gradient(135deg, rgba(0, 107, 60, 0.1) 0%, rgba(0, 77, 46, 0.08) 100%);
+}
+
+.christmas-theme .stats-card--green .stats-card__value {
+  color: var(--christmas-green);
+}
+
+.christmas-theme .stats-card--orange {
+  border-left-color: #ff8c00;
+  background: linear-gradient(135deg, rgba(255, 140, 0, 0.1) 0%, rgba(255, 165, 0, 0.08) 100%);
+}
+
+.christmas-theme .stats-card--orange .stats-card__value {
+  color: #ff8c00;
+}
+
+.christmas-theme .stats-card--red {
+  border-left-color: var(--christmas-red);
+  background: linear-gradient(135deg, rgba(200, 16, 46, 0.1) 0%, rgba(160, 13, 36, 0.08) 100%);
+}
+
+.christmas-theme .stats-card--red .stats-card__value {
+  color: var(--christmas-red);
+}
+
+.christmas-theme .stats-card--blue {
+  border-left-color: #3b82f6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.08) 100%);
+}
+
+.christmas-theme .stats-card--blue .stats-card__value {
+  color: #2563eb;
+}
+
+.christmas-theme .stats-card__title {
+  color: var(--christmas-dark-green);
+  opacity: 0.9;
+}
+
+/* ============================================
+   CHRISTMAS THEME - SEARCH FILTER
+   ============================================ */
+
+.christmas-theme .search-filter {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 2px solid var(--christmas-green);
+  box-shadow: 0 4px 16px rgba(0, 107, 60, 0.15);
+  border-radius: 12px;
+}
+
+.christmas-theme .search-filter__input,
+.christmas-theme .search-filter__select {
+  border: 2px solid var(--christmas-green);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.christmas-theme .search-filter__input:focus,
+.christmas-theme .search-filter__select:focus {
+  border-color: var(--christmas-gold);
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+  outline: none;
+  background: rgba(255, 255, 255, 1);
+}
+
+.christmas-theme .search-filter__clear-btn {
+  color: var(--christmas-red);
+}
+
+.christmas-theme .search-filter__clear-btn:hover {
+  background: linear-gradient(135deg, rgba(200, 16, 46, 0.1) 0%, rgba(160, 13, 36, 0.08) 100%);
+  color: var(--christmas-red);
+}
+
+/* ============================================
+   CHRISTMAS THEME - MODALS
+   ============================================ */
+
+.christmas-theme .modal-overlay {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.christmas-theme .modal-content {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 3px solid var(--christmas-gold);
+  box-shadow: 0 8px 32px rgba(200, 16, 46, 0.3);
+}
+
+.christmas-theme .modal-header {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+  color: var(--christmas-white);
+  border-bottom: 2px solid var(--christmas-gold);
+}
+
+.christmas-theme .modal-header h2 {
+  color: var(--christmas-white);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   CHRISTMAS THEME - CHATBOX
+   ============================================ */
+
+.christmas-theme .chatbox-toggle-btn {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+  border: 2px solid var(--christmas-gold);
+  box-shadow: 0 4px 16px rgba(200, 16, 46, 0.4);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.christmas-theme .chatbox-toggle-btn:hover {
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+  transform: scale(1.1);
+}
+
+.christmas-theme .chatbox {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 250, 240, 0.98) 100%);
+  border: 3px solid var(--christmas-gold);
+  box-shadow: 0 8px 32px rgba(200, 16, 46, 0.3);
+}
+
+.christmas-theme .chatbox-header {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, var(--christmas-green) 100%);
+  color: var(--christmas-white);
+  border-bottom: 2px solid var(--christmas-gold);
+}
+
+/* ============================================
+   CHRISTMAS THEME - ERROR BANNER
+   ============================================ */
+
+.christmas-theme .error-banner {
+  background: linear-gradient(135deg, rgba(200, 16, 46, 0.1) 0%, rgba(160, 13, 36, 0.08) 100%);
+  border: 2px solid var(--christmas-red);
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.2);
+}
+
+.christmas-theme .retry-button {
+  background: linear-gradient(135deg, var(--christmas-red) 0%, #e63946 100%);
+  border: 2px solid var(--christmas-gold);
+  box-shadow: 0 2px 8px rgba(200, 16, 46, 0.3);
+}
+
+.christmas-theme .retry-button:hover {
+  background: linear-gradient(135deg, #e63946 0%, var(--christmas-red) 100%);
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.4);
+}
+

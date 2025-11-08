@@ -17,6 +17,9 @@ interface HeaderProps {
     totalCallLogsAdded: number;
   } | null;
   onCloseSyncResults?: () => void;
+  // Christmas theme props
+  isChristmasTheme?: boolean;
+  onToggleChristmasTheme?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -26,6 +29,8 @@ const Header: React.FC<HeaderProps> = ({
   syncStatus = '',
   syncResults = null,
   onCloseSyncResults,
+  isChristmasTheme = false,
+  onToggleChristmasTheme,
 }) => {
   const { user, isAuthenticated, login, logout } = useAuth();
 
@@ -42,6 +47,16 @@ const Header: React.FC<HeaderProps> = ({
           />
           {isAuthenticated && user && (
             <>
+              {onToggleChristmasTheme && (
+                <button
+                  onClick={onToggleChristmasTheme}
+                  className="btn-secondary header-christmas-toggle"
+                  title={isChristmasTheme ? 'Tắt theme Giáng sinh' : 'Bật theme Giáng sinh'}
+                  aria-label={isChristmasTheme ? 'Tắt theme Giáng sinh' : 'Bật theme Giáng sinh'}
+                >
+                  {isChristmasTheme ? '🎄' : '❄️'}
+                </button>
+              )}
               {onSyncCallLogsManual && (
                 <button
                   onClick={onSyncCallLogsManual}
