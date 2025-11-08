@@ -342,6 +342,7 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
     try {
       // Check if question is about a specific merchant
       const specificMerchant = this.findSpecificMerchant(question, merchants);
+      const lowerQuestion = question.toLowerCase();
       
       // Prepare summary data for Gemini (to avoid token limits)
       const summary = {
@@ -361,38 +362,81 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
         // Include detailed interaction data for specific merchant
         const interactions = specificMerchant.supportLogs || [];
         const interactionsText = interactions.length > 0
-          ? interactions.map((log: any, idx: number) => 
-              `${idx + 1}. ${log.date} ${log.time || ''} - ${log.issue}${log.category ? ` (${log.category})` : ''}${log.supporter ? ` - Supporter: ${log.supporter}` : ''}`
-            ).join('\n')
-          : 'No interactions found.';
+          ? interactions.map((log: any, idx: number) => {
+              const logDate = log.date || 'Unknown date';
+              const logTime = log.time || '';
+              const logIssue = log.issue || 'No issue description';
+              const logSupporter = log.supporter || 'Unknown supporter';
+              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
+            }).join('\n\n')
+          : 'No call logs/interactions found for this merchant.';
         
-        prompt = `Answer about merchant: ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}
+        prompt = `You are an AI assistant analyzing merchant call logs data. Answer the following question about a specific merchant.
 
-Merchant Details:
-- Status: ${specificMerchant.status || 'unknown'}
-- Last Interaction: ${specificMerchant.lastInteractionDate || 'N/A'}
-- Total Interactions: ${interactions.length}
+**Merchant Information:**
+- **Name:** ${specificMerchant.name}${specificMerchant.storeId ? `\n- **Store ID:** ${specificMerchant.storeId}` : ''}
+- **Status:** ${specificMerchant.status || 'unknown'}
+- **Last Interaction Date:** ${specificMerchant.lastInteractionDate || 'N/A'}
+- **Total Call Logs:** ${interactions.length}
 
-Interaction Details:
+**Call Logs Details:**
 ${interactionsText}
 
-Question: ${question}
+**User Question:** ${question}
 
-Provide detailed answer about this merchant's interactions. Use markdown formatting.`;
+**Instructions:**
+- Provide a detailed, informative answer based on the call logs data above
+- Reference specific call logs with dates, issues, and supporters when relevant
+- Use markdown formatting for better readability
+- If the question is about call logs patterns, trends, or specific issues, analyze the call logs data provided
+- Be specific and cite the actual call log entries when answering`;
       } else {
+        // Check if question is about call logs
+        const isAboutCallLogs = lowerQuestion.includes('call log') || lowerQuestion.includes('call log') || 
+                                lowerQuestion.includes('interaction detail') || lowerQuestion.includes('support log');
+        
+        let callLogsDetails = '';
+        if (isAboutCallLogs && merchants.length > 0) {
+          // Include sample call logs from top merchants with most interactions
+          const topMerchantsWithLogs = merchants
+            .filter(m => m.supportLogs && m.supportLogs.length > 0)
+            .sort((a, b) => (b.supportLogs?.length || 0) - (a.supportLogs?.length || 0))
+            .slice(0, 5);
+          
+          if (topMerchantsWithLogs.length > 0) {
+            callLogsDetails = '\n\n**Sample Call Logs from Top Merchants:**\n\n';
+            topMerchantsWithLogs.forEach((merchant, idx) => {
+              const logs = merchant.supportLogs || [];
+              callLogsDetails += `${idx + 1}. **${merchant.name}**${merchant.storeId ? ` (${merchant.storeId})` : ''} - ${logs.length} call logs:\n`;
+              // Show last 3 call logs for each merchant
+              logs.slice(-3).forEach((log: any, logIdx: number) => {
+                callLogsDetails += `   - ${log.date || 'Unknown'} ${log.time || ''}: ${log.issue || 'No issue'}${log.supporter ? ` (${log.supporter})` : ''}\n`;
+              });
+              callLogsDetails += '\n';
+            });
+          }
+        }
+        
         // General analysis with summary data
-        prompt = `Analyze merchant data and answer concisely.
+        prompt = `You are an AI assistant analyzing merchant interaction and call logs data. Answer the following question.
 
-Data:
-- Merchants: ${summary.totalMerchants}, Interactions: ${summary.totalInteractions}
-- Status: 🟢${summary.statusDistribution.green} 🟠${summary.statusDistribution.orange} 🔴${summary.statusDistribution.red}
-- Issues: ${summary.terminalIssues}, Recent 7d: ${summary.recentInteractions}
-- Top Categories: ${summary.topCategories.map(([cat, count]: [string, number]) => `${cat}(${count})`).join(', ')}
-- Top Merchants: ${summary.topMerchants.map((m: any) => `${m.name}(${m.interactions})`).join(', ')}
+**Summary Statistics:**
+- Total Merchants: ${summary.totalMerchants}
+- Total Call Logs/Interactions: ${summary.totalInteractions}
+- Status Distribution: 🟢 Green: ${summary.statusDistribution.green}, 🟠 Orange: ${summary.statusDistribution.orange}, 🔴 Red: ${summary.statusDistribution.red}
+- Terminal Issues: ${summary.terminalIssues}
+- Recent Activity (Last 7 Days): ${summary.recentInteractions} interactions
+- Top Issue Categories: ${summary.topCategories.map(([cat, count]: [string, number]) => `${cat} (${count})`).join(', ')}
+- Top Merchants by Interactions: ${summary.topMerchants.map((m: any) => `${m.name} (${m.interactions} logs)`).join(', ')}${callLogsDetails}
 
-Question: ${question}
+**User Question:** ${question}
 
-Answer in markdown. Be concise and focus on key insights.`;
+**Instructions:**
+- Provide a helpful, insightful analysis based on the data above
+- If the question is about call logs, reference the sample call logs provided
+- Use markdown formatting for better readability
+- Be concise but informative
+- Focus on key insights and patterns`;
       }
 
       // Try different models and API endpoints
@@ -690,21 +734,25 @@ Answer in markdown. Be concise and focus on key insights.`;
     if (specificMerchant) {
       const interactions = specificMerchant.supportLogs || [];
       if (interactions.length > 0) {
-        const interactionsText = interactions.map((log: any, idx: number) => 
-          `${idx + 1}. **${log.date}** ${log.time || ''} - ${log.issue}${log.category ? ` (${log.category})` : ''}${log.supporter ? ` - Supporter: ${log.supporter}` : ''}`
-        ).join('\n');
+        const interactionsText = interactions.map((log: any, idx: number) => {
+          const logDate = log.date || 'Unknown date';
+          const logTime = log.time || '';
+          const logIssue = log.issue || 'No issue description';
+          const logSupporter = log.supporter || 'Unknown supporter';
+          return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
+        }).join('\n\n');
         
         return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}\n\n` +
           `**Status:** ${specificMerchant.status || 'unknown'}\n` +
           `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
-          `**Total Interactions:** ${interactions.length}\n\n` +
-          `### Interaction Details:\n\n${interactionsText}`;
+          `**Total Call Logs:** ${interactions.length}\n\n` +
+          `### Call Logs Details:\n\n${interactionsText}`;
       } else {
         return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}\n\n` +
           `**Status:** ${specificMerchant.status || 'unknown'}\n` +
           `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
-          `**Total Interactions:** 0\n\n` +
-          `No interactions found for this merchant.`;
+          `**Total Call Logs:** 0\n\n` +
+          `No call logs found for this merchant.`;
       }
     }
 
@@ -797,18 +845,55 @@ Answer in markdown. Be concise and focus on key insights.`;
         `- Continue monitoring merchant engagement and interaction patterns`;
     }
 
+    // Call logs questions
+    if (lowerQuestion.includes('call log') || lowerQuestion.includes('call log') || 
+        lowerQuestion.includes('interaction detail') || lowerQuestion.includes('support log')) {
+      // Find merchants with most call logs
+      const merchantsWithLogs = merchants
+        .filter(m => m.supportLogs && m.supportLogs.length > 0)
+        .sort((a, b) => (b.supportLogs?.length || 0) - (a.supportLogs?.length || 0))
+        .slice(0, 10);
+      
+      if (merchantsWithLogs.length === 0) {
+        return 'No call logs data available at this time.';
+      }
+      
+      let response = `Call Logs Overview:\n\n` +
+        `- Total Merchants with Call Logs: ${merchantsWithLogs.length}\n` +
+        `- Total Call Logs: ${analysis.totalInteractions}\n` +
+        `- Average Call Logs per Merchant: ${(analysis.totalInteractions / merchantsWithLogs.length).toFixed(1)}\n\n` +
+        `**Top Merchants by Call Logs:**\n\n`;
+      
+      merchantsWithLogs.forEach((merchant, index) => {
+        const logs = merchant.supportLogs || [];
+        response += `${index + 1}. **${merchant.name}**${merchant.storeId ? ` (${merchant.storeId})` : ''}: ${logs.length} call logs\n`;
+        // Show recent call logs
+        const recentLogs = logs.slice(-3);
+        if (recentLogs.length > 0) {
+          response += `   Recent call logs:\n`;
+          recentLogs.forEach((log: any) => {
+            response += `   - ${log.date || 'Unknown'} ${log.time || ''}: ${log.issue || 'No issue'}${log.supporter ? ` (${log.supporter})` : ''}\n`;
+          });
+        }
+        response += `\n`;
+      });
+      
+      return response;
+    }
+
     // Default response
-    return `I can help you analyze your merchant data. Here's a quick overview:\n\n` +
+    return `I can help you analyze your merchant data and call logs. Here's a quick overview:\n\n` +
       `- Total Merchants: ${analysis.totalMerchants}\n` +
-      `- Total Interactions: ${analysis.totalInteractions}\n` +
+      `- Total Call Logs/Interactions: ${analysis.totalInteractions}\n` +
       `- Recent Activity (7 days): ${analysis.recentInteractions}\n\n` +
       `You can ask me about:\n` +
+      `• Call logs and interaction details\n` +
       `• Top merchants by interactions\n` +
       `• Terminal issues and trends\n` +
       `• Category distribution\n` +
       `• Status distribution\n` +
       `• Recent activity trends\n` +
-      `• General insights and recommendations`;
+      `• Specific merchant call logs (mention the merchant name)`;
   }
 }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import GoogleAuth from './GoogleAuth';
 import HeaderProgressBar from './HeaderProgressBar';
+import GreetingBanner from './GreetingBanner';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
@@ -51,6 +52,7 @@ const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
               <div className="header-user-info">
+                <GreetingBanner userName={user.name || user.email} compact={true} />
                 {user.picture && (
                   <img 
                     src={user.picture} 

@@ -3,9 +3,10 @@ import './GreetingBanner.css';
 
 interface GreetingBannerProps {
   userName?: string;
+  compact?: boolean;
 }
 
-const GreetingBanner: React.FC<GreetingBannerProps> = ({ userName }) => {
+const GreetingBanner: React.FC<GreetingBannerProps> = ({ userName, compact = false }) => {
   const [greeting, setGreeting] = useState<string>('');
   const [message, setMessage] = useState<string>('');
 
@@ -78,6 +79,15 @@ const GreetingBanner: React.FC<GreetingBannerProps> = ({ userName }) => {
   }, []);
 
   const displayName = userName ? userName.split(' ')[0] : 'there';
+
+  if (compact) {
+    return (
+      <div className="greeting-banner compact">
+        <span className="greeting-icon">👋</span>
+        <span className="greeting-text-compact">{greeting}!</span>
+      </div>
+    );
+  }
 
   return (
     <div className="greeting-banner">

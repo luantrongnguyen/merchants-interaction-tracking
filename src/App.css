@@ -52,6 +52,18 @@ body {
   border-left: 1px solid #e5e7eb;
 }
 
+.header-user-info .greeting-banner.compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0 0.25rem 0 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  animation: none;
+}
+
 .user-avatar {
   width: 32px;
   height: 32px;
@@ -84,6 +96,30 @@ body {
   font-weight: 600;
 }
 
+.header-user-info .greeting-banner.compact .greeting-icon {
+  font-size: 1.2rem;
+  display: inline-block;
+  animation: wave 2s ease-in-out infinite;
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(20deg);
+  }
+  75% {
+    transform: rotate(-20deg);
+  }
+}
+
+.header-user-info .greeting-banner.compact .greeting-text-compact {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 .app-layout {
   display: flex;
@@ -111,6 +147,10 @@ body {
 @media (max-width: 768px) {
   .app-header {
     position: relative;
+  }
+
+  .header-user-info .greeting-banner.compact {
+    display: none; /* Ẩn greeting trên mobile để tiết kiệm không gian */
   }
 
   .app-layout {

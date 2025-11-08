@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import MerchantList from '../components/MerchantList';
 import SearchFilter from '../components/SearchFilter';
 import StatsPanel from '../components/StatsPanel';
-import GreetingBanner from '../components/GreetingBanner';
 import ChatBox from '../components/ChatBox';
 import { MerchantWithStatus } from '../types/merchant';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,7 +47,6 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
         </div>
         
         <div className="main-content">
-          <GreetingBanner userName={user?.name || user?.email} />
           <SearchFilter
             onSearch={onSearch}
             onFilter={onFilter}
