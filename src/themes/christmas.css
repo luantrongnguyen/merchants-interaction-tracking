@@ -122,12 +122,13 @@
 
 /* Christmas Buttons */
 .christmas-theme .btn-primary {
-  background: linear-gradient(135deg, var(--christmas-red) 0%, #e63946 100%);
-  color: var(--christmas-white);
-  border: 2px solid var(--christmas-gold);
-  box-shadow: 0 4px 8px rgba(200, 16, 46, 0.4);
+  background: linear-gradient(135deg, #FFB300 0%, #FFA726 100%);
+  color: #1f2937;
+  border: 2px solid #FFB300;
+  box-shadow: 0 4px 12px rgba(255, 179, 0, 0.4);
   position: relative;
   overflow: hidden;
+  font-weight: 600;
 }
 
 .christmas-theme .btn-primary::before {
@@ -137,7 +138,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   transition: left 0.5s;
 }
 
@@ -146,9 +147,10 @@
 }
 
 .christmas-theme .btn-primary:hover {
-  background: linear-gradient(135deg, #e63946 0%, var(--christmas-red) 100%);
-  box-shadow: 0 6px 12px rgba(200, 16, 46, 0.6);
+  background: linear-gradient(135deg, #FFA726 0%, #FFB300 100%);
+  box-shadow: 0 6px 16px rgba(255, 179, 0, 0.6);
   transform: translateY(-2px);
+  border-color: #FFA726;
 }
 
 /* Christmas Cards */
