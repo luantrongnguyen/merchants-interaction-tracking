@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange }) => {
         <div className="sidebar-footer">
           <div className="sidebar-footer-content">
             <div className="sidebar-footer-icon">✨</div>
-            <p className="sidebar-footer-text">Merchant Tracking System</p>
+            <p className="sidebar-footer-text">Copyright belongs to Support Team</p>
           </div>
         </div>
       </nav>
