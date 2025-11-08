@@ -10,6 +10,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import MerchantListPage from './pages/MerchantListPage';
+import NotesPage from './pages/NotesPage';
 import { useAuth } from './contexts/AuthContext';
 import ChristmasTheme from './components/ChristmasTheme';
 import './App.css';
@@ -356,34 +357,38 @@ function App() {
 
       <ProtectedRoute>
         <Layout>
-          <Routes>
-            <Route 
-              path="/" 
-              element={
-                <MerchantListPage
-                  merchants={filteredMerchants}
-                  error={error}
-                  onRetry={loadMerchants}
-                onSearch={handleSearch}
-                onFilter={handleFilter}
-                onClear={handleClearSearch}
-                  onEdit={handleEditMerchant}
-                  onDelete={handleDeleteMerchant}
-                />
-              } 
-            />
-            <Route 
-              path="/dashboard" 
-              element={
-                <DashboardPage
-                  merchants={merchants}
-                  error={error}
-                  onRetry={loadMerchants}
-                />
-              } 
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+                  <Routes>
+                    <Route 
+                      path="/" 
+                      element={
+                        <MerchantListPage
+                          merchants={filteredMerchants}
+                          error={error}
+                          onRetry={loadMerchants}
+                        onSearch={handleSearch}
+                        onFilter={handleFilter}
+                        onClear={handleClearSearch}
+                          onEdit={handleEditMerchant}
+                          onDelete={handleDeleteMerchant}
+                        />
+                      } 
+                    />
+                    <Route 
+                      path="/dashboard" 
+                      element={
+                        <DashboardPage
+                          merchants={merchants}
+                          error={error}
+                          onRetry={loadMerchants}
+                        />
+                      } 
+                    />
+                    <Route 
+                      path="/notes" 
+                      element={<NotesPage />} 
+                    />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
         </Layout>
 
         <MerchantForm

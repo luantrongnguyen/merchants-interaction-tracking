@@ -1,16 +1,55 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Resolve database path TRƯỚC KHI import AppModule
+// Để đảm bảo DATABASE_PATH được set đúng trước khi TypeORM module load
+function resolveDatabasePath(): string {
+  let databasePath = process.env.DATABASE_PATH;
+  
+  if (!databasePath) {
+    // Xác định project root
+    // __dirname trong dist/main.js sẽ là .../dist
+    // Cần lên 1 level để đến project root
+    const projectRoot = path.resolve(__dirname, '..');
+    databasePath = path.resolve(projectRoot, 'data', 'notes.db');
+  } else if (!path.isAbsolute(databasePath)) {
+    // Nếu là relative path, resolve từ project root
+    const projectRoot = path.resolve(__dirname, '..');
+    databasePath = path.resolve(projectRoot, databasePath);
+  }
+  
+  // Đảm bảo thư mục chứa database tồn tại
+  const dataDir = path.dirname(databasePath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+    console.log(`✅ Created data directory: ${dataDir}`);
+  }
+  
+  // Set vào process.env để app.module.ts sử dụng
+  process.env.DATABASE_PATH = databasePath;
+  
+  return databasePath;
+}
+
+// Resolve database path trước khi import AppModule
+const databasePath = resolveDatabasePath();
+
+// Import AppModule sau khi đã set DATABASE_PATH
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Log AI configuration on startup
-  console.log('\n=== AI Configuration ===');
+  // Log configuration on startup
+  console.log('\n=== Configuration ===');
+  console.log('Database Path:', databasePath);
   console.log('AI_PROVIDER:', process.env.AI_PROVIDER || 'not set (default: rule-based)');
   console.log('GOOGLE_AI_API_KEY:', process.env.GOOGLE_AI_API_KEY ? `${process.env.GOOGLE_AI_API_KEY.substring(0, 15)}...` : 'not set');
   console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'set' : 'not set');
   console.log('ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'set' : 'not set');
+  console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
   console.log('========================\n');
   
   // Enable CORS for all domains - Simple configuration

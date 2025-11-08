@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GoogleAuth from './GoogleAuth';
 import HeaderProgressBar from './HeaderProgressBar';
 import GreetingBanner from './GreetingBanner';
 import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/apiService';
 
 interface HeaderProps {
   onSyncCallLogsManual?: () => void;
@@ -33,6 +35,42 @@ const Header: React.FC<HeaderProps> = ({
   onToggleChristmasTheme,
 }) => {
   const { user, isAuthenticated, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const [unreadNotesCount, setUnreadNotesCount] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setUnreadNotesCount(0);
+      return;
+    }
+
+    // Load unread count
+    const loadUnreadCount = async () => {
+      try {
+        const count = await apiService.getUnreadNotesCount();
+        setUnreadNotesCount(count);
+      } catch (err) {
+        console.error('Error loading unread notes count:', err);
+      }
+    };
+
+    loadUnreadCount();
+
+    // Poll every 30 seconds
+    const interval = setInterval(loadUnreadCount, 30000);
+
+    // Listen for notes updates
+    const handleNotesUpdate = () => {
+      loadUnreadCount();
+    };
+
+    window.addEventListener('notesUpdated', handleNotesUpdate);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notesUpdated', handleNotesUpdate);
+    };
+  }, [isAuthenticated, user]);
 
   return (
     <header className="app-header">
@@ -66,6 +104,16 @@ const Header: React.FC<HeaderProps> = ({
                   Sync Call Logs Manual
                 </button>
               )}
+              <button
+                onClick={() => navigate('/notes')}
+                className="btn-secondary header-notes-btn"
+                title="View Notes"
+              >
+                📝 Notes
+                {unreadNotesCount > 0 && (
+                  <span className="notes-badge">{unreadNotesCount}</span>
+                )}
+              </button>
               <div className="header-user-info">
                 <GreetingBanner userName={user.name || user.email} compact={true} />
                 {user.picture && (

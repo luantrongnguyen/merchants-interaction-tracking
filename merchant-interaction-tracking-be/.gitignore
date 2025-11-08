@@ -11,6 +11,16 @@ dist/
 *.log
 logs/
 
+# Database files (keep structure but ignore data)
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+# But keep backups directory structure
+!data/backups/
+!data/backups/.gitkeep
+
 # IDE
 .vscode/
 .idea/
