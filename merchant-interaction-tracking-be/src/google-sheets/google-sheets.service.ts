@@ -182,7 +182,7 @@ export class GoogleSheetsService {
       try {
         const response = await this.sheets.spreadsheets.values.get({
           spreadsheetId,
-          range: 'Merchants!A:M',
+          range: 'Merchants!A:N', // Thêm cột N (support_note)
         });
 
         const rows = response.data.values;
@@ -193,7 +193,7 @@ export class GoogleSheetsService {
         // Skip header row
         // Columns mapping (after removing lastInteractionDate):
         // A: name, B: storeId, C: address, D: street, E: area, F: state, G: zipcode
-        // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs
+        // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs, N: support_note
         const merchants = rows.slice(1).map((row: any[], index: number) => {
           let historyLogs: any[] = [];
           if (row[11]) {
@@ -209,6 +209,28 @@ export class GoogleSheetsService {
               supportLogs = JSON.parse(row[12]);
             } catch (e) {
               this.logger.warn(`Invalid support_logs JSON at row ${index + 2}`);
+            }
+          }
+          
+          // Parse support notes (column N, index 13) - JSON array
+          let supportNotes: Array<{ content: string; createdBy: string; createdAt: string }> = [];
+          if (row[13]) {
+            try {
+              supportNotes = JSON.parse(row[13]);
+              if (!Array.isArray(supportNotes)) {
+                // Legacy: if it's a string, convert to array with one note
+                if (typeof row[13] === 'string' && row[13].trim()) {
+                  supportNotes = [{ content: row[13], createdBy: 'Unknown', createdAt: new Date().toISOString() }];
+                } else {
+                  supportNotes = [];
+                }
+              }
+            } catch (e) {
+              this.logger.warn(`Invalid support_notes JSON at row ${index + 2}: ${e.message}`);
+              // Legacy: if parse fails and it's a non-empty string, treat as single note
+              if (typeof row[13] === 'string' && row[13].trim()) {
+                supportNotes = [{ content: row[13], createdBy: 'Unknown', createdAt: new Date().toISOString() }];
+              }
             }
           }
           
@@ -270,6 +292,7 @@ export class GoogleSheetsService {
             lastModifiedBy: row[10] || '', // K (was L)
             historyLogs,
             supportLogs,
+            supportNotes, // Cột N: support_notes (array)
           };
         });
 
@@ -322,12 +345,13 @@ export class GoogleSheetsService {
           meta.by,
           JSON.stringify([]), // historyLogs (column L)
           JSON.stringify([]), // supportLogs (column M)
+          JSON.stringify([]), // support_notes (column N) - JSON array
         ],
       ];
 
       await this.sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Merchants!A:M',
+        range: 'Merchants!A:N', // Thêm cột N
         valueInputOption: 'RAW',
         resource: { values },
       });
@@ -352,10 +376,10 @@ export class GoogleSheetsService {
 
       this.logger.log(`[GoogleSheets] Updating merchant id=${id}, rowIndex=${rowIndex}, updatedBy=${meta.by}`);
 
-      // Fetch current row including history_logs
+      // Fetch current row including history_logs, support_logs and support_note
       const current = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `Merchants!A${rowIndex}:M${rowIndex}`,
+        range: `Merchants!A${rowIndex}:N${rowIndex}`, // Read A through N
       });
       const row = current.data.values?.[0] || [];
 
@@ -381,7 +405,7 @@ export class GoogleSheetsService {
         lastModifiedBy: row[10] || '',
       };
 
-      // Parse existing history logs
+      // Parse existing history logs (column L, index 11)
       let historyLogs: any[] = [];
       if (row[11]) {
         try { 
@@ -389,6 +413,17 @@ export class GoogleSheetsService {
           this.logger.log(`[GoogleSheets] Existing history logs: ${historyLogs.length} entries`);
         } catch (e) {
           this.logger.warn(`[GoogleSheets] Failed to parse history logs:`, e);
+        }
+      }
+      
+      // Parse existing support logs (column M, index 12)
+      let supportLogs: any[] = [];
+      if (row[12]) {
+        try {
+          supportLogs = JSON.parse(row[12]);
+          this.logger.log(`[GoogleSheets] Existing support logs: ${supportLogs.length} entries`);
+        } catch (e) {
+          this.logger.warn(`[GoogleSheets] Failed to parse support logs:`, e);
         }
       }
       
@@ -401,20 +436,39 @@ export class GoogleSheetsService {
       
       this.logger.log(`[GoogleSheets] Adding history log. Total logs: ${historyLogs.length}`);
 
+      // Parse existing support notes (column N, index 13) - JSON array
+      let supportNotes: Array<{ content: string; createdBy: string; createdAt: string }> = [];
+      if (row[13]) {
+        try {
+          supportNotes = JSON.parse(row[13]);
+          if (!Array.isArray(supportNotes)) {
+            supportNotes = [];
+          }
+        } catch (e) {
+          this.logger.warn(`[GoogleSheets] Failed to parse support notes:`, e);
+          supportNotes = [];
+        }
+      }
+      
+      // If merchant has supportNotes, use it; otherwise preserve existing
+      const finalSupportNotes = merchant.supportNotes !== undefined ? merchant.supportNotes : supportNotes;
+      
       const values = [
         [
-          merchant.name,
-          merchant.storeId || '',
-          merchant.address,
-          merchant.street,
-          merchant.area,
-          merchant.state,
-          merchant.zipcode,
-          merchant.platform,
-          merchant.phone,
-          meta.at ?? new Date().toISOString().slice(0, 10),
-          meta.by,
-          JSON.stringify(historyLogs),
+          merchant.name,                                        // A (index 0)
+          merchant.storeId || '',                               // B (index 1)
+          merchant.address,                                     // C (index 2)
+          merchant.street,                                      // D (index 3)
+          merchant.area,                                        // E (index 4)
+          merchant.state,                                       // F (index 5)
+          merchant.zipcode,                                     // G (index 6)
+          merchant.platform,                                    // H (index 7)
+          merchant.phone,                                       // I (index 8)
+          meta.at ?? new Date().toISOString().slice(0, 10),   // J (index 9) - lastModifiedAt
+          meta.by,                                              // K (index 10) - lastModifiedBy
+          JSON.stringify(historyLogs),                          // L (index 11) - historyLogs
+          JSON.stringify(supportLogs),                          // M (index 12) - supportLogs (preserve existing)
+          JSON.stringify(finalSupportNotes),                    // N (index 13) - support_notes (JSON array)
         ],
       ];
 
@@ -428,7 +482,7 @@ export class GoogleSheetsService {
 
       const updateResult = await this.sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `Merchants!A${rowIndex}:M${rowIndex}`,
+        range: `Merchants!A${rowIndex}:N${rowIndex}`, // Thêm cột N
         valueInputOption: 'RAW',
         resource: { values },
       });
@@ -1189,10 +1243,11 @@ export class GoogleSheetsService {
             merchant.lastModifiedBy || userEmail, // lastModifiedBy (K)
             merchant.historyLogs ? JSON.stringify(merchant.historyLogs) : '[]', // historyLogs (L)
             supportLogsJson, // support_logs (M)
+            merchant.supportNotes ? JSON.stringify(merchant.supportNotes) : '[]', // support_notes (N) - JSON array
           ];
           
-          // Ensure we have exactly 13 columns
-          while (valuesArray.length < 13) {
+          // Ensure we have exactly 14 columns (A through N)
+          while (valuesArray.length < 14) {
             valuesArray.push('');
           }
 
@@ -1210,11 +1265,11 @@ export class GoogleSheetsService {
           
           while (retryCount < maxRetries && !updateSuccess) {
             try {
-              this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:M${actualRowIndex} (attempt ${retryCount + 1}/${maxRetries})`);
+              this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:N${actualRowIndex} (attempt ${retryCount + 1}/${maxRetries})`);
               
               const updateResult = await this.sheets.spreadsheets.values.update({
                 spreadsheetId: appConfig.spreadsheetId,
-                range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                range: `Merchants!A${actualRowIndex}:N${actualRowIndex}`, // Thêm cột N
                 valueInputOption: 'RAW',
                 resource: { values },
               });
@@ -1481,9 +1536,10 @@ export class GoogleSheetsService {
                 merchant.lastModifiedBy || userEmail, // lastModifiedBy (K)
                 merchant.historyLogs ? JSON.stringify(merchant.historyLogs) : '[]', // historyLogs (L)
                 supportLogsJson, // support_logs (M)
+                merchant.supportNotes ? JSON.stringify(merchant.supportNotes) : '[]', // support_notes (N) - JSON array
               ];
               
-              while (valuesArray.length < 13) {
+              while (valuesArray.length < 14) {
                 valuesArray.push('');
               }
 
@@ -1503,7 +1559,7 @@ export class GoogleSheetsService {
                 try {
                   await this.sheets.spreadsheets.values.update({
                     spreadsheetId: appConfig.spreadsheetId,
-                    range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                    range: `Merchants!A${actualRowIndex}:N${actualRowIndex}`, // Thêm cột N
                     valueInputOption: 'RAW',
                     resource: { values },
                   });

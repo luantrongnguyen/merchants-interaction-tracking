@@ -32,6 +32,22 @@ let MerchantService = class MerchantService {
         await this.googleSheetsService.updateMerchant(id, updateMerchantDto, { by: userEmail });
         return updateMerchantDto;
     }
+    async addSupportNote(id, noteContent, userName, userEmail) {
+        const merchants = await this.googleSheetsService.getMerchants();
+        const merchant = merchants.find(m => m.id === id);
+        if (!merchant) {
+            throw new Error(`Merchant with id ${id} not found`);
+        }
+        const existingNotes = merchant.supportNotes || [];
+        const newNote = {
+            content: noteContent,
+            createdBy: userName || userEmail.split('@')[0] || 'Unknown',
+            createdAt: new Date().toISOString(),
+        };
+        const updatedNotes = [newNote, ...existingNotes];
+        await this.googleSheetsService.updateMerchant(id, { ...merchant, supportNotes: updatedNotes }, { by: userEmail });
+        return { ...merchant, supportNotes: updatedNotes };
+    }
     async remove(id) {
         await this.googleSheetsService.deleteMerchant(id);
     }

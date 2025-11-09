@@ -21,6 +21,7 @@ let Merchant = class Merchant {
     zipcode;
     lastInteractionDate;
     platform;
+    supportNote;
     createdAt;
     updatedAt;
 };
@@ -61,6 +62,10 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], Merchant.prototype, "platform", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], Merchant.prototype, "supportNote", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

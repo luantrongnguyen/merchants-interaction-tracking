@@ -28,6 +28,33 @@ export class MerchantService {
     return updateMerchantDto;
   }
 
+  async addSupportNote(id: number, noteContent: string, userName: string, userEmail: string): Promise<any> {
+    // Get current merchant data
+    const merchants = await this.googleSheetsService.getMerchants();
+    const merchant = merchants.find(m => m.id === id);
+    
+    if (!merchant) {
+      throw new Error(`Merchant with id ${id} not found`);
+    }
+    
+    // Get existing support notes or initialize empty array
+    const existingNotes = merchant.supportNotes || [];
+    
+    // Create new note object
+    const newNote = {
+      content: noteContent,
+      createdBy: userName || userEmail.split('@')[0] || 'Unknown',
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Add new note to the beginning of the array (newest first)
+    const updatedNotes = [newNote, ...existingNotes];
+    
+    // Update merchant with new support notes
+    await this.googleSheetsService.updateMerchant(id, { ...merchant, supportNotes: updatedNotes }, { by: userEmail });
+    return { ...merchant, supportNotes: updatedNotes };
+  }
+
   async remove(id: number): Promise<void> {
     await this.googleSheetsService.deleteMerchant(id);
   }

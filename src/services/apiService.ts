@@ -128,6 +128,13 @@ class ApiService {
     }
   }
 
+  async addMerchantSupportNote(id: number, content: string): Promise<Merchant> {
+    return this.request<Merchant>(`/merchants/${id}/support-note`, {
+      method: 'PATCH',
+      body: JSON.stringify({ content }),
+    });
+  }
+
   async deleteMerchant(id: number): Promise<void> {
     return this.request<void>(`/merchants/${id}`, {
       method: 'DELETE',

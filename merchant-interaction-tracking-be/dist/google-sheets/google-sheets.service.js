@@ -194,7 +194,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             try {
                 const response = await this.sheets.spreadsheets.values.get({
                     spreadsheetId,
-                    range: 'Merchants!A:M',
+                    range: 'Merchants!A:N',
                 });
                 const rows = response.data.values;
                 if (!rows || rows.length <= 1) {
@@ -217,6 +217,26 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                         }
                         catch (e) {
                             this.logger.warn(`Invalid support_logs JSON at row ${index + 2}`);
+                        }
+                    }
+                    let supportNotes = [];
+                    if (row[13]) {
+                        try {
+                            supportNotes = JSON.parse(row[13]);
+                            if (!Array.isArray(supportNotes)) {
+                                if (typeof row[13] === 'string' && row[13].trim()) {
+                                    supportNotes = [{ content: row[13], createdBy: 'Unknown', createdAt: new Date().toISOString() }];
+                                }
+                                else {
+                                    supportNotes = [];
+                                }
+                            }
+                        }
+                        catch (e) {
+                            this.logger.warn(`Invalid support_notes JSON at row ${index + 2}: ${e.message}`);
+                            if (typeof row[13] === 'string' && row[13].trim()) {
+                                supportNotes = [{ content: row[13], createdBy: 'Unknown', createdAt: new Date().toISOString() }];
+                            }
                         }
                     }
                     let lastInteractionDate = '';
@@ -280,6 +300,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                         lastModifiedBy: row[10] || '',
                         historyLogs,
                         supportLogs,
+                        supportNotes,
                     };
                 });
                 return merchants;
@@ -323,11 +344,12 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                         meta.by,
                         JSON.stringify([]),
                         JSON.stringify([]),
+                        JSON.stringify([]),
                     ],
                 ];
                 await this.sheets.spreadsheets.values.append({
                     spreadsheetId,
-                    range: 'Merchants!A:M',
+                    range: 'Merchants!A:N',
                     valueInputOption: 'RAW',
                     resource: { values },
                 });
@@ -350,7 +372,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                 this.logger.log(`[GoogleSheets] Updating merchant id=${id}, rowIndex=${rowIndex}, updatedBy=${meta.by}`);
                 const current = await this.sheets.spreadsheets.values.get({
                     spreadsheetId,
-                    range: `Merchants!A${rowIndex}:M${rowIndex}`,
+                    range: `Merchants!A${rowIndex}:N${rowIndex}`,
                 });
                 const row = current.data.values?.[0] || [];
                 if (!row || row.length === 0) {
@@ -381,12 +403,36 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                         this.logger.warn(`[GoogleSheets] Failed to parse history logs:`, e);
                     }
                 }
+                let supportLogs = [];
+                if (row[12]) {
+                    try {
+                        supportLogs = JSON.parse(row[12]);
+                        this.logger.log(`[GoogleSheets] Existing support logs: ${supportLogs.length} entries`);
+                    }
+                    catch (e) {
+                        this.logger.warn(`[GoogleSheets] Failed to parse support logs:`, e);
+                    }
+                }
                 historyLogs.push({
                     at: previous.lastModifiedAt || new Date().toISOString(),
                     by: previous.lastModifiedBy || meta.by,
                     data: previous
                 });
                 this.logger.log(`[GoogleSheets] Adding history log. Total logs: ${historyLogs.length}`);
+                let supportNotes = [];
+                if (row[13]) {
+                    try {
+                        supportNotes = JSON.parse(row[13]);
+                        if (!Array.isArray(supportNotes)) {
+                            supportNotes = [];
+                        }
+                    }
+                    catch (e) {
+                        this.logger.warn(`[GoogleSheets] Failed to parse support notes:`, e);
+                        supportNotes = [];
+                    }
+                }
+                const finalSupportNotes = merchant.supportNotes !== undefined ? merchant.supportNotes : supportNotes;
                 const values = [
                     [
                         merchant.name,
@@ -401,6 +447,8 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                         meta.at ?? new Date().toISOString().slice(0, 10),
                         meta.by,
                         JSON.stringify(historyLogs),
+                        JSON.stringify(supportLogs),
+                        JSON.stringify(finalSupportNotes),
                     ],
                 ];
                 this.logger.log(`[GoogleSheets] Updating row ${rowIndex} with values:`, {
@@ -412,7 +460,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                 });
                 const updateResult = await this.sheets.spreadsheets.values.update({
                     spreadsheetId,
-                    range: `Merchants!A${rowIndex}:M${rowIndex}`,
+                    range: `Merchants!A${rowIndex}:N${rowIndex}`,
                     valueInputOption: 'RAW',
                     resource: { values },
                 });
@@ -1019,8 +1067,9 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                                 merchant.lastModifiedBy || userEmail,
                                 merchant.historyLogs ? JSON.stringify(merchant.historyLogs) : '[]',
                                 supportLogsJson,
+                                merchant.supportNotes ? JSON.stringify(merchant.supportNotes) : '[]',
                             ];
-                            while (valuesArray.length < 13) {
+                            while (valuesArray.length < 14) {
                                 valuesArray.push('');
                             }
                             const values = [valuesArray];
@@ -1030,10 +1079,10 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                             let updateSuccess = false;
                             while (retryCount < maxRetries && !updateSuccess) {
                                 try {
-                                    this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:M${actualRowIndex} (attempt ${retryCount + 1}/${maxRetries})`);
+                                    this.logSync(`Updating row ${actualRowIndex} with range Merchants!A${actualRowIndex}:N${actualRowIndex} (attempt ${retryCount + 1}/${maxRetries})`);
                                     const updateResult = await this.sheets.spreadsheets.values.update({
                                         spreadsheetId: app_config_1.appConfig.spreadsheetId,
-                                        range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                                        range: `Merchants!A${actualRowIndex}:N${actualRowIndex}`,
                                         valueInputOption: 'RAW',
                                         resource: { values },
                                     });
@@ -1239,8 +1288,9 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                                 merchant.lastModifiedBy || userEmail,
                                 merchant.historyLogs ? JSON.stringify(merchant.historyLogs) : '[]',
                                 supportLogsJson,
+                                merchant.supportNotes ? JSON.stringify(merchant.supportNotes) : '[]',
                             ];
-                            while (valuesArray.length < 13) {
+                            while (valuesArray.length < 14) {
                                 valuesArray.push('');
                             }
                             const values = [valuesArray];
@@ -1252,7 +1302,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                                 try {
                                     await this.sheets.spreadsheets.values.update({
                                         spreadsheetId: app_config_1.appConfig.spreadsheetId,
-                                        range: `Merchants!A${actualRowIndex}:M${actualRowIndex}`,
+                                        range: `Merchants!A${actualRowIndex}:N${actualRowIndex}`,
                                         valueInputOption: 'RAW',
                                         resource: { values },
                                     });

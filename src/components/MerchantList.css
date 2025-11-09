@@ -232,7 +232,8 @@
 .btn-edit,
 .btn-delete,
 .btn-history,
-.btn-call-logs {
+.btn-call-logs,
+.btn-support-note {
   background: none;
   border: 1px solid #d1d5db;
   border-radius: 3px;
@@ -268,6 +269,11 @@
   border-color: #10b981;
 }
 
+.btn-support-note:hover {
+  background-color: #fffbeb;
+  border-color: #f59e0b;
+}
+
 /* History modal */
 .modal-overlay {
   position: fixed;
@@ -298,7 +304,8 @@
   justify-content: center;
 }
 
-.modal-content.call-logs-modal {
+.modal-content.call-logs-modal,
+.modal-content.support-note-modal {
   width: 960px;
   max-width: calc(100% - 2rem); /* Account for padding */
   max-height: calc(100vh - 80px - 2rem); /* Subtract header height and padding */

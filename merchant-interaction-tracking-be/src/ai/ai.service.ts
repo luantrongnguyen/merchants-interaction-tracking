@@ -15,6 +15,11 @@ interface MerchantData {
     category?: string;
     supporter: string;
   }>;
+  supportNotes?: Array<{
+    content: string;
+    createdBy: string;
+    createdAt: string;
+  }>;
   lastInteractionDate?: string;
 }
 
@@ -84,6 +89,7 @@ export class AIService {
           storeId: m.storeId,
           status: status,
           supportLogs: m.supportLogs || [],
+          supportNotes: m.supportNotes || [],
           lastInteractionDate: m.lastInteractionDate,
         };
       });
@@ -173,10 +179,28 @@ export class AIService {
               const logDate = log.date || 'Unknown date';
               const logTime = log.time || '';
               const logIssue = log.issue || 'No issue description';
+              const logCategory = log.category || 'No category';
               const logSupporter = log.supporter || 'Unknown supporter';
-              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
+              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Category:** ${logCategory}\n   - **Supporter:** ${logSupporter}`;
             }).join('\n\n')
           : 'No call logs/interactions found for this merchant.';
+        
+        // Include support notes for specific merchant
+        const supportNotes = specificMerchant.supportNotes || [];
+        const supportNotesText = supportNotes.length > 0
+          ? supportNotes.map((note: any, idx: number) => {
+              const noteDate = note.createdAt ? new Date(note.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }) : 'Unknown date';
+              const noteAuthor = note.createdBy || 'Unknown';
+              const noteContent = note.content || 'No content';
+              return `${idx + 1}. **Date:** ${noteDate}\n   - **Author:** ${noteAuthor}\n   - **Note:** ${noteContent}`;
+            }).join('\n\n')
+          : 'No support notes found for this merchant.';
         
         // Add conversation history context
         let conversationContext = '';
@@ -189,26 +213,32 @@ export class AIService {
           conversationContext += '\n**Instructions:** Remember the conversation context when answering.';
         }
 
-        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant call logs data. Answer the following question about a specific merchant.${conversationContext}
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant call logs data and support notes. Answer the following question about a specific merchant.${conversationContext}
 
 **Merchant Information:**
 - **Name:** ${specificMerchant.name}${specificMerchant.storeId ? `\n- **Store ID:** ${specificMerchant.storeId}` : ''}
 - **Status:** ${specificMerchant.status || 'unknown'}
 - **Last Interaction Date:** ${specificMerchant.lastInteractionDate || 'N/A'}
 - **Total Call Logs:** ${interactions.length}
+- **Total Support Notes:** ${supportNotes.length}
 
 **Call Logs Details:**
 ${interactionsText}
 
+**Support Notes:**
+${supportNotesText}
+
 **User Question:** ${question}
 
 **Instructions:**
-- Provide a detailed, informative answer based on the call logs data above
+- Provide a detailed, informative answer based on the call logs data and support notes above
 - Reference specific call logs with dates, issues, and supporters when relevant
+- Reference support notes with authors and dates when relevant
 - Remember and reference previous conversation context when relevant
 - Use markdown formatting for better readability
 - If the question is about call logs patterns, trends, or specific issues, analyze the call logs data provided
-- Be specific and cite the actual call log entries when answering`;
+- If the question is about support notes or team comments, reference the support notes provided
+- Be specific and cite the actual call log entries and support notes when answering`;
       } else {
         // Check if question is about call logs
         const lowerQuestion = question.toLowerCase();
@@ -357,6 +387,23 @@ ${interactionsText}
             ).join('\n')
           : 'No interactions found.';
         
+        // Include support notes for specific merchant
+        const supportNotes = specificMerchant.supportNotes || [];
+        const supportNotesText = supportNotes.length > 0
+          ? supportNotes.map((note: any, idx: number) => {
+              const noteDate = note.createdAt ? new Date(note.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }) : 'Unknown date';
+              const noteAuthor = note.createdBy || 'Unknown';
+              const noteContent = note.content || 'No content';
+              return `${idx + 1}. ${noteDate} - ${noteAuthor}: ${noteContent}`;
+            }).join('\n')
+          : 'No support notes found.';
+        
         // Add conversation history context
         let conversationContext = '';
         if (conversationHistory && conversationHistory.length > 0) {
@@ -374,13 +421,17 @@ Merchant Details:
 - Status: ${specificMerchant.status || 'unknown'}
 - Last Interaction: ${specificMerchant.lastInteractionDate || 'N/A'}
 - Total Interactions: ${interactions.length}
+- Total Support Notes: ${supportNotes.length}
 
 Interaction Details:
 ${interactionsText}
 
+Support Notes:
+${supportNotesText}
+
 Question: ${question}
 
-Provide detailed answer about this merchant's interactions. Use markdown formatting. Remember the conversation context if provided.`;
+Provide detailed answer about this merchant's interactions and support notes. Use markdown formatting. Remember the conversation context if provided.`;
       } else {
         // General analysis with summary data
         prompt = `You are Merchants AI Assistance, an AI assistant helping analyze merchant interaction data. 
@@ -481,10 +532,28 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
               const logDate = log.date || 'Unknown date';
               const logTime = log.time || '';
               const logIssue = log.issue || 'No issue description';
+              const logCategory = log.category || 'No category';
               const logSupporter = log.supporter || 'Unknown supporter';
-              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
+              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Category:** ${logCategory}\n   - **Supporter:** ${logSupporter}`;
             }).join('\n\n')
           : 'No call logs/interactions found for this merchant.';
+        
+        // Include support notes for specific merchant
+        const supportNotes = specificMerchant.supportNotes || [];
+        const supportNotesText = supportNotes.length > 0
+          ? supportNotes.map((note: any, idx: number) => {
+              const noteDate = note.createdAt ? new Date(note.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }) : 'Unknown date';
+              const noteAuthor = note.createdBy || 'Unknown';
+              const noteContent = note.content || 'No content';
+              return `${idx + 1}. **Date:** ${noteDate}\n   - **Author:** ${noteAuthor}\n   - **Note:** ${noteContent}`;
+            }).join('\n\n')
+          : 'No support notes found for this merchant.';
         
         // Add conversation history context
         let conversationContext = '';
@@ -497,26 +566,32 @@ Please provide a helpful, insightful analysis based on this data. Be concise but
           conversationContext += '\n**Instructions:** Remember the conversation context when answering.';
         }
 
-        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant call logs data. Answer the following question about a specific merchant.${conversationContext}
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant call logs data and support notes. Answer the following question about a specific merchant.${conversationContext}
 
 **Merchant Information:**
 - **Name:** ${specificMerchant.name}${specificMerchant.storeId ? `\n- **Store ID:** ${specificMerchant.storeId}` : ''}
 - **Status:** ${specificMerchant.status || 'unknown'}
 - **Last Interaction Date:** ${specificMerchant.lastInteractionDate || 'N/A'}
 - **Total Call Logs:** ${interactions.length}
+- **Total Support Notes:** ${supportNotes.length}
 
 **Call Logs Details:**
 ${interactionsText}
 
+**Support Notes:**
+${supportNotesText}
+
 **User Question:** ${question}
 
 **Instructions:**
-- Provide a detailed, informative answer based on the call logs data above
+- Provide a detailed, informative answer based on the call logs data and support notes above
 - Reference specific call logs with dates, issues, and supporters when relevant
+- Reference support notes with authors and dates when relevant
 - Remember and reference previous conversation context when relevant
 - Use markdown formatting for better readability
 - If the question is about call logs patterns, trends, or specific issues, analyze the call logs data provided
-- Be specific and cite the actual call log entries when answering`;
+- If the question is about support notes or team comments, reference the support notes provided
+- Be specific and cite the actual call log entries and support notes when answering`;
       } else {
         // Check if question is about call logs
         const isAboutCallLogs = lowerQuestion.includes('call log') || lowerQuestion.includes('call log') || 
@@ -893,26 +968,56 @@ ${interactionsText}
         }
       }
       
-      if (interactions.length > 0) {
-        const interactionsText = interactions.map((log: any, idx: number) => {
-          const logDate = log.date || 'Unknown date';
-          const logTime = log.time || '';
-          const logIssue = log.issue || 'No issue description';
-          const logSupporter = log.supporter || 'Unknown supporter';
-          return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
-        }).join('\n\n');
+      // Include support notes for specific merchant
+      const supportNotes = specificMerchant.supportNotes || [];
+      const supportNotesText = supportNotes.length > 0
+        ? supportNotes.map((note: any, idx: number) => {
+            const noteDate = note.createdAt ? new Date(note.createdAt).toLocaleString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            }) : 'Unknown date';
+            const noteAuthor = note.createdBy || 'Unknown';
+            const noteContent = note.content || 'No content';
+            return `${idx + 1}. **Date:** ${noteDate}\n   - **Author:** ${noteAuthor}\n   - **Note:** ${noteContent}`;
+          }).join('\n\n')
+        : '';
+      
+      if (interactions.length > 0 || supportNotes.length > 0) {
+        const interactionsText = interactions.length > 0
+          ? interactions.map((log: any, idx: number) => {
+              const logDate = log.date || 'Unknown date';
+              const logTime = log.time || '';
+              const logIssue = log.issue || 'No issue description';
+              const logSupporter = log.supporter || 'Unknown supporter';
+              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Supporter:** ${logSupporter}`;
+            }).join('\n\n')
+          : '';
         
-        return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}${contextNote}\n\n` +
+        let response = `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}${contextNote}\n\n` +
           `**Status:** ${specificMerchant.status || 'unknown'}\n` +
           `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
-          `**Total Call Logs:** ${interactions.length}\n\n` +
-          `### Call Logs Details:\n\n${interactionsText}`;
+          `**Total Call Logs:** ${interactions.length}\n` +
+          `**Total Support Notes:** ${supportNotes.length}\n\n`;
+        
+        if (interactions.length > 0) {
+          response += `### Call Logs Details:\n\n${interactionsText}\n\n`;
+        }
+        
+        if (supportNotes.length > 0) {
+          response += `### Support Notes:\n\n${supportNotesText}`;
+        }
+        
+        return response;
       } else {
         return `## ${specificMerchant.name}${specificMerchant.storeId ? ` (Store ID: ${specificMerchant.storeId})` : ''}${contextNote}\n\n` +
           `**Status:** ${specificMerchant.status || 'unknown'}\n` +
           `**Last Interaction:** ${specificMerchant.lastInteractionDate || 'N/A'}\n` +
-          `**Total Call Logs:** 0\n\n` +
-          `No call logs found for this merchant.`;
+          `**Total Call Logs:** 0\n` +
+          `**Total Support Notes:** 0\n\n` +
+          `No call logs or support notes found for this merchant.`;
       }
     }
     

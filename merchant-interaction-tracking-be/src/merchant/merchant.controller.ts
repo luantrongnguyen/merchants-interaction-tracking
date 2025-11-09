@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Req, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Req, UnauthorizedException, HttpException, HttpStatus, Put } from '@nestjs/common';
 import { MerchantService } from './merchant.service';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
+import { UpdateSupportNoteDto } from './dto/update-support-note.dto';
 import { SyncCallLogsManualDto } from './dto/sync-call-logs-manual.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { appConfig } from '../config/app.config';
@@ -41,6 +42,32 @@ export class MerchantController {
     });
     
     return this.merchantService.update(id, merchantData, by);
+  }
+
+  @Patch(':id/support-note')
+  async addSupportNote(@Param('id', ParseIntPipe) id: number, @Body() updateSupportNoteDto: UpdateSupportNoteDto, @Req() req: any) {
+    try {
+      const userEmail = req?.user?.email || 'unknown@mangoforsalon.com';
+      const userName = req?.user?.name || 
+                      req?.user?.given_name || 
+                      req?.user?.givenName ||
+                      req?.user?.fullName ||
+                      req?.user?.displayName ||
+                      (userEmail.includes('@') ? userEmail.split('@')[0] : userEmail);
+      
+      // Use provided content, createdBy, createdAt, or defaults
+      const noteContent = updateSupportNoteDto.content;
+      const createdBy = updateSupportNoteDto.createdBy || userName;
+      const createdAt = updateSupportNoteDto.createdAt || new Date().toISOString();
+      
+      return await this.merchantService.addSupportNote(id, noteContent, createdBy, userEmail);
+    } catch (error: any) {
+      console.error('[MerchantController] Error adding support note:', error);
+      throw new HttpException(
+        error.message || 'Failed to add support note',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Delete(':id')

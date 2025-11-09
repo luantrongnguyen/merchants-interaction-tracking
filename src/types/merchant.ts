@@ -25,6 +25,12 @@ export interface SupportLog {
   supporter: string;
 }
 
+export interface SupportNote {
+  content: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 export interface Merchant {
   id?: number;
   name: string;
@@ -37,6 +43,7 @@ export interface Merchant {
   lastInteractionDate: string;
   platform: string;
   phone: string;
+  supportNotes?: SupportNote[]; // Support notes list từ cột N (JSON array)
   createdAt?: string;
   updatedAt?: string;
   lastModifiedAt?: string;
@@ -56,6 +63,7 @@ export interface MerchantFormData {
   lastInteractionDate: string;
   platform: string;
   phone: string;
+  supportNotes?: SupportNote[];
 }
 
 export type MerchantStatus = 'green' | 'orange' | 'red';

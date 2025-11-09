@@ -8,6 +8,7 @@ export declare class MerchantService {
     findAll(): Promise<any[]>;
     findOne(id: number): Promise<any>;
     update(id: number, updateMerchantDto: UpdateMerchantDto, userEmail: string): Promise<any>;
+    addSupportNote(id: number, noteContent: string, userName: string, userEmail: string): Promise<any>;
     remove(id: number): Promise<void>;
     syncMerchantsFromExternal(userEmail: string): Promise<{
         added: number;

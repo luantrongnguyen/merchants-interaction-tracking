@@ -8,6 +8,7 @@ export declare class Merchant {
     zipcode: string;
     lastInteractionDate: string;
     platform: string;
+    supportNote: string;
     createdAt: Date;
     updatedAt: Date;
 }

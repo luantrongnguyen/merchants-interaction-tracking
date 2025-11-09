@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const merchant_service_1 = require("./merchant.service");
 const create_merchant_dto_1 = require("./dto/create-merchant.dto");
 const update_merchant_dto_1 = require("./dto/update-merchant.dto");
+const update_support_note_dto_1 = require("./dto/update-support-note.dto");
 const sync_call_logs_manual_dto_1 = require("./dto/sync-call-logs-manual.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const app_config_1 = require("../config/app.config");
@@ -45,6 +46,25 @@ let MerchantController = class MerchantController {
             lastInteractionDate: merchantData.lastInteractionDate
         });
         return this.merchantService.update(id, merchantData, by);
+    }
+    async addSupportNote(id, updateSupportNoteDto, req) {
+        try {
+            const userEmail = req?.user?.email || 'unknown@mangoforsalon.com';
+            const userName = req?.user?.name ||
+                req?.user?.given_name ||
+                req?.user?.givenName ||
+                req?.user?.fullName ||
+                req?.user?.displayName ||
+                (userEmail.includes('@') ? userEmail.split('@')[0] : userEmail);
+            const noteContent = updateSupportNoteDto.content;
+            const createdBy = updateSupportNoteDto.createdBy || userName;
+            const createdAt = updateSupportNoteDto.createdAt || new Date().toISOString();
+            return await this.merchantService.addSupportNote(id, noteContent, createdBy, userEmail);
+        }
+        catch (error) {
+            console.error('[MerchantController] Error adding support note:', error);
+            throw new common_1.HttpException(error.message || 'Failed to add support note', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
     remove(id) {
         return this.merchantService.remove(id);
@@ -120,6 +140,15 @@ __decorate([
     __metadata("design:paramtypes", [Number, update_merchant_dto_1.UpdateMerchantDto, Object]),
     __metadata("design:returntype", void 0)
 ], MerchantController.prototype, "update", null);
+__decorate([
+    (0, common_1.Patch)(':id/support-note'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, update_support_note_dto_1.UpdateSupportNoteDto, Object]),
+    __metadata("design:returntype", Promise)
+], MerchantController.prototype, "addSupportNote", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),

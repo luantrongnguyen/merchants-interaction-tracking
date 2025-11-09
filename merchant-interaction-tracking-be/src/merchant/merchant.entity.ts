@@ -29,6 +29,9 @@ export class Merchant {
   @Column()
   platform: string;
 
+  @Column({ type: 'text', nullable: true })
+  supportNote: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
