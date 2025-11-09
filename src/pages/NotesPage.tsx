@@ -10,10 +10,17 @@ const NotesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [createForDate, setCreateForDate] = useState<string | null>(null);
   const [newNote, setNewNote] = useState<CreateNoteData>({
+    title: '',
+    content: '',
+  });
+  const [editNote, setEditNote] = useState<CreateNoteData>({
     title: '',
     content: '',
   });
@@ -111,9 +118,29 @@ const NotesPage: React.FC = () => {
     return notesByDate[selectedDate] || [];
   }, [notesByDate, selectedDate]);
 
-  const handleMarkAsRead = async (noteId: number) => {
+  const handleMarkAsRead = async (noteId: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     try {
       await apiService.markNoteAsRead(noteId);
+      // Update local state immediately để button ẩn ngay
+      setNotes(prevNotes => 
+        prevNotes.map(note => {
+          if (note.id === noteId) {
+            const updatedReadBy = user?.email && !note.readBy.includes(user.email)
+              ? [...note.readBy, user.email]
+              : note.readBy;
+            return {
+              ...note,
+              readBy: updatedReadBy,
+              isRead: updatedReadBy.length > 0,
+            };
+          }
+          return note;
+        })
+      );
+      // Refresh từ server để đảm bảo sync
       await loadNotes();
       // Refresh unread count in parent
       if (window.dispatchEvent) {
@@ -134,6 +161,42 @@ const NotesPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Error marking all notes as read:', err);
+    }
+  };
+
+  const handleEditNote = (note: Note) => {
+    setEditingNote(note);
+    setEditNote({
+      title: note.title,
+      content: note.content,
+    });
+    setShowEditForm(true);
+  };
+
+  const handleUpdateNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingNote || !editNote.title.trim() || !editNote.content.trim()) {
+      setError('Title and content are required.');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+      await apiService.updateNote(editingNote.id, editNote.title, editNote.content);
+      setShowEditForm(false);
+      setEditingNote(null);
+      setEditNote({ title: '', content: '' });
+      await loadNotes();
+      // Refresh unread count in parent
+      if (window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('notesUpdated'));
+      }
+    } catch (err) {
+      console.error('Error updating note:', err);
+      setError(`Failed to update note: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -319,6 +382,71 @@ const NotesPage: React.FC = () => {
         </div>
       )}
 
+      {showEditForm && editingNote && (
+        <div className="modal-overlay" onClick={() => {
+          setShowEditForm(false);
+          setEditingNote(null);
+          setEditNote({ title: '', content: '' });
+        }}>
+          <div className="modal-content create-note-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Note</h2>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  setShowEditForm(false);
+                  setEditingNote(null);
+                  setEditNote({ title: '', content: '' });
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleUpdateNote}>
+              <div className="form-group">
+                <label htmlFor="edit-note-title">Title *</label>
+                <input
+                  id="edit-note-title"
+                  type="text"
+                  value={editNote.title}
+                  onChange={(e) => setEditNote({ ...editNote, title: e.target.value })}
+                  placeholder="Enter note title"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="edit-note-content">Content *</label>
+                <textarea
+                  id="edit-note-content"
+                  value={editNote.content}
+                  onChange={(e) => setEditNote({ ...editNote, content: e.target.value })}
+                  placeholder="Enter note content"
+                  rows={6}
+                  required
+                />
+              </div>
+              <div className="form-actions">
+                <button type="submit" className="btn-primary" disabled={isUpdating}>
+                  {isUpdating ? 'Updating...' : 'Update Note'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditForm(false);
+                    setEditingNote(null);
+                    setEditNote({ title: '', content: '' });
+                  }}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="notes-list-by-date">
         <div className="date-section">
           <h2 className="date-section-title">
@@ -327,15 +455,11 @@ const NotesPage: React.FC = () => {
           <div className="notes-list">
             {filteredNotes.map((note) => {
               const unread = isNoteUnread(note);
+              const isOwner = note.createdBy === user?.email;
               return (
                 <div
                   key={note.id}
                   className={`note-card ${unread ? 'unread' : ''}`}
-                  onClick={() => {
-                    if (unread) {
-                      handleMarkAsRead(note.id);
-                    }
-                  }}
                 >
                   <div className="note-header">
                     <div className="note-title-row">
@@ -344,7 +468,11 @@ const NotesPage: React.FC = () => {
                     </div>
                     <div className="note-meta">
                       <span className="note-author">
-                        By {note.createdByName || note.createdBy}
+                        By {note.createdByName && note.createdByName !== 'unknown' 
+                          ? note.createdByName 
+                          : (note.createdBy?.includes('@') 
+                            ? note.createdBy.split('@')[0] 
+                            : note.createdBy || 'Unknown')}
                       </span>
                       <span className="note-time">
                         {new Date(note.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
@@ -355,24 +483,33 @@ const NotesPage: React.FC = () => {
                     <p>{note.content}</p>
                   </div>
                   <div className="note-actions">
-                    {note.createdBy === user?.email && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteNote(note.id);
-                        }}
-                        className="btn-delete-small"
-                        title="Delete note"
-                      >
-                        Delete
-                      </button>
+                    {isOwner && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditNote(note);
+                          }}
+                          className="btn-edit-small"
+                          title="Edit note"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNote(note.id);
+                          }}
+                          className="btn-delete-small"
+                          title="Delete note"
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                     {unread && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkAsRead(note.id);
-                        }}
+                        onClick={(e) => handleMarkAsRead(note.id, e)}
                         className="btn-mark-read"
                       >
                         Mark as Read

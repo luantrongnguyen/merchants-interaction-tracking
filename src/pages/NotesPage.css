@@ -339,6 +339,21 @@
   flex-shrink: 0;
 }
 
+.btn-edit-small {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-edit-small:hover {
+  background: #2563eb;
+}
+
 .btn-delete-small {
   background: #ef4444;
   color: white;

@@ -64,11 +64,12 @@ let AuthService = class AuthService {
         };
     }
     async validateToken(payload) {
+        const userName = payload.name || payload.given_name || payload.givenName || payload.fullName || payload.displayName || payload.email?.split('@')[0] || 'Unknown User';
         return {
-            email: payload.email,
-            name: payload.name,
-            picture: payload.picture,
-            sub: payload.sub
+            email: payload.email || payload.sub || 'unknown@example.com',
+            name: userName,
+            picture: payload.picture || '',
+            sub: payload.sub || payload.email || 'unknown'
         };
     }
 };

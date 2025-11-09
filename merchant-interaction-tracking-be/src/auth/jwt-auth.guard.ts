@@ -14,10 +14,21 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return super.canActivate(context);
     }
     
-    // Bypass cho các endpoint khác trong development
-    if (process.env.BYPASS_AUTH === 'true' || process.env.NODE_ENV === 'development') {
+    // CHỈ bypass auth khi BYPASS_AUTH === 'true' (không bypass trong production)
+    // Trong production, luôn yêu cầu authentication thật
+    if (process.env.BYPASS_AUTH === 'true') {
+      // Set default user khi bypass auth để tránh lỗi khi controller truy cập req.user
+      if (!request.user) {
+        request.user = {
+          email: 'dev@example.com',
+          sub: 'dev-user',
+          name: 'Development User',
+        };
+      }
       return true;
     }
+    
+    // Trong production hoặc khi không có BYPASS_AUTH, yêu cầu authentication thật
     return super.canActivate(context);
   }
 }

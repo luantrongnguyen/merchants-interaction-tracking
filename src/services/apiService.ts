@@ -224,6 +224,13 @@ class ApiService {
     });
   }
 
+  async updateNote(noteId: number, title: string, content: string): Promise<any> {
+    return this.request<any>(`/notes/${noteId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title, content }),
+    });
+  }
+
   async deleteNote(noteId: number): Promise<void> {
     await this.request(`/notes/${noteId}`, {
       method: 'DELETE',

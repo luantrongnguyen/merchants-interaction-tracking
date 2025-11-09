@@ -16,7 +16,14 @@ let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
         if (isCheckEndpoint) {
             return super.canActivate(context);
         }
-        if (process.env.BYPASS_AUTH === 'true' || process.env.NODE_ENV === 'development') {
+        if (process.env.BYPASS_AUTH === 'true') {
+            if (!request.user) {
+                request.user = {
+                    email: 'dev@example.com',
+                    sub: 'dev-user',
+                    name: 'Development User',
+                };
+            }
             return true;
         }
         return super.canActivate(context);
