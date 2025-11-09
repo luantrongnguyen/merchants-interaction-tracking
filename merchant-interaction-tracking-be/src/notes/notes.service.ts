@@ -17,6 +17,19 @@ export class NotesService {
     // Sử dụng noteDate từ DTO nếu có, nếu không thì lấy ngày hiện tại
     const noteDate = createNoteDto.noteDate || new Date().toISOString().split('T')[0];
     
+    // Validate: không cho phép tạo note cho ngày quá khứ
+    const selectedDate = new Date(noteDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      throw new HttpException(
+        'Cannot create notes for past dates. Please select today or a future date.',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    
     // Đảm bảo có userName, nếu không thì dùng phần trước @ của email, hoặc email
     const finalUserName = userName || 
                          (userEmail.includes('@') ? userEmail.split('@')[0] : userEmail) ||

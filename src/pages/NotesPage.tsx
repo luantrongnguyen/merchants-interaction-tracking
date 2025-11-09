@@ -95,7 +95,22 @@ const NotesPage: React.FC = () => {
     }
   };
 
+  // Kiểm tra xem date có phải là ngày quá khứ không
+  const isPastDate = (date: string): boolean => {
+    const dateObj = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dateObj.setHours(0, 0, 0, 0);
+    return dateObj < today;
+  };
+
   const handleAddNoteClick = (date: string) => {
+    // Kiểm tra xem date có phải là ngày quá khứ không
+    if (isPastDate(date)) {
+      setError('Cannot create notes for past dates. Please select today or a future date.');
+      return;
+    }
+    
     setCreateForDate(date);
     setShowCreateForm(true);
   };
@@ -274,14 +289,15 @@ const NotesPage: React.FC = () => {
             const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
             const dayNumber = dateObj.getDate();
             const isToday = date === new Date().toISOString().split('T')[0];
+            const isPast = isPastDate(date);
             const notesCount = notesByDate[date]?.length || 0;
 
             return (
               <button
                 key={date}
                 onClick={() => setSelectedDate(date)}
-                className={`week-date-item ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
-                title={dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                className={`week-date-item ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${isPast ? 'past' : ''}`}
+                title={dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + (isPast ? ' (Past date - cannot add notes)' : '')}
               >
                 <div className="week-date-day">{dayName}</div>
                 <div className="week-date-number">{dayNumber}</div>
@@ -519,16 +535,18 @@ const NotesPage: React.FC = () => {
                 </div>
               );
             })}
-            {/* Add New Note Card */}
-            <div
-              className="note-card add-note-card"
-              onClick={() => handleAddNoteClick(selectedDate)}
-            >
-              <div className="add-note-content">
-                <div className="add-note-icon">+</div>
-                <div className="add-note-text">Add New Note</div>
+            {/* Add New Note Card - chỉ hiển thị cho ngày hôm nay và tương lai */}
+            {!isPastDate(selectedDate) && (
+              <div
+                className="note-card add-note-card"
+                onClick={() => handleAddNoteClick(selectedDate)}
+              >
+                <div className="add-note-content">
+                  <div className="add-note-icon">+</div>
+                  <div className="add-note-text">Add New Note</div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -75,6 +75,16 @@
   border-color: #10b981;
 }
 
+.week-date-item.past {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.week-date-item.past:hover {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
 .week-date-day {
   font-size: 0.75rem;
   font-weight: 600;
