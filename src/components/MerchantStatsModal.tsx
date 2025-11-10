@@ -10,6 +10,7 @@ import {
   LinearScale,
   BarElement,
 } from 'chart.js';
+import Modal from './Modal';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -150,42 +151,38 @@ const MerchantStatsModal: React.FC<MerchantStatsModalProps> = ({ merchant, onClo
   } as const;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: 980 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Stats - {merchant.name}</h3>
-          <button className="close-button" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          <div className="chart-wrapper" style={{ height: 320, marginBottom: 16 }}>
-            {labels.length === 0 ? (
-              <div className="empty-state">Không có dữ liệu category.</div>
-            ) : (
-              <Pie data={pieData} options={pieOptions} />
-            )}
-          </div>
-
-          <div style={{ marginBottom: 8 }}>
-            <select value={range} onChange={e => setRange(e.target.value as any)}>
-              <option value="day">Day</option>
-              <option value="week">Week</option>
-              <option value="month">Month</option>
-              <option value="year">Year</option>
-            </select>
-          </div>
-          <div className="chart-wrapper" style={{ height: 280 }}>
-            {timeAgg.labels.length === 0 ? (
-              <div className="empty-state">Không có dữ liệu interactions.</div>
-            ) : (
-              <Bar data={barData} options={barOptions} />
-            )}
-          </div>
-        </div>
-        <div className="modal-actions">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={`Stats - ${merchant.name}`}
+      width="980px"
+      maxWidth="96vw"
+      maxHeight="90vh"
+    >
+      <div className="chart-wrapper" style={{ height: 320, marginBottom: 16 }}>
+        {labels.length === 0 ? (
+          <div className="empty-state">Không có dữ liệu category.</div>
+        ) : (
+          <Pie data={pieData} options={pieOptions} />
+        )}
       </div>
-    </div>
+
+      <div style={{ marginBottom: 8 }}>
+        <select value={range} onChange={e => setRange(e.target.value as any)}>
+          <option value="day">Day</option>
+          <option value="week">Week</option>
+          <option value="month">Month</option>
+          <option value="year">Year</option>
+        </select>
+      </div>
+      <div className="chart-wrapper" style={{ height: 280 }}>
+        {timeAgg.labels.length === 0 ? (
+          <div className="empty-state">Không có dữ liệu interactions.</div>
+        ) : (
+          <Bar data={barData} options={barOptions} />
+        )}
+      </div>
+    </Modal>
   );
 };
 

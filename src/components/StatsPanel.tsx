@@ -5,9 +5,10 @@ import './StatsPanel.css';
 
 interface StatsPanelProps {
   merchants: MerchantWithStatus[];
+  compact?: boolean;
 }
 
-const StatsPanel: React.FC<StatsPanelProps> = ({ merchants }) => {
+const StatsPanel: React.FC<StatsPanelProps> = ({ merchants, compact = false }) => {
   // Calculate statistics
   const totalMerchants = merchants.length;
   const goodStatus = merchants.filter(m => m.status === 'green').length;
@@ -18,6 +19,39 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ merchants }) => {
   const goodPercentage = totalMerchants > 0 ? Math.round((goodStatus / totalMerchants) * 100) : 0;
   const attentionPercentage = totalMerchants > 0 ? Math.round((attentionStatus / totalMerchants) * 100) : 0;
   const contactPercentage = totalMerchants > 0 ? Math.round((contactStatus / totalMerchants) * 100) : 0;
+
+  if (compact) {
+    return (
+      <div className="stats-panel stats-panel--compact">
+        <div className="stats-panel__compact-grid">
+          <StatsCard
+            title="Total"
+            value={totalMerchants}
+            color="blue"
+            compact
+          />
+          <StatsCard
+            title="Good"
+            value={goodStatus}
+            color="green"
+            compact
+          />
+          <StatsCard
+            title="Attention"
+            value={attentionStatus}
+            color="orange"
+            compact
+          />
+          <StatsCard
+            title="Contact"
+            value={contactStatus}
+            color="red"
+            compact
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="stats-panel">

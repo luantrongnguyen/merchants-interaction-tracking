@@ -4,7 +4,7 @@
   padding: 1rem 1.5rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   animation: slideInDown 0.5s ease-out;
 }
 
@@ -101,7 +101,7 @@
 @media (prefers-color-scheme: dark) {
   .greeting-banner {
     background: linear-gradient(135deg, #4c63d2 0%, #5a3d7a 100%);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
   }
 }
 
@@ -130,33 +130,4 @@
   animation: wave 2s ease-in-out infinite;
 }
 
-/* Christmas theme for compact greeting banner */
-.christmas-theme .greeting-banner.compact {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.christmas-theme .greeting-text-compact {
-  color: #ffffff;
-  font-weight: 600;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.christmas-theme .greeting-banner.compact .greeting-icon {
-  filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.5));
-  animation: wave 2s ease-in-out infinite, glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes glow {
-  from {
-    filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.5));
-  }
-  to {
-    filter: drop-shadow(0 2px 8px rgba(255, 215, 0, 0.8));
-  }
-}
 

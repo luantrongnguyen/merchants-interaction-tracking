@@ -202,47 +202,6 @@ class ApiService {
     return response;
   }
 
-  // Notes API
-  async getNotes(): Promise<any[]> {
-    return this.request<any[]>('/notes');
-  }
-
-  async createNote(title: string, content: string, noteDate?: string): Promise<any> {
-    return this.request<any>('/notes', {
-      method: 'POST',
-      body: JSON.stringify({ title, content, noteDate }),
-    });
-  }
-
-  async getUnreadNotesCount(): Promise<number> {
-    const response = await this.request<{ count: number }>('/notes/unread-count');
-    return response.count;
-  }
-
-  async markNoteAsRead(noteId: number): Promise<void> {
-    await this.request(`/notes/${noteId}/read`, {
-      method: 'PATCH',
-    });
-  }
-
-  async markAllNotesAsRead(): Promise<void> {
-    await this.request('/notes/mark-all-read', {
-      method: 'PATCH',
-    });
-  }
-
-  async updateNote(noteId: number, title: string, content: string): Promise<any> {
-    return this.request<any>(`/notes/${noteId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ title, content }),
-    });
-  }
-
-  async deleteNote(noteId: number): Promise<void> {
-    await this.request(`/notes/${noteId}`, {
-      method: 'DELETE',
-    });
-  }
 }
 
 const apiService = new ApiService();

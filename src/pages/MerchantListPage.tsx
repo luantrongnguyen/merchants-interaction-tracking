@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import MerchantList from '../components/MerchantList';
-import SearchFilter from '../components/SearchFilter';
-import StatsPanel from '../components/StatsPanel';
 import ChatBox from '../components/ChatBox';
 import { MerchantWithStatus } from '../types/merchant';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +13,16 @@ interface MerchantListPageProps {
   onClear: () => void;
   onEdit: (merchant: MerchantWithStatus) => void;
   onDelete: (id: number) => void;
+  onSyncCallLogs?: (passcode: string) => Promise<void>;
+  isSyncing?: boolean;
+  syncProgress?: number;
+  syncStatus?: string;
+  syncResults?: {
+    matched: number;
+    updated: number;
+    errors: number;
+    totalCallLogsAdded: number;
+  } | null;
 }
 
 const MerchantListPage: React.FC<MerchantListPageProps> = ({
@@ -26,6 +34,11 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
   onClear,
   onEdit,
   onDelete,
+  onSyncCallLogs,
+  isSyncing = false,
+  syncProgress = 0,
+  syncStatus = '',
+  syncResults = null,
 }) => {
   const { user } = useAuth();
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -42,21 +55,14 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
       )}
 
       <div className="app-content">
-        <div className="stats-section">
-          <StatsPanel merchants={merchants} />
-        </div>
-        
         <div className="main-content">
-          <SearchFilter
-            onSearch={onSearch}
-            onFilter={onFilter}
-            onClear={onClear}
-          />
-
           <MerchantList
             merchants={merchants}
             onEdit={onEdit}
             onDelete={onDelete}
+            onSearch={onSearch}
+            onFilter={onFilter}
+            onClear={onClear}
           />
         </div>
       </div>
@@ -75,7 +81,12 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
       <ChatBox 
         merchants={merchants} 
         isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
+        onClose={() => setIsChatOpen(false)}
+        onSyncCallLogs={onSyncCallLogs}
+        isSyncing={isSyncing}
+        syncProgress={syncProgress}
+        syncStatus={syncStatus}
+        syncResults={syncResults}
       />
     </>
   );

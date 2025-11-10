@@ -14,9 +14,28 @@ interface ChatBoxProps {
   merchants: MerchantWithStatus[];
   isOpen: boolean;
   onClose: () => void;
+  onSyncCallLogs?: (passcode: string) => Promise<void>;
+  isSyncing?: boolean;
+  syncProgress?: number;
+  syncStatus?: string;
+  syncResults?: {
+    matched: number;
+    updated: number;
+    errors: number;
+    totalCallLogsAdded: number;
+  } | null;
 }
 
-const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
+const ChatBox: React.FC<ChatBoxProps> = ({ 
+  merchants, 
+  isOpen, 
+  onClose, 
+  onSyncCallLogs,
+  isSyncing = false,
+  syncProgress = 0,
+  syncStatus = '',
+  syncResults = null,
+}) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -27,8 +46,12 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [needsPasscode, setNeedsPasscode] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [passcodeError, setPasscodeError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const passcodeInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,6 +66,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Reset passcode input when sync completes
+  useEffect(() => {
+    if (syncResults && !isSyncing) {
+      setNeedsPasscode(false);
+      setPasscode('');
+      setPasscodeError('');
+    }
+  }, [syncResults, isSyncing]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -68,14 +100,93 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
           content: msg.content,
         }));
 
-      const response = await apiService.getAIInsight(currentInput, merchants, conversationHistory);
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.insight || 'I apologize, but I couldn\'t generate an insight at this time.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      // Check if user is asking to sync call logs - more flexible detection
+      const syncKeywords = ['sync', 'đồng bộ', 'cập nhật', 'update', 'refresh', 'tải lại', 'đồng bộ lại', 'bắt đầu sync', 'bảo'];
+      const callLogKeywords = ['call log', 'call logs', 'lịch sử cuộc gọi', 'cuộc gọi', 'call', 'logs'];
+      const inputLower = currentInput.toLowerCase().trim();
+      
+      // Check for various sync request patterns
+      // Pattern 1: Direct request: "sync call logs", "đồng bộ call logs"
+      // Pattern 2: With agent: "agent sync call logs", "bảo agent sync call logs"
+      // Pattern 3: With "toàn bộ": "sync toàn bộ call log", "agent sync toàn bộ call log"
+      // Pattern 4: Just "sync call log" or "sync logs"
+      const hasSyncKeyword = syncKeywords.some(keyword => inputLower.includes(keyword));
+      const hasCallLogKeyword = callLogKeywords.some(keyword => inputLower.includes(keyword));
+      const hasAgentKeyword = inputLower.includes('agent');
+      const hasToanBoKeyword = inputLower.includes('toàn bộ') || inputLower.includes('all');
+      
+      // More permissive detection:
+      // - If contains "sync" and "call log" (or just "log" if also has "call")
+      // - If contains "agent", "sync", and any call log keyword
+      // - If contains "toàn bộ" and "sync" and call log keyword
+      // - If contains "bảo agent sync" and call log keyword
+      const hasSyncAndCallLog = hasSyncKeyword && (hasCallLogKeyword || (inputLower.includes('call') && inputLower.includes('log')));
+      const hasAgentSync = hasAgentKeyword && hasSyncKeyword && (hasCallLogKeyword || inputLower.includes('call') || inputLower.includes('log'));
+      const hasToanBoSync = hasToanBoKeyword && hasSyncKeyword && (hasCallLogKeyword || inputLower.includes('call') || inputLower.includes('log'));
+      
+      const isSyncRequest = hasSyncAndCallLog || hasAgentSync || hasToanBoSync;
+
+      if (isSyncRequest && onSyncCallLogs) {
+        // Request passcode for sync
+        setNeedsPasscode(true);
+        setPasscode('');
+        setPasscodeError('');
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Để đồng bộ call logs, vui lòng nhập authentication code:',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setTimeout(() => {
+          passcodeInputRef.current?.focus();
+        }, 100);
+      } else {
+        const response = await apiService.getAIInsight(currentInput, merchants, conversationHistory);
+        const insight = response.insight || 'I apologize, but I couldn\'t generate an insight at this time.';
+        
+        // Check if AI response suggests syncing or contains trigger phrases
+        const insightLower = insight.toLowerCase();
+        const syncTriggerPhrases = [
+          'i\'ll help you sync',
+          'sync the call logs',
+          'bắt đầu sync',
+          'đồng bộ call logs',
+          'trigger the sync',
+          'start syncing',
+          'sync process will start'
+        ];
+        const shouldSync = syncTriggerPhrases.some(phrase => insightLower.includes(phrase)) ||
+                          ((insightLower.includes('sync') || insightLower.includes('đồng bộ')) && 
+                           (insightLower.includes('call log') || insightLower.includes('call logs')));
+        
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: insight,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        
+        // If AI suggests syncing and we have the function, request passcode
+        if (shouldSync && onSyncCallLogs) {
+          setTimeout(() => {
+            setNeedsPasscode(true);
+            setPasscode('');
+            setPasscodeError('');
+            const passcodeMessage: Message = {
+              id: (Date.now() + 2).toString(),
+              role: 'assistant',
+              content: 'Để đồng bộ call logs, vui lòng nhập authentication code:',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, passcodeMessage]);
+            setTimeout(() => {
+              passcodeInputRef.current?.focus();
+            }, 100);
+          }, 1000);
+        }
+      }
     } catch (error) {
       console.error('Error getting AI insight:', error);
       const errorMessage: Message = {
@@ -93,7 +204,39 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (needsPasscode) {
+        handlePasscodeSubmit();
+      } else {
+        handleSend();
+      }
+    }
+  };
+
+  const handlePasscodeSubmit = async () => {
+    if (!passcode.trim() || !onSyncCallLogs) return;
+
+    try {
+      setPasscodeError('');
+      await onSyncCallLogs(passcode.trim());
+      setNeedsPasscode(false);
+      setPasscode('');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Invalid authentication code';
+      setPasscodeError(errorMsg);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `❌ ${errorMsg}. Vui lòng thử lại.`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
+  const handlePasscodeKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handlePasscodeSubmit();
     }
   };
 
@@ -126,14 +269,85 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
           content: msg.content,
         }));
 
-      const response = await apiService.getAIInsight(question, merchants, conversationHistory);
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.insight || 'I apologize, but I couldn\'t generate an insight at this time.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      // Check if question is about syncing call logs - more flexible detection
+      const syncKeywords = ['sync', 'đồng bộ', 'cập nhật', 'update', 'refresh', 'tải lại', 'đồng bộ lại', 'bắt đầu sync', 'bảo'];
+      const callLogKeywords = ['call log', 'call logs', 'lịch sử cuộc gọi', 'cuộc gọi', 'call', 'logs'];
+      const questionLower = question.toLowerCase().trim();
+      
+      // Check for various sync request patterns
+      const hasSyncKeyword = syncKeywords.some(keyword => questionLower.includes(keyword));
+      const hasCallLogKeyword = callLogKeywords.some(keyword => questionLower.includes(keyword));
+      const hasAgentKeyword = questionLower.includes('agent');
+      const hasToanBoKeyword = questionLower.includes('toàn bộ') || questionLower.includes('all');
+      
+      // More permissive detection
+      const hasSyncAndCallLog = hasSyncKeyword && (hasCallLogKeyword || (questionLower.includes('call') && questionLower.includes('log')));
+      const hasAgentSync = hasAgentKeyword && hasSyncKeyword && (hasCallLogKeyword || questionLower.includes('call') || questionLower.includes('log'));
+      const hasToanBoSync = hasToanBoKeyword && hasSyncKeyword && (hasCallLogKeyword || questionLower.includes('call') || questionLower.includes('log'));
+      
+      const isSyncRequest = hasSyncAndCallLog || hasAgentSync || hasToanBoSync;
+
+      if (isSyncRequest && onSyncCallLogs) {
+        // Request passcode for sync
+        setNeedsPasscode(true);
+        setPasscode('');
+        setPasscodeError('');
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Để đồng bộ call logs, vui lòng nhập authentication code:',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setTimeout(() => {
+          passcodeInputRef.current?.focus();
+        }, 100);
+      } else {
+        const response = await apiService.getAIInsight(question, merchants, conversationHistory);
+        const insight = response.insight || 'I apologize, but I couldn\'t generate an insight at this time.';
+        
+        // Check if AI response suggests syncing or contains trigger phrases
+        const insightLower = insight.toLowerCase();
+        const syncTriggerPhrases = [
+          'i\'ll help you sync',
+          'sync the call logs',
+          'bắt đầu sync',
+          'đồng bộ call logs',
+          'trigger the sync',
+          'start syncing',
+          'sync process will start'
+        ];
+        const shouldSync = syncTriggerPhrases.some(phrase => insightLower.includes(phrase)) ||
+                          ((insightLower.includes('sync') || insightLower.includes('đồng bộ')) && 
+                           (insightLower.includes('call log') || insightLower.includes('call logs')));
+        
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: insight,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        
+        // If AI suggests syncing and we have the function, request passcode
+        if (shouldSync && onSyncCallLogs) {
+          setTimeout(() => {
+            setNeedsPasscode(true);
+            setPasscode('');
+            setPasscodeError('');
+            const passcodeMessage: Message = {
+              id: (Date.now() + 2).toString(),
+              role: 'assistant',
+              content: 'Để đồng bộ call logs, vui lòng nhập authentication code:',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, passcodeMessage]);
+            setTimeout(() => {
+              passcodeInputRef.current?.focus();
+            }, 100);
+          }, 1000);
+        }
+      }
     } catch (error) {
       console.error('Error getting AI insight:', error);
       const errorMessage: Message = {
@@ -205,10 +419,57 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
               </div>
             </div>
           )}
+          {/* Sync Progress Display */}
+          {isSyncing && (
+            <div className="chatbox-sync-progress">
+              <div className="sync-progress-header">
+                <span className="sync-progress-icon">🔄</span>
+                <span className="sync-progress-text">{syncStatus || 'Đang đồng bộ call logs...'}</span>
+                <span className="sync-progress-percent">{syncProgress}%</span>
+              </div>
+              <div className="sync-progress-bar-container">
+                <div 
+                  className="sync-progress-bar-fill" 
+                  style={{ width: `${syncProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          {/* Sync Results Display */}
+          {syncResults && !isSyncing && (
+            <div className="chatbox-sync-results">
+              <div className="sync-results-header">
+                <span className="sync-results-icon">✅</span>
+                <span className="sync-results-title">Đồng bộ hoàn thành!</span>
+              </div>
+              <div className="sync-results-content">
+                <div className="sync-result-item">
+                  <span className="sync-result-label">Matched:</span>
+                  <span className="sync-result-value">{syncResults.matched}</span>
+                </div>
+                <div className="sync-result-item">
+                  <span className="sync-result-label">Updated:</span>
+                  <span className="sync-result-value">{syncResults.updated}</span>
+                </div>
+                <div className="sync-result-item">
+                  <span className="sync-result-label">Call Logs Added:</span>
+                  <span className="sync-result-value success">{syncResults.totalCallLogsAdded}</span>
+                </div>
+                {syncResults.errors > 0 && (
+                  <div className="sync-result-item">
+                    <span className="sync-result-label">Errors:</span>
+                    <span className="sync-result-value error">{syncResults.errors}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
-        {messages.length === 1 && (
+        {messages.length === 1 && !needsPasscode && !isSyncing && (
           <div className="chatbox-quick-questions">
             <p>Quick questions:</p>
             <div className="quick-questions-list">
@@ -225,26 +486,61 @@ const ChatBox: React.FC<ChatBoxProps> = ({ merchants, isOpen, onClose }) => {
           </div>
         )}
 
-        <div className="chatbox-input-container">
-          <input
-            ref={inputRef}
-            type="text"
-            className="chatbox-input"
-            placeholder="Ask me anything about your merchant data..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={isLoading}
-          />
-          <button
-            className="chatbox-send-btn"
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            aria-label="Send message"
-          >
-            <span>➤</span>
-          </button>
-        </div>
+        {/* Passcode Input */}
+        {needsPasscode && !isSyncing && (
+          <div className="chatbox-passcode-container">
+            <div className="chatbox-passcode-input-wrapper">
+              <input
+                ref={passcodeInputRef}
+                type="password"
+                className="chatbox-passcode-input"
+                placeholder="Nhập authentication code..."
+                value={passcode}
+                onChange={(e) => {
+                  setPasscode(e.target.value);
+                  setPasscodeError('');
+                }}
+                onKeyPress={handlePasscodeKeyPress}
+                disabled={isLoading}
+              />
+              <button
+                className="chatbox-passcode-submit"
+                onClick={handlePasscodeSubmit}
+                disabled={!passcode.trim() || isLoading}
+                aria-label="Submit passcode"
+              >
+                <span>✓</span>
+              </button>
+            </div>
+            {passcodeError && (
+              <div className="chatbox-passcode-error">{passcodeError}</div>
+            )}
+          </div>
+        )}
+
+        {/* Regular Input */}
+        {!needsPasscode && (
+          <div className="chatbox-input-container">
+            <input
+              ref={inputRef}
+              type="text"
+              className="chatbox-input"
+              placeholder="Ask me anything about your merchant data..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={isLoading || isSyncing}
+            />
+            <button
+              className="chatbox-send-btn"
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading || isSyncing}
+              aria-label="Send message"
+            >
+              <span>➤</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,32 +1,110 @@
 .merchant-list {
-  margin-top: 24px;
+  padding: 2rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .list-header {
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .list-header h2 {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
+  padding: 0;
+  background: linear-gradient(135deg, #FFB300 0%, #FFA726 50%, #FF8F00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  white-space: nowrap;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.list-header-stats {
+  flex-shrink: 0;
+  min-width: 350px;
+  max-width: 600px;
+}
+
+.list-header-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-header h2::before {
+  content: '🏪';
+  font-size: 1.625rem;
+  -webkit-text-fill-color: initial;
+  filter: drop-shadow(0 2px 4px rgba(255, 179, 0, 0.4));
+  animation: float-icon 3s ease-in-out infinite;
+}
+
+@keyframes float-icon {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
 .empty-state {
   text-align: center;
-  padding: 60px 20px;
-  color: #6b7280;
+  padding: 4rem 2rem;
+  color: #64748b;
   font-size: 1.1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  box-shadow: none;
 }
 
 .table-container {
   overflow-x: auto;
   max-height: 70vh;
   overflow-y: auto;
-  border-radius: 8px;
+  border-radius: 16px;
   border: 1px solid #e5e7eb;
-  background: white;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.table-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #FFB300 0%, #FFA726 50%, #FF8F00 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 16px 16px 0 0;
+}
+
+.table-container:hover::before {
+  opacity: 1;
+}
+
+.table-container:hover {
+  box-shadow: none;
+  border-color: rgba(255, 179, 0, 0.2);
+  transform: translateY(-2px);
 }
 
 .merchant-table {
@@ -37,14 +115,15 @@
 }
 
 .merchant-table th {
-  background-color: #f9fafb;
-  padding: 8px 6px;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.08) 0%, rgba(255, 167, 38, 0.05) 100%);
+  padding: 12px 10px;
   text-align: left;
   font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  color: #1e293b;
+  border-bottom: 2px solid #e5e7eb;
   white-space: nowrap;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
+  letter-spacing: 0.01em;
 }
 
 .merchant-table th:first-child {
@@ -61,49 +140,43 @@
 }
 
 .merchant-table th:nth-child(4) {
-  width: 180px; /* Address */
+  width: 100px; /* Total Interactions */
 }
 
 .merchant-table th:nth-child(5) {
-  width: 70px; /* Platform */
-}
-
-.merchant-table th:nth-child(6) {
-  width: 90px; /* Phone */
-}
-
-.merchant-table th:nth-child(7) {
   width: 90px; /* Last Interaction */
 }
 
-.merchant-table th:nth-child(8) {
+.merchant-table th:nth-child(6) {
   width: 70px; /* Status */
 }
 
-.merchant-table th:nth-child(9) {
+.merchant-table th:nth-child(7) {
   width: 100px; /* Actions */
 }
 
 .merchant-no {
   text-align: center;
   font-weight: 600;
-  color: #6b7280;
-  background-color: #f9fafb;
+  color: #64748b;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.05) 0%, rgba(255, 167, 38, 0.03) 100%);
   border-right: 1px solid #e5e7eb;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .merchant-table td {
-  padding: 8px 6px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 12px 10px;
+  border-bottom: 1px solid #f1f5f9;
   vertical-align: top;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  background: white;
+  transition: all 0.2s ease;
 }
 
-.merchant-table tr:hover {
-  background-color: #f9fafb;
+.merchant-table tr:hover td {
+  background: linear-gradient(90deg, rgba(255, 179, 0, 0.05) 0%, transparent 100%);
 }
 
 .merchant-name {
@@ -112,11 +185,11 @@
 
 .name-cell strong {
   display: block;
-  color: #111827;
+  color: #1e293b;
   font-weight: 600;
-  margin-bottom: 2px;
-  font-size: 0.8rem;
-  line-height: 1.2;
+  margin-bottom: 4px;
+  font-size: 0.875rem;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -132,14 +205,16 @@
 }
 
 .store-id {
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: #374151;
-  font-weight: 500;
-  padding: 2px 4px;
-  background-color: #f3f4f6;
-  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8125rem;
+  color: #475569;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.1) 0%, rgba(255, 167, 38, 0.05) 100%);
+  border: 1px solid rgba(255, 179, 0, 0.2);
+  border-radius: 6px;
   display: inline-block;
+  box-shadow: none;
 }
 
 .address-cell {
@@ -191,19 +266,39 @@
   color: #374151;
 }
 
+.interactions-count {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.875rem;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.1) 0%, rgba(255, 167, 38, 0.05) 100%);
+  border-radius: 6px;
+  display: inline-block;
+  min-width: 32px;
+  text-align: center;
+}
+
 .date-info {
-  line-height: 1.3;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+  color: #1e293b;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .date-info > div:first-child {
   font-weight: 500;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  color: #1e293b;
 }
 
 .days-info {
-  font-size: 0.7rem;
-  color: #6b7280;
+  font-size: 0.75rem;
+  color: #64748b;
+  padding: 2px 6px;
+  background: rgba(100, 116, 139, 0.1);
+  border-radius: 4px;
+  display: inline-block;
+  font-weight: 600;
 }
 
 .modified-info {
@@ -214,13 +309,20 @@
 
 .status-badge {
   display: inline-block;
-  padding: 4px 8px;
+  padding: 6px 12px;
   color: white;
-  border-radius: 4px;
-  font-size: 0.65rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
   font-weight: 600;
   text-align: center;
-  min-width: 60px;
+  min-width: 70px;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.status-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: none;
 }
 
 .action-buttons {
@@ -234,44 +336,55 @@
 .btn-history,
 .btn-call-logs,
 .btn-support-note {
-  background: none;
-  border: 1px solid #d1d5db;
-  border-radius: 3px;
-  padding: 4px 6px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 8px;
   cursor: pointer;
   font-size: 1rem;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
+  min-width: 32px;
+  height: 32px;
+  box-shadow: none;
+}
+
+.btn-edit:hover,
+.btn-delete:hover,
+.btn-history:hover,
+.btn-call-logs:hover,
+.btn-support-note:hover {
+  transform: translateY(-2px);
+  box-shadow: none;
 }
 
 .btn-edit:hover {
-  background-color: #f0f9ff;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
   border-color: #3b82f6;
 }
 
 .btn-delete:hover {
-  background-color: #fef2f2;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
   border-color: #ef4444;
 }
 
 .btn-history:hover {
-  background-color: #f5f3ff;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%);
   border-color: #8b5cf6;
 }
 
 .btn-call-logs:hover {
-  background-color: #ecfdf5;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
   border-color: #10b981;
 }
 
 .btn-support-note:hover {
-  background-color: #fffbeb;
+  background: linear-gradient(135deg, rgba(255, 179, 0, 0.15) 0%, rgba(255, 167, 38, 0.1) 100%);
   border-color: #f59e0b;
+  border-width: 2px;
 }
 
 /* History modal */
@@ -282,7 +395,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 2000;
 }
 
 .modal-content.history-modal {
@@ -290,16 +403,26 @@
   max-width: 96vw;
   max-height: 86vh;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  border-radius: 16px;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Overlay adjustment for call logs modal to account for header and sidebar */
 .modal-overlay:has(.call-logs-modal) {
-  padding-top: 80px; /* Header height */
-  padding-left: 250px; /* Sidebar width */
   align-items: center;
   justify-content: center;
 }
@@ -307,14 +430,14 @@
 .modal-content.call-logs-modal,
 .modal-content.support-note-modal {
   width: 960px;
-  max-width: calc(100% - 2rem); /* Account for padding */
-  max-height: calc(100vh - 80px - 2rem); /* Subtract header height and padding */
+  max-width: calc(100% - 2rem);
+  max-height: calc(100vh - 2rem);
   background: #fff;
   border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  margin: 0;
+  margin: auto;
   position: relative;
 }
 
@@ -322,13 +445,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #FFB300 0%, #FFA726 50%, #FF8F00 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: white;
 }
 
 .modal-body {
-  padding: 16px 20px;
+  padding: 1.5rem;
   overflow: auto;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
 .modal-actions {
@@ -339,10 +473,24 @@
 }
 
 .close-button {
-  background: none;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
-  font-size: 20px;
+  color: white;
+  font-size: 1.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .history-list {
@@ -376,16 +524,22 @@
 .call-logs-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 0.75rem;
 }
 
 .call-log-item {
-  padding: 12px 0;
-  border-top: 1px solid #e5e7eb; /* divider */
+  padding: 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  box-shadow: none;
 }
 
-.call-log-item:first-child {
-  border-top: none;
+.call-log-item:hover {
+  box-shadow: none;
+  transform: translateY(-2px);
+  border-color: rgba(255, 179, 0, 0.2);
 }
 
 .call-log-header {
@@ -435,7 +589,45 @@
   color: #111827;
 }
 
+@media (max-width: 1200px) {
+  .list-header {
+    flex-wrap: wrap;
+  }
+
+  .list-header-stats {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .list-header-search {
+    min-width: 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
+  .list-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .list-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .list-header-stats {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .list-header-search {
+    min-width: 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+
   .table-container {
     max-height: 60vh;
   }
@@ -466,8 +658,8 @@
   }
   
   .modal-overlay:has(.call-logs-modal) {
-    padding-top: 80px;
-    padding-left: 0;
+    align-items: center;
+    justify-content: center;
   }
   
   .call-log-header {

@@ -10,15 +10,11 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import MerchantListPage from './pages/MerchantListPage';
-import NotesPage from './pages/NotesPage';
 import { useAuth } from './contexts/AuthContext';
-import ChristmasTheme from './components/ChristmasTheme';
 import './App.css';
-import './themes/christmas.css';
 
 function App() {
   const { user, isAuthenticated, login, logout } = useAuth();
-  const [isChristmasTheme, setIsChristmasTheme] = useState(false);
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
   const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
@@ -149,67 +145,64 @@ function App() {
     setPendingAction(null);
   };
 
-  const handleSyncCallLogsManual = () => {
-    setPendingAction(() => async (passcode?: string) => {
-      try {
-        if (!passcode) {
-          throw new Error('Passcode is required');
-        }
-        
-        // Start sync with progress
-        setIsSyncingManual(true);
-        setSyncProgress(0);
-        setSyncStatus('Đang khởi tạo sync...');
-        setSyncResults(null);
-        
-        // Simulate progress updates
-        const progressInterval = setInterval(() => {
-          setSyncProgress(prev => {
-            if (prev >= 90) {
-              clearInterval(progressInterval);
-              return 90;
-            }
-            return prev + 5;
-          });
-        }, 500);
+  const handleSyncCallLogsManual = async (passcode: string) => {
+    try {
+      if (!passcode) {
+        throw new Error('Passcode is required');
+      }
+      
+      // Start sync with progress
+      setIsSyncingManual(true);
+      setSyncProgress(0);
+      setSyncStatus('Đang khởi tạo sync...');
+      setSyncResults(null);
+      
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setSyncProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 5;
+        });
+      }, 500);
 
-        try {
-          setSyncStatus('Đang đọc call logs từ tất cả sheets...');
-          const result = await apiService.syncCallLogsManual(passcode);
-          
-          clearInterval(progressInterval);
-          setSyncProgress(100);
-          setSyncStatus('Hoàn thành!');
-          setSyncResults(result);
-          setError(null);
-          
-          // Reload merchants after sync
-          await loadMerchants();
-          
-          // Auto hide after 5 seconds
-          setTimeout(() => {
-            setIsSyncingManual(false);
-            setSyncProgress(0);
-            setSyncStatus('');
-            setSyncResults(null);
-          }, 5000);
-        } catch (syncErr) {
-          clearInterval(progressInterval);
+      try {
+        setSyncStatus('Đang đọc call logs từ tất cả sheets...');
+        const result = await apiService.syncCallLogsManual(passcode);
+        
+        clearInterval(progressInterval);
+        setSyncProgress(100);
+        setSyncStatus('Hoàn thành!');
+        setSyncResults(result);
+        setError(null);
+        
+        // Reload merchants after sync
+        await loadMerchants();
+        
+        // Auto hide after 5 seconds
+        setTimeout(() => {
           setIsSyncingManual(false);
           setSyncProgress(0);
           setSyncStatus('');
-          throw syncErr;
-        }
-      } catch (err) {
+          setSyncResults(null);
+        }, 5000);
+      } catch (syncErr) {
+        clearInterval(progressInterval);
         setIsSyncingManual(false);
         setSyncProgress(0);
         setSyncStatus('');
-        const errorMessage = err instanceof Error ? err.message : 'Unable to sync call logs manually. Please try again.';
-        setError(errorMessage);
-        throw err;
+        throw syncErr;
       }
-    });
-    setIsPasscodeOpen(true);
+    } catch (err) {
+      setIsSyncingManual(false);
+      setSyncProgress(0);
+      setSyncStatus('');
+      const errorMessage = err instanceof Error ? err.message : 'Unable to sync call logs manually. Please try again.';
+      setError(errorMessage);
+      throw err;
+    }
   };
 
   const handleCloseSyncResults = () => {
@@ -345,14 +338,11 @@ function App() {
   return (
     <div className="app-container">
       <Header 
-        onSyncCallLogsManual={handleSyncCallLogsManual}
         isSyncingManual={isSyncingManual}
         syncProgress={syncProgress}
         syncStatus={syncStatus}
         syncResults={syncResults}
         onCloseSyncResults={handleCloseSyncResults}
-        isChristmasTheme={isChristmasTheme}
-        onToggleChristmasTheme={() => setIsChristmasTheme(!isChristmasTheme)}
       />
 
       <ProtectedRoute>
@@ -365,11 +355,16 @@ function App() {
                           merchants={filteredMerchants}
                           error={error}
                           onRetry={loadMerchants}
-                        onSearch={handleSearch}
-                        onFilter={handleFilter}
-                        onClear={handleClearSearch}
+                          onSearch={handleSearch}
+                          onFilter={handleFilter}
+                          onClear={handleClearSearch}
                           onEdit={handleEditMerchant}
                           onDelete={handleDeleteMerchant}
+                          onSyncCallLogs={handleSyncCallLogsManual}
+                          isSyncing={isSyncingManual}
+                          syncProgress={syncProgress}
+                          syncStatus={syncStatus}
+                          syncResults={syncResults}
                         />
                       } 
                     />
@@ -380,12 +375,13 @@ function App() {
                           merchants={merchants}
                           error={error}
                           onRetry={loadMerchants}
+                          onSyncCallLogs={handleSyncCallLogsManual}
+                          isSyncing={isSyncingManual}
+                          syncProgress={syncProgress}
+                          syncStatus={syncStatus}
+                          syncResults={syncResults}
                         />
                       } 
-                    />
-                    <Route 
-                      path="/notes" 
-                      element={<NotesPage />} 
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
@@ -404,11 +400,6 @@ function App() {
           onClose={handlePasscodeClose}
           onSuccess={handlePasscodeSuccess}
           title={pendingAction ? "Authentication Required" : "Authentication Required"}
-        />
-
-        <ChristmasTheme 
-          enabled={isChristmasTheme}
-          onToggle={() => setIsChristmasTheme(!isChristmasTheme)}
         />
       </ProtectedRoute>
     </div>
