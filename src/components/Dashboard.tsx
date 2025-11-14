@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MerchantWithStatus } from '../types/merchant';
+import { MerchantWithStatus, SupportLog } from '../types/merchant';
 import { Pie, Bar, Line } from 'react-chartjs-2';
 import {
 	Chart as ChartJS,
@@ -13,6 +13,7 @@ import {
 	PointElement
 } from 'chart.js';
 import './Dashboard.css';
+import Modal from './Modal';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement);
 
@@ -30,6 +31,12 @@ const COLORS = [
 	const Dashboard: React.FC<DashboardProps> = ({ merchants }) => {
 	const [range, setRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
 	const [terminalRange, setTerminalRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
+	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+	const [categoryLogs, setCategoryLogs] = useState<Array<{
+		merchant: string;
+		storeId?: string;
+		log: SupportLog;
+	}>>([]);
 
 	const { labels, counts, categoryMap } = useMemo(() => {
 		const categoryCountMap = new Map<string, number>();
@@ -47,6 +54,38 @@ const COLORS = [
 
 	const total = counts.reduce((a, b) => a + b, 0);
 
+	const handleCategoryClick = (category: string) => {
+		const logs: Array<{
+			merchant: string;
+			storeId?: string;
+			log: SupportLog;
+		}> = [];
+		
+		merchants.forEach(merchant => {
+			(merchant.supportLogs || []).forEach(log => {
+				const logCategory = (log.category || '').trim();
+				const categoryKey = logCategory !== '' ? logCategory : 'Uncategorized';
+				if (categoryKey === category) {
+					logs.push({
+						merchant: merchant.name,
+						storeId: merchant.storeId,
+						log: log,
+					});
+				}
+			});
+		});
+		
+		// Sort by date (newest first)
+		logs.sort((a, b) => {
+			const dateA = a.log.date ? new Date(a.log.date).getTime() : 0;
+			const dateB = b.log.date ? new Date(b.log.date).getTime() : 0;
+			return dateB - dateA;
+		});
+		
+		setCategoryLogs(logs);
+		setSelectedCategory(category);
+	};
+
 	const data = {
 		labels,
 		datasets: [
@@ -62,8 +101,47 @@ const COLORS = [
 
 	const options = {
 		plugins: {
-			legend: { position: 'right' as const },
+			legend: { 
+				position: 'bottom' as const,
+				align: 'start' as const,
+				fullSize: false,
+				labels: {
+					padding: 6,
+					font: {
+						size: 12,
+						weight: 500,
+					},
+					color: '#475569',
+					boxWidth: 10,
+					boxHeight: 10,
+					usePointStyle: false,
+					maxWidth: 150,
+					textAlign: 'left' as const,
+				},
+				onClick: (e: any, legendItem: any, legend: any) => {
+					// Extract category name from legend item text (remove percentage)
+					const labelText = legendItem.text || '';
+					const categoryName = labelText.split(' (')[0];
+					if (categoryName) {
+						handleCategoryClick(categoryName);
+					}
+					// Return false to prevent default toggle behavior
+					return false;
+				},
+			},
 			tooltip: {
+				backgroundColor: 'rgba(30, 41, 59, 0.95)',
+				padding: 12,
+				titleFont: {
+					size: 14,
+					weight: 600,
+				},
+				bodyFont: {
+					size: 13,
+				},
+				cornerRadius: 8,
+				borderColor: 'rgba(255, 179, 0, 0.3)',
+				borderWidth: 1,
 				callbacks: {
 					label: (ctx: any) => {
 						const value = ctx.parsed || 0;
@@ -71,6 +149,23 @@ const COLORS = [
 						return `${ctx.label}: ${value} (${percent}%)`;
 					},
 				},
+			},
+		},
+		onClick: (event: any, elements: any[]) => {
+			if (elements && elements.length > 0) {
+				const element = elements[0];
+				const index = element.index;
+				if (index !== undefined && labels[index]) {
+					handleCategoryClick(labels[index]);
+				}
+			}
+		},
+		layout: {
+			padding: {
+				left: 0,
+				right: 0,
+				top: 0,
+				bottom: 10,
 			},
 		},
 		maintainAspectRatio: false,
@@ -134,9 +229,11 @@ const COLORS = [
 			{
 				label: 'Interactions',
 				data: timeAgg.counts,
-				backgroundColor: '#4F46E5',
-				borderColor: '#4338CA',
-				borderWidth: 1,
+				backgroundColor: 'rgba(255, 179, 0, 0.8)',
+				borderColor: '#FFB300',
+				borderWidth: 2,
+				borderRadius: 6,
+				borderSkipped: false,
 			},
 		],
 	};
@@ -145,6 +242,18 @@ const COLORS = [
 		plugins: {
 			legend: { display: false },
 			tooltip: {
+				backgroundColor: 'rgba(30, 41, 59, 0.95)',
+				padding: 12,
+				titleFont: {
+					size: 14,
+					weight: 600,
+				},
+				bodyFont: {
+					size: 13,
+				},
+				cornerRadius: 8,
+				borderColor: 'rgba(255, 179, 0, 0.3)',
+				borderWidth: 1,
 				callbacks: {
 					label: (ctx: any) => `Interactions: ${ctx.parsed.y}`,
 				},
@@ -152,7 +261,29 @@ const COLORS = [
 		},
 		maintainAspectRatio: false,
 		scales: {
-			y: { beginAtZero: true }
+			y: { 
+				beginAtZero: true,
+				grid: {
+					color: 'rgba(0, 0, 0, 0.05)',
+				},
+				ticks: {
+					color: '#64748b',
+					font: {
+						size: 12,
+					},
+				},
+			},
+			x: {
+				grid: {
+					display: false,
+				},
+				ticks: {
+					color: '#64748b',
+					font: {
+						size: 12,
+					},
+				},
+			},
 		}
 	} as const;
 
@@ -202,8 +333,30 @@ const COLORS = [
 
 	const terminalLineOptions = {
 		plugins: {
-			legend: { display: true },
+			legend: { 
+				display: true,
+				labels: {
+					padding: 15,
+					font: {
+						size: 12,
+						weight: 500,
+					},
+					color: '#475569',
+				},
+			},
 			tooltip: {
+				backgroundColor: 'rgba(30, 41, 59, 0.95)',
+				padding: 12,
+				titleFont: {
+					size: 14,
+					weight: 600,
+				},
+				bodyFont: {
+					size: 13,
+				},
+				cornerRadius: 8,
+				borderColor: 'rgba(239, 68, 68, 0.3)',
+				borderWidth: 1,
 				callbacks: {
 					label: (ctx: any) => `Terminal Issues: ${ctx.parsed.y}`,
 				},
@@ -211,7 +364,29 @@ const COLORS = [
 		},
 		maintainAspectRatio: false,
 		scales: {
-			y: { beginAtZero: true }
+			y: { 
+				beginAtZero: true,
+				grid: {
+					color: 'rgba(0, 0, 0, 0.05)',
+				},
+				ticks: {
+					color: '#64748b',
+					font: {
+						size: 12,
+					},
+				},
+			},
+			x: {
+				grid: {
+					color: 'rgba(0, 0, 0, 0.05)',
+				},
+				ticks: {
+					color: '#64748b',
+					font: {
+						size: 12,
+					},
+				},
+			},
 		}
 	} as const;
 
@@ -243,8 +418,8 @@ const COLORS = [
 
 	return (
 		<div className="dashboard-container">
-			<h2>Dashboard - Category Distribution</h2>
-			<div className="chart-wrapper">
+			<h2>Category Distribution</h2>
+			<div className="chart-wrapper chart-wrapper-pie-category">
 				{labels.length === 0 ? (
 					<div className="empty-state">Không có dữ liệu category.</div>
 				) : (
@@ -252,9 +427,8 @@ const COLORS = [
 				)}
 			</div>
 
-
-			<h2 style={{ marginTop: 24 }}>Interactions Over Time</h2>
-			<div style={{ marginBottom: 8 }}>
+			<h2>Interactions Over Time</h2>
+			<div style={{ marginBottom: '1rem' }}>
 				<select value={range} onChange={e => setRange(e.target.value as any)}>
 					<option value="day">Day</option>
 					<option value="week">Week</option>
@@ -271,8 +445,8 @@ const COLORS = [
 			</div>
 
 			{/* Terminal Issues Over Time */}
-			<h2 style={{ marginTop: 24 }}>Terminal issues (disconnected, processing, ...) over time</h2>
-			<div style={{ marginBottom: 8 }}>
+			<h2>Terminal Issues Over Time</h2>
+			<div style={{ marginBottom: '1rem' }}>
 				<select value={terminalRange} onChange={e => setTerminalRange(e.target.value as any)}>
 					<option value="day">Day</option>
 					<option value="week">Week</option>
@@ -291,7 +465,7 @@ const COLORS = [
 			<div className="leaderboards">
 				<div className="board">
 					<h3>Top Merchants by Interactions</h3>
-					<div style={{ height: 360 }}>
+					<div style={{ height: 360, width: '100%', position: 'relative' }}>
 						{leaderboards.topInteractions.length === 0 ? (
 							<div className="empty-state">Không có dữ liệu.</div>
 						) : (
@@ -307,9 +481,33 @@ const COLORS = [
 									}],
 								}}
 								options={{
+									responsive: true,
+									maintainAspectRatio: false,
 									plugins: {
-										legend: { position: 'right' },
+										legend: { 
+											position: 'right',
+											labels: {
+												padding: 12,
+												font: {
+													size: 11,
+													weight: 500,
+												},
+												color: '#475569',
+											},
+										},
 										tooltip: {
+											backgroundColor: 'rgba(30, 41, 59, 0.95)',
+											padding: 10,
+											titleFont: {
+												size: 13,
+												weight: 600,
+											},
+											bodyFont: {
+												size: 12,
+											},
+											cornerRadius: 8,
+											borderColor: 'rgba(255, 179, 0, 0.3)',
+											borderWidth: 1,
 											callbacks: {
 												label: (ctx: any) => {
 													const value = ctx.parsed || 0;
@@ -327,7 +525,7 @@ const COLORS = [
 				</div>
 				<div className="board">
 					<h3>Top Merchants by Issues</h3>
-					<div style={{ height: 360 }}>
+					<div style={{ height: 360, width: '100%', position: 'relative' }}>
 						{leaderboards.topIssues.length === 0 ? (
 							<div className="empty-state">Không có dữ liệu.</div>
 						) : (
@@ -343,9 +541,33 @@ const COLORS = [
 									}],
 								}}
 								options={{
-								plugins: {
-									legend: { position: 'right' },
-									tooltip: {
+									responsive: true,
+									maintainAspectRatio: false,
+									plugins: {
+										legend: { 
+											position: 'right',
+											labels: {
+												padding: 12,
+												font: {
+													size: 11,
+													weight: 500,
+												},
+												color: '#475569',
+											},
+										},
+										tooltip: {
+											backgroundColor: 'rgba(30, 41, 59, 0.95)',
+											padding: 10,
+											titleFont: {
+												size: 13,
+												weight: 600,
+											},
+											bodyFont: {
+												size: 12,
+											},
+											cornerRadius: 8,
+											borderColor: 'rgba(255, 179, 0, 0.3)',
+											borderWidth: 1,
 											callbacks: {
 												label: (ctx: any) => {
 													const value = ctx.parsed || 0;
@@ -363,6 +585,48 @@ const COLORS = [
 				</div>
 			</div>
 
+			{/* Category Logs Modal */}
+			<Modal
+				isOpen={!!selectedCategory}
+				onClose={() => setSelectedCategory(null)}
+				title={`Support Logs - Category: ${selectedCategory || ''}`}
+				width="90%"
+				maxWidth="800px"
+				maxHeight="80vh"
+			>
+				{categoryLogs.length === 0 ? (
+					<div className="category-logs-empty" style={{ textAlign: 'center', color: '#64748b', padding: '2rem', fontSize: '0.9375rem' }}>Không có support logs cho category này.</div>
+				) : (
+					<div className="category-logs-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+						{categoryLogs.map((item, index) => (
+							<div key={index} className="category-log-item" style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem', transition: 'all 0.2s' }}>
+								<div className="category-log-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '1rem' }}>
+									<div className="category-log-merchant" style={{ flex: 1, fontSize: '1rem', color: '#1e293b' }}>
+										<strong style={{ fontWeight: 600 }}>{item.merchant}</strong>
+										{item.storeId && <span className="category-log-storeid" style={{ color: '#64748b', fontSize: '0.875rem', marginLeft: '0.5rem' }}>({item.storeId})</span>}
+									</div>
+									<div className="category-log-date-time" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+										<span className="category-log-date" style={{ fontWeight: 500 }}>{item.log.date}</span>
+										{item.log.time && <span className="category-log-time" style={{ fontSize: '0.8125rem' }}>{item.log.time}</span>}
+									</div>
+								</div>
+								<div className="category-log-details" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9375rem', color: '#475569' }}>
+									{item.log.supporter && (
+										<div className="category-log-supporter" style={{ display: 'flex', gap: '0.5rem' }}>
+											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Supporter:</strong> {item.log.supporter}
+										</div>
+									)}
+									{item.log.issue && (
+										<div className="category-log-issue" style={{ display: 'flex', gap: '0.5rem' }}>
+											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Issue:</strong> {item.log.issue}
+										</div>
+									)}
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+			</Modal>
 		</div>
 	);
 };

@@ -28,7 +28,7 @@
   max-height: 900px;
   background: white;
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -53,7 +53,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+  box-shadow: none;
 }
 
 .chatbox-header-content {
@@ -187,7 +187,7 @@
   color: #333;
   border: 1px solid #e9ecef;
   border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .message-time {
@@ -337,12 +337,12 @@
   color: white;
   font-size: 1.5rem;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s;
   animation: bounce 2s infinite;
 }
 
@@ -357,7 +357,198 @@
 
 .chatbox-toggle-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(255, 193, 7, 0.5);
+  box-shadow: none;
+}
+
+/* Passcode Input */
+.chatbox-passcode-container {
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.chatbox-passcode-input-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chatbox-passcode-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.chatbox-passcode-input:focus {
+  outline: none;
+  border-color: #FFC107;
+}
+
+.chatbox-passcode-submit {
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #FFC107 0%, #FF8F00 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chatbox-passcode-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: none;
+}
+
+.chatbox-passcode-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chatbox-passcode-error {
+  margin-top: 0.5rem;
+  color: #f44336;
+  font-size: 0.85rem;
+  padding-left: 0.25rem;
+}
+
+/* Sync Progress */
+.chatbox-sync-progress {
+  margin: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  box-shadow: none;
+}
+
+.sync-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.sync-progress-icon {
+  font-size: 1.25rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sync-progress-text {
+  flex: 1;
+  font-size: 0.95rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.sync-progress-percent {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.sync-progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sync-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FFC107 0%, #FF8F00 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Sync Results */
+.chatbox-sync-results {
+  margin: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 1px solid #c8e6c9;
+  box-shadow: none;
+}
+
+.sync-results-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.sync-results-icon {
+  font-size: 1.25rem;
+}
+
+.sync-results-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.sync-results-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sync-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sync-result-item:last-child {
+  border-bottom: none;
+}
+
+.sync-result-label {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.sync-result-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.sync-result-value.success {
+  color: #2e7d32;
+}
+
+.sync-result-value.error {
+  color: #f44336;
 }
 
 /* Responsive */
