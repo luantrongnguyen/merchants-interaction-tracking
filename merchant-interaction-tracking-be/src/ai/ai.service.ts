@@ -29,6 +29,8 @@ export class AIService {
 
   private aiProvider: string;
   private googleApiKey: string;
+  private ollamaBaseUrl: string;
+  private deepseekModel: string;
 
   constructor(
     private readonly googleSheetsService: GoogleSheetsService,
@@ -38,6 +40,8 @@ export class AIService {
     // Get config from ConfigService (more reliable than direct process.env)
     this.aiProvider = (this.configService.get<string>('AI_PROVIDER') || 'rule-based').toLowerCase();
     this.googleApiKey = this.configService.get<string>('GOOGLE_AI_API_KEY') || '';
+    this.ollamaBaseUrl = this.configService.get<string>('OLLAMA_BASE_URL') || appConfig.ollamaBaseUrl;
+    this.deepseekModel = this.configService.get<string>('DEEPSEEK_MODEL') || appConfig.deepseekModel;
     
     // Also check appConfig as fallback
     if (!this.aiProvider || this.aiProvider === 'rule-based') {
@@ -46,12 +50,22 @@ export class AIService {
     if (!this.googleApiKey) {
       this.googleApiKey = appConfig.googleApiKey;
     }
+    if (!this.ollamaBaseUrl) {
+      this.ollamaBaseUrl = appConfig.ollamaBaseUrl;
+    }
+    if (!this.deepseekModel) {
+      this.deepseekModel = appConfig.deepseekModel;
+    }
     
     // Log AI configuration when service is initialized
     this.logger.log(`[AIService] Initialized with provider: ${this.aiProvider}`);
     this.logger.log(`[AIService] Gemini API key present: ${!!this.googleApiKey}`);
     if (this.googleApiKey) {
       this.logger.log(`[AIService] Gemini API key preview: ${this.googleApiKey.substring(0, 15)}...`);
+    }
+    if (this.aiProvider === 'deepseek') {
+      this.logger.log(`[AIService] Ollama Base URL: ${this.ollamaBaseUrl}`);
+      this.logger.log(`[AIService] Deepseek Model: ${this.deepseekModel}`);
     }
   }
 
@@ -64,24 +78,92 @@ export class AIService {
         return 'I don\'t have access to merchant data at the moment. Please ensure the data is synced and try again.';
       }
 
-      // Convert to MerchantData format and calculate status if not present
+      // Convert to MerchantData format and calculate status using same logic as frontend
       const merchantData: MerchantData[] = merchants.map(m => {
-        // Calculate status based on lastInteractionDate if not present
-        let status = m.status;
-        if (!status && m.lastInteractionDate) {
-          const lastDate = new Date(m.lastInteractionDate);
-          const now = new Date();
-          const daysSinceLastInteraction = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          if (daysSinceLastInteraction <= 30) {
-            status = 'green';
-          } else if (daysSinceLastInteraction <= 90) {
-            status = 'orange';
-          } else {
-            status = 'red';
+        // Parse date helper function (same as frontend)
+        const parseDate = (dateString: string): Date | null => {
+          if (!dateString) return null;
+          try {
+            // Try MM/DD/YYYY format first (from call logs)
+            if (dateString.includes('/')) {
+              const parts = dateString.split('/');
+              if (parts.length === 3) {
+                const [month, day, year] = parts;
+                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+              }
+            }
+            // Try ISO format (YYYY-MM-DD)
+            const date = new Date(dateString);
+            if (!isNaN(date.getTime())) {
+              return date;
+            }
+            return null;
+          } catch {
+            return null;
           }
-        } else if (!status) {
-          status = 'red'; // Default to red if no interaction date
+        };
+
+        // Get latest call log date (same logic as frontend)
+        const getLatestCallLogDate = (supportLogs?: Array<{ date: string; time?: string }>): Date | null => {
+          if (!supportLogs || supportLogs.length === 0) {
+            return null;
+          }
+          const sortedLogs = [...supportLogs].sort((a, b) => {
+            const dateA = parseDate(a.date);
+            const dateB = parseDate(b.date);
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            const dateCompare = dateB.getTime() - dateA.getTime();
+            if (dateCompare !== 0) return dateCompare;
+            if (a.time && b.time) {
+              return b.time.localeCompare(a.time);
+            }
+            return 0;
+          });
+          const latestLog = sortedLogs[0];
+          return parseDate(latestLog.date);
+        };
+
+        // Calculate status using same logic as frontend
+        let status = m.status;
+        if (!status) {
+          const today = new Date();
+          const latestCallLogDate = getLatestCallLogDate(m.supportLogs);
+          let lastInteractionDate: Date;
+          let hasCallLogs = false;
+
+          if (latestCallLogDate) {
+            // Use date from latest call log
+            lastInteractionDate = latestCallLogDate;
+            hasCallLogs = true;
+          } else {
+            // No call logs, use original lastInteractionDate
+            const originalDate = m.lastInteractionDate ? new Date(m.lastInteractionDate) : null;
+            if (!originalDate || isNaN(originalDate.getTime())) {
+              lastInteractionDate = today;
+            } else {
+              lastInteractionDate = originalDate;
+            }
+          }
+
+          const timeDiff = today.getTime() - lastInteractionDate.getTime();
+          const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+
+          // If no call logs, status is always "Contact" (red)
+          if (!hasCallLogs) {
+            status = 'red'; // Contact
+          } else {
+            // Calculate status based on days since last interaction (from call log)
+            // Same thresholds as frontend: < 7 days = green, < 14 days = orange, >= 14 days = red
+            if (daysDiff < 7) {
+              status = 'green'; // Good
+            } else if (daysDiff < 14) {
+              status = 'orange'; // Attention
+            } else {
+              status = 'red'; // Contact
+            }
+          }
         }
 
         return {
@@ -96,6 +178,9 @@ export class AIService {
 
       // Analyze merchant data
       const analysis = this.analyzeMerchantData(merchantData);
+      
+      // Log status distribution for debugging
+      this.logger.log(`[AI Service] Status distribution: Green=${analysis.statusCounts.green}, Orange=${analysis.statusCounts.orange}, Red=${analysis.statusCounts.red}, Total=${analysis.totalMerchants}`);
       
       // Log current AI provider configuration for debugging
       this.logger.log(`[AI Service] Current provider: ${this.aiProvider}, API key present: ${!!this.googleApiKey}`);
@@ -125,6 +210,9 @@ export class AIService {
           }
           this.logger.warn('[AI Service] Gemini provider selected but API key is missing');
           break;
+        case 'deepseek':
+          this.logger.log('[AI Service] Using Deepseek via Ollama');
+          return await this.generateInsightWithDeepseek(question, analysis, merchantData, conversationHistory);
         default:
           // Use rule-based analysis by default
           this.logger.log(`[AI Service] Using rule-based analysis (provider: ${this.aiProvider})`);
@@ -767,6 +855,239 @@ ${supportNotesText}
       return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     } catch (error) {
       this.logger.error('Error calling Google Gemini API:', error);
+      // Fallback to rule-based analysis
+      return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
+    }
+  }
+
+  private async generateInsightWithDeepseek(
+    question: string,
+    analysis: any,
+    merchants: MerchantData[],
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
+  ): Promise<string> {
+    try {
+      // Check if question is about a specific merchant
+      const specificMerchant = this.findSpecificMerchant(question, merchants);
+      
+      // Prepare summary data for Deepseek (to avoid token limits)
+      const summary = {
+        totalMerchants: analysis.totalMerchants,
+        totalInteractions: analysis.totalInteractions,
+        statusDistribution: analysis.statusCounts,
+        terminalIssues: analysis.terminalIssues,
+        recentInteractions: analysis.recentInteractions,
+        topCategories: analysis.topCategories.slice(0, 5),
+        topMerchants: analysis.merchantsByInteractions.slice(0, 10),
+      };
+
+      // Build prompt based on whether it's about a specific merchant
+      let prompt: string;
+      
+      if (specificMerchant) {
+        // Include detailed interaction data for specific merchant
+        const interactions = specificMerchant.supportLogs || [];
+        const interactionsText = interactions.length > 0
+          ? interactions.map((log: any, idx: number) => {
+              const logDate = log.date || 'Unknown date';
+              const logTime = log.time || '';
+              const logIssue = log.issue || 'No issue description';
+              const logCategory = log.category || 'No category';
+              const logSupporter = log.supporter || 'Unknown supporter';
+              return `${idx + 1}. **Date:** ${logDate} ${logTime ? `**Time:** ${logTime}` : ''}\n   - **Issue:** ${logIssue}\n   - **Category:** ${logCategory}\n   - **Supporter:** ${logSupporter}`;
+            }).join('\n\n')
+          : 'No call logs/interactions found for this merchant.';
+        
+        // Include support notes for specific merchant
+        const supportNotes = specificMerchant.supportNotes || [];
+        const supportNotesText = supportNotes.length > 0
+          ? supportNotes.map((note: any, idx: number) => {
+              const noteDate = note.createdAt ? new Date(note.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              }) : 'Unknown date';
+              const noteAuthor = note.createdBy || 'Unknown';
+              const noteContent = note.content || 'No content';
+              return `${idx + 1}. **Date:** ${noteDate}\n   - **Author:** ${noteAuthor}\n   - **Note:** ${noteContent}`;
+            }).join('\n\n')
+          : 'No support notes found for this merchant.';
+        
+        // Add conversation history context
+        let conversationContext = '';
+        if (conversationHistory && conversationHistory.length > 0) {
+          const recentHistory = conversationHistory.slice(-5);
+          conversationContext = '\n\n**Previous Conversation Context:**\n';
+          recentHistory.forEach((msg) => {
+            conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+          });
+          conversationContext += '\n**Instructions:** Remember the conversation context when answering.';
+        }
+
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant call logs data and support notes. Answer the following question about a specific merchant.${conversationContext}
+
+**Merchant Information:**
+- **Name:** ${specificMerchant.name}${specificMerchant.storeId ? `\n- **Store ID:** ${specificMerchant.storeId}` : ''}
+- **Status:** ${specificMerchant.status || 'unknown'}
+- **Last Interaction Date:** ${specificMerchant.lastInteractionDate || 'N/A'}
+- **Total Call Logs:** ${interactions.length}
+- **Total Support Notes:** ${supportNotes.length}
+
+**Call Logs Details:**
+${interactionsText}
+
+**Support Notes:**
+${supportNotesText}
+
+**User Question:** ${question}
+
+**Instructions:**
+- Provide a detailed, informative answer based on the call logs data and support notes above
+- Reference specific call logs with dates, issues, and supporters when relevant
+- Reference support notes with authors and dates when relevant
+- Remember and reference previous conversation context when relevant
+- Use markdown formatting for better readability
+- If the question is about call logs patterns, trends, or specific issues, analyze the call logs data provided
+- If the question is about support notes or team comments, reference the support notes provided
+- Be specific and cite the actual call log entries and support notes when answering`;
+      } else {
+        // Check if question is about call logs
+        const lowerQuestion = question.toLowerCase();
+        const isAboutCallLogs = lowerQuestion.includes('call log') || lowerQuestion.includes('call log') || 
+                                lowerQuestion.includes('interaction detail') || lowerQuestion.includes('support log');
+        
+        let callLogsDetails = '';
+        if (isAboutCallLogs && merchants.length > 0) {
+          // Include sample call logs from top merchants with most interactions
+          const topMerchantsWithLogs = merchants
+            .filter(m => m.supportLogs && m.supportLogs.length > 0)
+            .sort((a, b) => (b.supportLogs?.length || 0) - (a.supportLogs?.length || 0))
+            .slice(0, 5);
+          
+          if (topMerchantsWithLogs.length > 0) {
+            callLogsDetails = '\n\n**Sample Call Logs from Top Merchants:**\n\n';
+            topMerchantsWithLogs.forEach((merchant, idx) => {
+              const logs = merchant.supportLogs || [];
+              callLogsDetails += `${idx + 1}. **${merchant.name}**${merchant.storeId ? ` (${merchant.storeId})` : ''} - ${logs.length} call logs:\n`;
+              // Show last 3 call logs for each merchant
+              logs.slice(-3).forEach((log: any, logIdx: number) => {
+                callLogsDetails += `   - ${log.date || 'Unknown'} ${log.time || ''}: ${log.issue || 'No issue'}${log.supporter ? ` (${log.supporter})` : ''}\n`;
+              });
+              callLogsDetails += '\n';
+            });
+          }
+        }
+
+        // Add conversation history context to prompt
+        let conversationContext = '';
+        if (conversationHistory && conversationHistory.length > 0) {
+          const recentHistory = conversationHistory.slice(-5); // Last 5 messages for context
+          conversationContext = '\n\n**Previous Conversation Context:**\n';
+          recentHistory.forEach((msg, idx) => {
+            conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+          });
+          conversationContext += '\n**Instructions:** Remember the conversation context above when answering the current question.';
+        }
+
+        // General analysis with summary data
+        prompt = `You are Merchants AI Assistance, an AI assistant analyzing merchant interaction and call logs data. Answer the following question.${conversationContext}
+
+**Summary Statistics:**
+- Total Merchants: ${summary.totalMerchants}
+- Total Call Logs/Interactions: ${summary.totalInteractions}
+- Status Distribution: 🟢 Green: ${summary.statusDistribution.green}, 🟠 Orange: ${summary.statusDistribution.orange}, 🔴 Red: ${summary.statusDistribution.red}
+- Terminal Issues: ${summary.terminalIssues}
+- Recent Activity (Last 7 Days): ${summary.recentInteractions} interactions
+- Top Issue Categories: ${summary.topCategories.map(([cat, count]: [string, number]) => `${cat} (${count})`).join(', ')}
+- Top Merchants by Interactions: ${summary.topMerchants.map((m: any) => `${m.name} (${m.interactions} logs)`).join(', ')}${callLogsDetails}
+
+**User Question:** ${question}
+
+**Instructions:**
+- Provide a helpful, insightful analysis based on the data above
+- If the question is about call logs, reference the sample call logs provided
+- Remember and reference previous conversation context when relevant
+- Use markdown formatting for better readability
+- Be concise but informative
+- Focus on key insights and patterns`;
+      }
+
+      // Build messages array with conversation history for Ollama
+      const messages: Array<{ role: string; content: string }> = [
+        {
+          role: 'system',
+          content: 'You are Merchants AI Assistance, a helpful AI assistant that analyzes merchant interaction data and provides insights. Remember the conversation context and provide coherent, context-aware responses.',
+        },
+      ];
+
+      // Add conversation history (limit to last 10 messages to avoid token limits)
+      const recentHistory = conversationHistory.slice(-10);
+      recentHistory.forEach(msg => {
+        messages.push({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content,
+        });
+      });
+
+      // Add current question with context
+      messages.push({
+        role: 'user',
+        content: prompt,
+      });
+
+      // Call Ollama API
+      const ollamaUrl = `${this.ollamaBaseUrl}/api/chat`;
+      this.logger.log(`[Deepseek] Calling Ollama at: ${ollamaUrl}`);
+      this.logger.log(`[Deepseek] Using model: ${this.deepseekModel}`);
+
+      const response = await fetch(ollamaUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.deepseekModel,
+          messages: messages,
+          stream: false,
+          options: {
+            temperature: 0.7,
+            top_p: 0.9,
+            top_k: 40,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        this.logger.error('[Deepseek] Ollama API error:', errorData);
+        this.logger.error(`[Deepseek] Response status: ${response.status}`);
+        // Fallback to rule-based analysis
+        return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
+      }
+
+      const data = await response.json();
+      
+      // Handle Ollama API response structure
+      if (data.message && data.message.content) {
+        const content = data.message.content;
+        this.logger.log(`[Deepseek] ✅ Successfully received ${content.length} characters from response`);
+        return content;
+      }
+      
+      // If response structure is unexpected, fallback
+      this.logger.warn('[Deepseek] Unexpected response structure, falling back to rule-based analysis');
+      this.logger.warn('[Deepseek] Full response:', JSON.stringify(data, null, 2));
+      return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
+    } catch (error) {
+      this.logger.error('Error calling Ollama API for Deepseek:', error);
       // Fallback to rule-based analysis
       return this.generateInsightFromAnalysis(question, analysis, merchants, conversationHistory);
     }

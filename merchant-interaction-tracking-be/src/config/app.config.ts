@@ -5,6 +5,8 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('  GOOGLE_AI_API_KEY:', process.env.GOOGLE_AI_API_KEY ? `${process.env.GOOGLE_AI_API_KEY.substring(0, 10)}...` : 'not set');
   console.log('  OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'set' : 'not set');
   console.log('  ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'set' : 'not set');
+  console.log('  OLLAMA_BASE_URL:', process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+  console.log('  DEEPSEEK_MODEL:', process.env.DEEPSEEK_MODEL || 'deepseek-chat');
 }
 
 export const appConfig = {
@@ -14,8 +16,11 @@ export const appConfig = {
   port: 3001,
   passcode: process.env.PASSCODE || '130398',
   // AI Service Configuration
-  aiProvider: (process.env.AI_PROVIDER || 'rule-based').toLowerCase(), // 'rule-based' | 'openai' | 'claude' | 'gemini'
+  aiProvider: (process.env.AI_PROVIDER || 'rule-based').toLowerCase(), // 'rule-based' | 'openai' | 'claude' | 'gemini' | 'deepseek'
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   googleApiKey: process.env.GOOGLE_AI_API_KEY || '',
+  // Deepseek/Ollama Configuration
+  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+  deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
 };

@@ -49,6 +49,8 @@ async function bootstrap() {
   console.log('GOOGLE_AI_API_KEY:', process.env.GOOGLE_AI_API_KEY ? `${process.env.GOOGLE_AI_API_KEY.substring(0, 15)}...` : 'not set');
   console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'set' : 'not set');
   console.log('ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'set' : 'not set');
+  console.log('OLLAMA_BASE_URL:', process.env.OLLAMA_BASE_URL || 'http://localhost:11434');
+  console.log('DEEPSEEK_MODEL:', process.env.DEEPSEEK_MODEL || 'deepseek-chat');
   console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
   console.log('========================\n');
   

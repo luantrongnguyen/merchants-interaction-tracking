@@ -18,6 +18,8 @@ export class AIController {
       hasClaudeKey: !!appConfig.anthropicApiKey,
       hasGeminiKey: !!appConfig.googleApiKey,
       geminiKeyPreview: appConfig.googleApiKey ? `${appConfig.googleApiKey.substring(0, 15)}...` : 'not set',
+      ollamaBaseUrl: appConfig.ollamaBaseUrl,
+      deepseekModel: appConfig.deepseekModel,
     };
   }
 
