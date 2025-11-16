@@ -28,20 +28,12 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
 
-  if (merchants.length === 0) {
-    return (
-      <div className="empty-state">
-        <p>No merchants found. Add your first merchant!</p>
-      </div>
-    );
-  }
-
   return (
     <div className="merchant-list">
       <div className="list-header">
         <h2>Merchant List ({merchants.length})</h2>
         <div className="list-header-stats">
-          <StatsPanel merchants={merchants} compact />
+          {merchants.length > 0 && <StatsPanel merchants={merchants} compact />}
         </div>
         {(onSearch || onFilter || onClear) && (
           <div className="list-header-search">
@@ -54,21 +46,26 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
         )}
       </div>
       
-      <div className="table-container">
-        <table className="merchant-table">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>Name</th>
-              <th>ID</th>
-              <th>Total Interactions</th>
-              <th>Last Interaction</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {merchants.map((merchant, index) => (
+      {merchants.length === 0 ? (
+        <div className="empty-state">
+          <p>No merchants found. Add your first merchant!</p>
+        </div>
+      ) : (
+        <div className="table-container">
+          <table className="merchant-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Name</th>
+                <th>ID</th>
+                <th>Total Interactions</th>
+                <th>Last Interaction</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {merchants.map((merchant, index) => (
               <tr key={merchant.id}>
                 <td className="merchant-no">
                   {index + 1}
@@ -158,10 +155,11 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                   </div>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <Modal
         isOpen={!!showCallLogsFor}
