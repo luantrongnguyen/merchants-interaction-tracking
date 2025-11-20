@@ -142,3 +142,42 @@ export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US');
 };
+
+// Keywords để xác định vấn đề về terminal và device
+const terminalDeviceKeywords = [
+  'terminal', 
+  'disconnected', 
+  'processing', 
+  'connection', 
+  'connectivity', 
+  'network', 
+  'offline', 
+  'online',
+  'device',
+  'hardware',
+  'equipment',
+  'machine',
+  'pos',
+  'payment terminal',
+  'pax',
+  'clover',
+  'a920',
+];
+
+// Kiểm tra xem category có liên quan đến terminal/device không
+export const isTerminalDeviceRelated = (category: string | undefined): boolean => {
+  if (!category) return false;
+  const lowerCategory = category.toLowerCase();
+  return terminalDeviceKeywords.some(keyword => lowerCategory.includes(keyword));
+};
+
+// Đếm số lượng vấn đề về terminal và device cho một merchant
+export const countTerminalDeviceIssues = (merchant: MerchantWithStatus): number => {
+  if (!merchant.supportLogs || merchant.supportLogs.length === 0) {
+    return 0;
+  }
+  
+  return merchant.supportLogs.filter(log => 
+    isTerminalDeviceRelated(log.category)
+  ).length;
+};

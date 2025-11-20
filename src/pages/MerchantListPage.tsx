@@ -9,7 +9,7 @@ interface MerchantListPageProps {
   error: string | null;
   onRetry: () => void;
   onSearch: (query: string) => void;
-  onFilter: (status: 'all' | 'green' | 'orange' | 'red') => void;
+  onFilter: (status: 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues') => void;
   onClear: () => void;
   onEdit: (merchant: MerchantWithStatus) => void;
   onDelete: (id: number) => void;

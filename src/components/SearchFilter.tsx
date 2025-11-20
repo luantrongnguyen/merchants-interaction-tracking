@@ -3,16 +3,16 @@ import './SearchFilter.css';
 
 interface SearchFilterProps {
   onSearch: (searchTerm: string) => void;
-  onFilter: (status: 'all' | 'green' | 'orange' | 'red') => void;
+  onFilter: (status: 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues') => void;
   onClear: () => void;
 }
 
 const SearchFilter: React.FC<SearchFilterProps> = ({ onSearch, onFilter, onClear }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'green' | 'orange' | 'red'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues'>('all');
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleStatusFilter = (status: 'all' | 'green' | 'orange' | 'red') => {
+  const handleStatusFilter = (status: 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues') => {
     setStatusFilter(status);
     onFilter(status);
   };
@@ -71,13 +71,14 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ onSearch, onFilter, onClear
           <div className="search-filter__status-group">
             <select
               value={statusFilter}
-              onChange={(e) => handleStatusFilter(e.target.value as 'all' | 'green' | 'orange' | 'red')}
+              onChange={(e) => handleStatusFilter(e.target.value as 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues')}
               className="search-filter__select"
             >
               <option value="all">All Status</option>
               <option value="green">Good</option>
               <option value="orange">Attention</option>
               <option value="red">Contact</option>
+              <option value="terminal-device-issues">Terminal/Device Issues (High to Low)</option>
             </select>
           </div>
         </div>

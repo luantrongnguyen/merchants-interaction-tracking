@@ -14,7 +14,7 @@ interface MerchantListProps {
   onEdit: (merchant: MerchantWithStatus) => void;
   onDelete: (id: number) => void;
   onSearch?: (query: string) => void;
-  onFilter?: (status: 'all' | 'green' | 'orange' | 'red') => void;
+  onFilter?: (status: 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues') => void;
   onClear?: () => void;
 }
 

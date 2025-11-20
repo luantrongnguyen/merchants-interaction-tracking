@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MerchantFormData, Merchant, MerchantWithStatus } from './types/merchant';
-import { calculateMerchantStatus } from './utils/merchantUtils';
+import { calculateMerchantStatus, countTerminalDeviceIssues } from './utils/merchantUtils';
 import apiService from './services/apiService';
 import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
@@ -214,13 +214,13 @@ function App() {
 
 
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
-  const [currentStatusFilter, setCurrentStatusFilter] = useState<'all' | 'green' | 'orange' | 'red'>('all');
+  const [currentStatusFilter, setCurrentStatusFilter] = useState<'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues'>('all');
 
   const applyFilters = () => {
     let filtered = merchants;
 
     // Apply status filter
-    if (currentStatusFilter !== 'all') {
+    if (currentStatusFilter !== 'all' && currentStatusFilter !== 'terminal-device-issues') {
       filtered = filtered.filter(merchant => merchant.status === currentStatusFilter);
     }
 
@@ -238,12 +238,24 @@ function App() {
       });
     }
 
-    // Sort by total interactions (descending - most interactions first)
-    filtered = filtered.sort((a, b) => {
-      const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
-      const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
-      return interactionsB - interactionsA;
-    });
+    // Sort based on filter type
+    if (currentStatusFilter === 'terminal-device-issues') {
+      // Sort by terminal/device issues count (descending - most issues first)
+      filtered = filtered.sort((a, b) => {
+        const issuesA = countTerminalDeviceIssues(a);
+        const issuesB = countTerminalDeviceIssues(b);
+        return issuesB - issuesA;
+      });
+      // Only show merchants with at least one terminal/device issue
+      filtered = filtered.filter(merchant => countTerminalDeviceIssues(merchant) > 0);
+    } else {
+      // Sort by total interactions (descending - most interactions first)
+      filtered = filtered.sort((a, b) => {
+        const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
+        const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
+        return interactionsB - interactionsA;
+      });
+    }
 
     setFilteredMerchants(filtered);
   };
@@ -255,7 +267,7 @@ function App() {
     let filtered = merchants;
 
     // Apply status filter
-    if (currentStatusFilter !== 'all') {
+    if (currentStatusFilter !== 'all' && currentStatusFilter !== 'terminal-device-issues') {
       filtered = filtered.filter(merchant => merchant.status === currentStatusFilter);
     }
 
@@ -273,24 +285,36 @@ function App() {
       });
     }
 
-    // Sort by total interactions (descending - most interactions first)
-    filtered = filtered.sort((a, b) => {
-      const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
-      const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
-      return interactionsB - interactionsA;
-    });
+    // Sort based on filter type
+    if (currentStatusFilter === 'terminal-device-issues') {
+      // Sort by terminal/device issues count (descending - most issues first)
+      filtered = filtered.sort((a, b) => {
+        const issuesA = countTerminalDeviceIssues(a);
+        const issuesB = countTerminalDeviceIssues(b);
+        return issuesB - issuesA;
+      });
+      // Only show merchants with at least one terminal/device issue
+      filtered = filtered.filter(merchant => countTerminalDeviceIssues(merchant) > 0);
+    } else {
+      // Sort by total interactions (descending - most interactions first)
+      filtered = filtered.sort((a, b) => {
+        const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
+        const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
+        return interactionsB - interactionsA;
+      });
+    }
 
     setFilteredMerchants(filtered);
   };
 
-  const handleFilter = (status: 'all' | 'green' | 'orange' | 'red') => {
+  const handleFilter = (status: 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues') => {
     setCurrentStatusFilter(status);
     
     // Apply filters immediately
     let filtered = merchants;
 
     // Apply status filter
-    if (status !== 'all') {
+    if (status !== 'all' && status !== 'terminal-device-issues') {
       filtered = filtered.filter(merchant => merchant.status === status);
     }
 
@@ -308,12 +332,24 @@ function App() {
       });
     }
 
-    // Sort by total interactions (descending - most interactions first)
-    filtered = filtered.sort((a, b) => {
-      const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
-      const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
-      return interactionsB - interactionsA;
-    });
+    // Sort based on filter type
+    if (status === 'terminal-device-issues') {
+      // Sort by terminal/device issues count (descending - most issues first)
+      filtered = filtered.sort((a, b) => {
+        const issuesA = countTerminalDeviceIssues(a);
+        const issuesB = countTerminalDeviceIssues(b);
+        return issuesB - issuesA;
+      });
+      // Only show merchants with at least one terminal/device issue
+      filtered = filtered.filter(merchant => countTerminalDeviceIssues(merchant) > 0);
+    } else {
+      // Sort by total interactions (descending - most interactions first)
+      filtered = filtered.sort((a, b) => {
+        const interactionsA = a.supportLogs ? a.supportLogs.length : 0;
+        const interactionsB = b.supportLogs ? b.supportLogs.length : 0;
+        return interactionsB - interactionsA;
+      });
+    }
 
     setFilteredMerchants(filtered);
   };
