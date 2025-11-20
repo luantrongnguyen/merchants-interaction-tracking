@@ -73,7 +73,9 @@ const COLORS = [
 						
 						// Check if we already have this category (case-insensitive)
 						let existingKey = null;
-						for (const [key] of categoryCountMap) {
+						const existingKeys = Array.from(categoryCountMap.keys());
+						for (let i = 0; i < existingKeys.length; i++) {
+							const key = existingKeys[i];
 							if (normalizeCategoryName(key) === normalizedKey) {
 								existingKey = key;
 								break;
