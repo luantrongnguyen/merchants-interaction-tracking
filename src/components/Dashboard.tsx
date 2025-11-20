@@ -129,6 +129,8 @@ const COLORS = [
 	};
 
 	const miUpdatedOptions = {
+		responsive: true,
+		maintainAspectRatio: false,
 		plugins: {
 			legend: { 
 				position: 'bottom' as const,
@@ -165,6 +167,9 @@ const COLORS = [
 				bodyFont: {
 					size: 13,
 				},
+				cornerRadius: 8,
+				borderColor: 'rgba(255, 179, 0, 0.3)',
+				borderWidth: 1,
 				callbacks: {
 					label: (ctx: any) => {
 						const value = ctx.parsed || 0;
@@ -176,11 +181,19 @@ const COLORS = [
 			},
 		},
 		onClick: (event: any, elements: any[]) => {
-			if (elements.length > 0) {
+			if (elements && elements.length > 0) {
 				const elementIndex = elements[0].index;
 				const isUpdated = elementIndex === 0; // 0 = Đã Updated, 1 = Chưa Updated
 				handleMiUpdatedClick(isUpdated);
 			}
+		},
+		layout: {
+			padding: {
+				left: 0,
+				right: 0,
+				top: 0,
+				bottom: 10,
+			},
 		},
 	};
 
