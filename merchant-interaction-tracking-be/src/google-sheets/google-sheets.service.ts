@@ -309,19 +309,24 @@ export class GoogleSheetsService {
               }
               return false;
             })(), // Cột O: is_mi_updated
-            // Parse z11OrNotGoWMango from string "TRUE"/"FALSE" to boolean
+            // Parse z11OrNotGoWMango from string "TRUE"/"FALSE" to boolean (cột P)
             z11OrNotGoWMango: (() => {
               const value = row[15];
               if (value === undefined || value === null || value === '') {
                 return false;
               }
-              // Handle string "TRUE" or "FALSE"
+              // Handle string - parse "TRUE", "true", "True", etc. to boolean
               if (typeof value === 'string') {
-                return value.toUpperCase() === 'TRUE';
+                const trimmed = value.trim().toUpperCase();
+                return trimmed === 'TRUE' || trimmed === '1' || trimmed === 'YES';
               }
               // Handle boolean
               if (typeof value === 'boolean') {
                 return value;
+              }
+              // Handle number (1 = true, 0 = false)
+              if (typeof value === 'number') {
+                return value === 1;
               }
               return false;
             })(), // Cột P: z11_or_not_go_w_mango

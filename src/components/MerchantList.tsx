@@ -147,11 +147,11 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                   </div>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    {merchant.z11OrNotGoWMango ? (
-                      <span style={{ fontSize: '1.2rem', color: '#22c55e' }}>✓</span>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '20px' }}>
+                    {merchant.z11OrNotGoWMango === true ? (
+                      <span style={{ fontSize: '1.2rem', color: '#22c55e', fontWeight: 'bold' }}>✓</span>
                     ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
+                      <span style={{ color: '#9ca3af', fontSize: '0.9rem' }}>-</span>
                     )}
                   </div>
                 </td>
