@@ -103,8 +103,12 @@ const COLORS = [
 	const total = counts.reduce((a, b) => a + b, 0);
 
 	// Calculate MI Updated statistics
+	// Updated = MI Updated OR Uses Z11 (No Card Machine)
+	// Not Updated = Not MI Updated AND No Z11 (Uses Card Machine)
 	const miUpdatedStats = useMemo(() => {
-		const updated = merchants.filter(m => m.isMiUpdated === true).length;
+		const updated = merchants.filter(m => 
+			m.isMiUpdated === true || m.z11OrNotGoWMango === true
+		).length;
 		const notUpdated = merchants.length - updated;
 		return {
 			updated,
@@ -116,7 +120,10 @@ const COLORS = [
 	}, [merchants]);
 
 	const miUpdatedData = {
-		labels: ['Đã Updated MI', 'Chưa Updated MI'],
+		labels: [
+			'MI Updated or Uses Z11 / No Card Machine',
+			'Not MI Updated and No Z11 / Uses Card Machine'
+		],
 		datasets: [
 			{
 				label: 'MI Updated Status',
@@ -152,7 +159,7 @@ const COLORS = [
 				onClick: (e: any, legendItem: any, legend: any) => {
 					// Extract status from legend item text
 					const labelText = legendItem.text || '';
-					const isUpdated = labelText.includes('Đã Updated');
+					const isUpdated = labelText.includes('MI Updated or Uses Z11');
 					handleMiUpdatedClick(isUpdated);
 					return false;
 				},
@@ -183,7 +190,7 @@ const COLORS = [
 		onClick: (event: any, elements: any[]) => {
 			if (elements && elements.length > 0) {
 				const elementIndex = elements[0].index;
-				const isUpdated = elementIndex === 0; // 0 = Đã Updated, 1 = Chưa Updated
+				const isUpdated = elementIndex === 0; // 0 = MI Updated or Uses Z11, 1 = Not Updated and No Z11
 				handleMiUpdatedClick(isUpdated);
 			}
 		},
@@ -200,9 +207,11 @@ const COLORS = [
 	const handleMiUpdatedClick = (isUpdated: boolean) => {
 		const filtered = merchants.filter(m => {
 			if (isUpdated) {
-				return m.isMiUpdated === true;
+				// MI Updated OR Uses Z11 (No Card Machine)
+				return m.isMiUpdated === true || m.z11OrNotGoWMango === true;
 			} else {
-				return m.isMiUpdated !== true; // Includes false, undefined, null
+				// Not MI Updated AND No Z11 (Uses Card Machine)
+				return m.isMiUpdated !== true && m.z11OrNotGoWMango !== true;
 			}
 		});
 		setMiUpdatedMerchants(filtered);
@@ -828,14 +837,14 @@ const COLORS = [
 					setSelectedMiUpdatedStatus(null);
 					setMiUpdatedMerchants([]);
 				}}
-				title={`Merchants - ${selectedMiUpdatedStatus ? 'Đã Updated MI' : 'Chưa Updated MI'}`}
+				title={`Merchants - ${selectedMiUpdatedStatus ? 'MI Updated or Uses Z11 / No Card Machine' : 'Not MI Updated and No Z11 / Uses Card Machine'}`}
 				width="90%"
 				maxWidth="1000px"
 				maxHeight="80vh"
 			>
 				{miUpdatedMerchants.length === 0 ? (
 					<div className="category-logs-empty" style={{ textAlign: 'center', color: '#64748b', padding: '2rem', fontSize: '0.9375rem' }}>
-						Không có merchant {selectedMiUpdatedStatus ? 'đã updated MI' : 'chưa updated MI'}.
+						No merchants {selectedMiUpdatedStatus ? 'with MI Updated or Uses Z11 / No Card Machine' : 'without MI Updated and No Z11 / Uses Card Machine'}.
 					</div>
 				) : (
 					<div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
