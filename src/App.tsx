@@ -212,6 +212,16 @@ function App() {
     setSyncResults(null);
   };
 
+  const handleUpdateIsMiUpdated = (id: number, isMiUpdated: boolean) => {
+    // Update in both merchants and filteredMerchants
+    setMerchants(prevMerchants => 
+      prevMerchants.map(m => m.id === id ? { ...m, isMiUpdated } : m)
+    );
+    setFilteredMerchants(prevFiltered => 
+      prevFiltered.map(m => m.id === id ? { ...m, isMiUpdated } : m)
+    );
+  };
+
 
   const [currentSearchTerm, setCurrentSearchTerm] = useState('');
   const [currentStatusFilter, setCurrentStatusFilter] = useState<'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues'>('all');
@@ -396,6 +406,7 @@ function App() {
                           onClear={handleClearSearch}
                           onEdit={handleEditMerchant}
                           onDelete={handleDeleteMerchant}
+                          onUpdateIsMiUpdated={handleUpdateIsMiUpdated}
                           onSyncCallLogs={handleSyncCallLogsManual}
                           isSyncing={isSyncingManual}
                           syncProgress={syncProgress}

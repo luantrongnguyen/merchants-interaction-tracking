@@ -13,6 +13,7 @@ interface MerchantListPageProps {
   onClear: () => void;
   onEdit: (merchant: MerchantWithStatus) => void;
   onDelete: (id: number) => void;
+  onUpdateIsMiUpdated?: (id: number, isMiUpdated: boolean) => void;
   onSyncCallLogs?: (passcode: string) => Promise<void>;
   isSyncing?: boolean;
   syncProgress?: number;
@@ -34,6 +35,7 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
   onClear,
   onEdit,
   onDelete,
+  onUpdateIsMiUpdated,
   onSyncCallLogs,
   isSyncing = false,
   syncProgress = 0,
@@ -63,6 +65,7 @@ const MerchantListPage: React.FC<MerchantListPageProps> = ({
             onSearch={onSearch}
             onFilter={onFilter}
             onClear={onClear}
+            onUpdateIsMiUpdated={onUpdateIsMiUpdated}
           />
         </div>
       </div>

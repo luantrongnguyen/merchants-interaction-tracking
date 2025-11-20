@@ -16,9 +16,10 @@ interface MerchantListProps {
   onSearch?: (query: string) => void;
   onFilter?: (status: 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues') => void;
   onClear?: () => void;
+  onUpdateIsMiUpdated?: (id: number, isMiUpdated: boolean) => void;
 }
 
-const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete, onSearch, onFilter, onClear }) => {
+const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete, onSearch, onFilter, onClear, onUpdateIsMiUpdated }) => {
   const { user } = useAuth();
   const [showHistoryFor, setShowHistoryFor] = React.useState<MerchantWithStatus | null>(null);
   const [showCallLogsFor, setShowCallLogsFor] = React.useState<MerchantWithStatus | null>(null);
@@ -116,13 +117,19 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                           // Show confirm dialog when unchecking
                           setConfirmUncheckFor({ merchant, newValue });
                         } else {
-                          // Directly update when checking
+                          // Directly update when checking - optimistic update
+                          if (onUpdateIsMiUpdated) {
+                            onUpdateIsMiUpdated(merchant.id!, newValue);
+                          }
                           try {
                             setIsUpdatingIsMiUpdated(true);
                             await apiService.updateMerchantIsMiUpdated(merchant.id!, newValue);
-                            window.location.reload();
                           } catch (err) {
                             console.error('Error updating isMiUpdated:', err);
+                            // Revert on error
+                            if (onUpdateIsMiUpdated) {
+                              onUpdateIsMiUpdated(merchant.id!, false);
+                            }
                             alert('Không thể cập nhật. Vui lòng thử lại.');
                           } finally {
                             setIsUpdatingIsMiUpdated(false);
@@ -425,6 +432,10 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
             <button
               onClick={async () => {
                 if (!confirmUncheckFor) return;
+                // Optimistic update
+                if (onUpdateIsMiUpdated) {
+                  onUpdateIsMiUpdated(confirmUncheckFor.merchant.id!, confirmUncheckFor.newValue);
+                }
                 try {
                   setIsUpdatingIsMiUpdated(true);
                   await apiService.updateMerchantIsMiUpdated(
@@ -432,9 +443,12 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                     confirmUncheckFor.newValue
                   );
                   setConfirmUncheckFor(null);
-                  window.location.reload();
                 } catch (err) {
                   console.error('Error updating isMiUpdated:', err);
+                  // Revert on error
+                  if (onUpdateIsMiUpdated) {
+                    onUpdateIsMiUpdated(confirmUncheckFor.merchant.id!, !confirmUncheckFor.newValue);
+                  }
                   alert('Không thể cập nhật. Vui lòng thử lại.');
                 } finally {
                   setIsUpdatingIsMiUpdated(false);
