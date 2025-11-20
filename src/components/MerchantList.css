@@ -156,6 +156,10 @@
 }
 
 .merchant-table th:nth-child(8) {
+  width: 150px; /* Z11/Not Go W Mango */
+}
+
+.merchant-table th:nth-child(9) {
   width: 100px; /* Actions */
 }
 

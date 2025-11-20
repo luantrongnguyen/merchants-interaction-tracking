@@ -45,6 +45,7 @@ export interface Merchant {
   phone: string;
   supportNotes?: SupportNote[]; // Support notes list từ cột N (JSON array)
   isMiUpdated?: boolean; // is_mi_updated từ cột O
+  z11OrNotGoWMango?: boolean; // z11_or_not_go_w_mango từ cột P
   createdAt?: string;
   updatedAt?: string;
   lastModifiedAt?: string;

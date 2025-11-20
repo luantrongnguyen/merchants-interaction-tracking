@@ -65,6 +65,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                 <th>Last Interaction</th>
                 <th>Status</th>
                 <th>MI Updated</th>
+                <th>Z11/Not Go W Mango</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -143,6 +144,15 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                         cursor: isUpdatingIsMiUpdated ? 'not-allowed' : 'pointer',
                       }}
                     />
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    {merchant.z11OrNotGoWMango ? (
+                      <span style={{ fontSize: '1.2rem', color: '#22c55e' }}>✓</span>
+                    ) : (
+                      <span style={{ color: '#9ca3af' }}>-</span>
+                    )}
                   </div>
                 </td>
                 <td>

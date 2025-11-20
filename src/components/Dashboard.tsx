@@ -133,20 +133,20 @@ const COLORS = [
 		maintainAspectRatio: false,
 		plugins: {
 			legend: { 
-				position: 'bottom' as const,
-				align: 'start' as const,
+				position: 'right' as const,
+				align: 'center' as const,
 				fullSize: false,
 				labels: {
-					padding: 6,
+					padding: 12,
 					font: {
-						size: 12,
+						size: 11,
 						weight: 500,
 					},
 					color: '#475569',
 					boxWidth: 10,
 					boxHeight: 10,
 					usePointStyle: false,
-					maxWidth: 150,
+					maxWidth: 200,
 					textAlign: 'left' as const,
 				},
 				onClick: (e: any, legendItem: any, legend: any) => {

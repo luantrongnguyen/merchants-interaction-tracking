@@ -182,7 +182,7 @@ export class GoogleSheetsService {
       try {
         const response = await this.sheets.spreadsheets.values.get({
           spreadsheetId,
-          range: 'Merchants!A:O', // Thêm cột O (is_mi_updated)
+          range: 'Merchants!A:P', // Thêm cột P (z11_or_not_go_w_mango)
         });
 
         const rows = response.data.values;
@@ -193,7 +193,7 @@ export class GoogleSheetsService {
         // Skip header row
         // Columns mapping (after removing lastInteractionDate):
         // A: name, B: storeId, C: address, D: street, E: area, F: state, G: zipcode
-        // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs, N: support_note, O: is_mi_updated
+        // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs, N: support_note, O: is_mi_updated, P: z11_or_not_go_w_mango
         const merchants = rows.slice(1).map((row: any[], index: number) => {
           let historyLogs: any[] = [];
           if (row[11]) {
@@ -309,6 +309,22 @@ export class GoogleSheetsService {
               }
               return false;
             })(), // Cột O: is_mi_updated
+            // Parse z11OrNotGoWMango from string "TRUE"/"FALSE" to boolean
+            z11OrNotGoWMango: (() => {
+              const value = row[15];
+              if (value === undefined || value === null || value === '') {
+                return false;
+              }
+              // Handle string "TRUE" or "FALSE"
+              if (typeof value === 'string') {
+                return value.toUpperCase() === 'TRUE';
+              }
+              // Handle boolean
+              if (typeof value === 'boolean') {
+                return value;
+              }
+              return false;
+            })(), // Cột P: z11_or_not_go_w_mango
           };
         });
 
