@@ -27,6 +27,8 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
   const [newNoteContent, setNewNoteContent] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
+  const [confirmUncheckFor, setConfirmUncheckFor] = useState<{ merchant: MerchantWithStatus; newValue: boolean } | null>(null);
+  const [isUpdatingIsMiUpdated, setIsUpdatingIsMiUpdated] = useState(false);
 
   return (
     <div className="merchant-list">
@@ -61,6 +63,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                 <th>Total Interactions</th>
                 <th>Last Interaction</th>
                 <th>Status</th>
+                <th>MI Updated</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -100,6 +103,39 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                     style={{ backgroundColor: getStatusColor(merchant.status) }}
                   >
                     {getStatusText(merchant.status)}
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={merchant.isMiUpdated || false}
+                      onChange={async (e) => {
+                        const newValue = e.target.checked;
+                        if (!newValue) {
+                          // Show confirm dialog when unchecking
+                          setConfirmUncheckFor({ merchant, newValue });
+                        } else {
+                          // Directly update when checking
+                          try {
+                            setIsUpdatingIsMiUpdated(true);
+                            await apiService.updateMerchantIsMiUpdated(merchant.id!, newValue);
+                            window.location.reload();
+                          } catch (err) {
+                            console.error('Error updating isMiUpdated:', err);
+                            alert('Không thể cập nhật. Vui lòng thử lại.');
+                          } finally {
+                            setIsUpdatingIsMiUpdated(false);
+                          }
+                        }
+                      }}
+                      disabled={isUpdatingIsMiUpdated}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: isUpdatingIsMiUpdated ? 'not-allowed' : 'pointer',
+                      }}
+                    />
                   </div>
                 </td>
                 <td>
@@ -357,6 +393,68 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
           >
             {isSavingNote ? 'Adding...' : 'Add Note'}
           </button>
+        </div>
+      </Modal>
+
+      {/* Confirm Uncheck Dialog */}
+      <Modal
+        isOpen={!!confirmUncheckFor}
+        onClose={() => setConfirmUncheckFor(null)}
+        title="Xác nhận"
+        width="500px"
+      >
+        <div style={{ padding: '1rem 0' }}>
+          <p style={{ marginBottom: '1.5rem', fontSize: '1rem', color: '#374151' }}>
+            Bạn có chắc chắn muốn bỏ chọn "MI Updated" cho merchant <strong>{confirmUncheckFor?.merchant.name}</strong>?
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setConfirmUncheckFor(null)}
+              style={{
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                background: 'white',
+                color: '#374151',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Hủy
+            </button>
+            <button
+              onClick={async () => {
+                if (!confirmUncheckFor) return;
+                try {
+                  setIsUpdatingIsMiUpdated(true);
+                  await apiService.updateMerchantIsMiUpdated(
+                    confirmUncheckFor.merchant.id!,
+                    confirmUncheckFor.newValue
+                  );
+                  setConfirmUncheckFor(null);
+                  window.location.reload();
+                } catch (err) {
+                  console.error('Error updating isMiUpdated:', err);
+                  alert('Không thể cập nhật. Vui lòng thử lại.');
+                } finally {
+                  setIsUpdatingIsMiUpdated(false);
+                }
+              }}
+              disabled={isUpdatingIsMiUpdated}
+              style={{
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#ef4444',
+                color: 'white',
+                fontWeight: 600,
+                cursor: isUpdatingIsMiUpdated ? 'not-allowed' : 'pointer',
+                opacity: isUpdatingIsMiUpdated ? 0.6 : 1,
+              }}
+            >
+              {isUpdatingIsMiUpdated ? 'Đang cập nhật...' : 'Xác nhận'}
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

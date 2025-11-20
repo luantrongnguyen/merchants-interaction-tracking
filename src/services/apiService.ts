@@ -135,6 +135,13 @@ class ApiService {
     });
   }
 
+  async updateMerchantIsMiUpdated(id: number, isMiUpdated: boolean): Promise<Merchant> {
+    return this.request<Merchant>(`/merchants/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isMiUpdated }),
+    });
+  }
+
   async deleteMerchant(id: number): Promise<void> {
     return this.request<void>(`/merchants/${id}`, {
       method: 'DELETE',

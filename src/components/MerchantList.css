@@ -152,6 +152,10 @@
 }
 
 .merchant-table th:nth-child(7) {
+  width: 100px; /* MI Updated */
+}
+
+.merchant-table th:nth-child(8) {
   width: 100px; /* Actions */
 }
 

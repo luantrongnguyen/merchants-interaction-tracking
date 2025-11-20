@@ -182,7 +182,7 @@ export class GoogleSheetsService {
       try {
         const response = await this.sheets.spreadsheets.values.get({
           spreadsheetId,
-          range: 'Merchants!A:N', // Thêm cột N (support_note)
+          range: 'Merchants!A:O', // Thêm cột O (is_mi_updated)
         });
 
         const rows = response.data.values;
@@ -193,7 +193,7 @@ export class GoogleSheetsService {
         // Skip header row
         // Columns mapping (after removing lastInteractionDate):
         // A: name, B: storeId, C: address, D: street, E: area, F: state, G: zipcode
-        // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs, N: support_note
+        // H: platform, I: phone, J: lastModifiedAt, K: lastModifiedBy, L: historyLogs, M: supportLogs, N: support_note, O: is_mi_updated
         const merchants = rows.slice(1).map((row: any[], index: number) => {
           let historyLogs: any[] = [];
           if (row[11]) {
@@ -293,6 +293,7 @@ export class GoogleSheetsService {
             historyLogs,
             supportLogs,
             supportNotes, // Cột N: support_notes (array)
+            isMiUpdated: row[14] === 'TRUE' || row[14] === 'true' || row[14] === true, // Cột O: is_mi_updated
           };
         });
 
@@ -376,10 +377,10 @@ export class GoogleSheetsService {
 
       this.logger.log(`[GoogleSheets] Updating merchant id=${id}, rowIndex=${rowIndex}, updatedBy=${meta.by}`);
 
-      // Fetch current row including history_logs, support_logs and support_note
+      // Fetch current row including history_logs, support_logs, support_note and is_mi_updated
       const current = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `Merchants!A${rowIndex}:N${rowIndex}`, // Read A through N
+        range: `Merchants!A${rowIndex}:O${rowIndex}`, // Read A through O
       });
       const row = current.data.values?.[0] || [];
 
@@ -453,6 +454,15 @@ export class GoogleSheetsService {
       // If merchant has supportNotes, use it; otherwise preserve existing
       const finalSupportNotes = merchant.supportNotes !== undefined ? merchant.supportNotes : supportNotes;
       
+      // Parse existing isMiUpdated (column O, index 14)
+      let existingIsMiUpdated = false;
+      if (row[14] !== undefined && row[14] !== null && row[14] !== '') {
+        existingIsMiUpdated = row[14] === 'TRUE' || row[14] === 'true' || row[14] === true;
+      }
+      
+      // If merchant has isMiUpdated, use it; otherwise preserve existing
+      const finalIsMiUpdated = merchant.isMiUpdated !== undefined ? merchant.isMiUpdated : existingIsMiUpdated;
+      
       const values = [
         [
           merchant.name,                                        // A (index 0)
@@ -469,6 +479,7 @@ export class GoogleSheetsService {
           JSON.stringify(historyLogs),                          // L (index 11) - historyLogs
           JSON.stringify(supportLogs),                          // M (index 12) - supportLogs (preserve existing)
           JSON.stringify(finalSupportNotes),                    // N (index 13) - support_notes (JSON array)
+          finalIsMiUpdated ? 'TRUE' : 'FALSE',                  // O (index 14) - is_mi_updated
         ],
       ];
 
@@ -482,7 +493,7 @@ export class GoogleSheetsService {
 
       const updateResult = await this.sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `Merchants!A${rowIndex}:N${rowIndex}`, // Thêm cột N
+        range: `Merchants!A${rowIndex}:O${rowIndex}`, // Thêm cột O (is_mi_updated)
         valueInputOption: 'RAW',
         resource: { values },
       });

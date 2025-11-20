@@ -44,6 +44,7 @@ export interface Merchant {
   platform: string;
   phone: string;
   supportNotes?: SupportNote[]; // Support notes list từ cột N (JSON array)
+  isMiUpdated?: boolean; // is_mi_updated từ cột O
   createdAt?: string;
   updatedAt?: string;
   lastModifiedAt?: string;
@@ -64,6 +65,7 @@ export interface MerchantFormData {
   platform: string;
   phone: string;
   supportNotes?: SupportNote[];
+  isMiUpdated?: boolean;
 }
 
 export type MerchantStatus = 'green' | 'orange' | 'red';
