@@ -38,7 +38,9 @@ export class MerchantController {
       id,
       updatedBy: by,
       data: merchantData,
-      lastInteractionDate: merchantData.lastInteractionDate
+      lastInteractionDate: merchantData.lastInteractionDate,
+      isMiUpdated: merchantData.isMiUpdated,
+      isMiUpdatedType: typeof merchantData.isMiUpdated
     });
     
     return this.merchantService.update(id, merchantData, by);

@@ -293,7 +293,22 @@ export class GoogleSheetsService {
             historyLogs,
             supportLogs,
             supportNotes, // Cột N: support_notes (array)
-            isMiUpdated: row[14] === 'TRUE' || row[14] === 'true' || row[14] === true, // Cột O: is_mi_updated
+            // Parse isMiUpdated from string "TRUE"/"FALSE" to boolean
+            isMiUpdated: (() => {
+              const value = row[14];
+              if (value === undefined || value === null || value === '') {
+                return false;
+              }
+              // Handle string "TRUE" or "FALSE"
+              if (typeof value === 'string') {
+                return value.toUpperCase() === 'TRUE';
+              }
+              // Handle boolean
+              if (typeof value === 'boolean') {
+                return value;
+              }
+              return false;
+            })(), // Cột O: is_mi_updated
           };
         });
 
@@ -454,14 +469,36 @@ export class GoogleSheetsService {
       // If merchant has supportNotes, use it; otherwise preserve existing
       const finalSupportNotes = merchant.supportNotes !== undefined ? merchant.supportNotes : supportNotes;
       
-      // Parse existing isMiUpdated (column O, index 14)
+      // Parse existing isMiUpdated from sheet (column O, index 14) - string to boolean
       let existingIsMiUpdated = false;
-      if (row[14] !== undefined && row[14] !== null && row[14] !== '') {
-        existingIsMiUpdated = row[14] === 'TRUE' || row[14] === 'true' || row[14] === true;
+      const existingValue = row[14];
+      if (existingValue !== undefined && existingValue !== null && existingValue !== '') {
+        if (typeof existingValue === 'string') {
+          existingIsMiUpdated = existingValue.toUpperCase() === 'TRUE';
+        } else if (typeof existingValue === 'boolean') {
+          existingIsMiUpdated = existingValue;
+        }
       }
       
-      // If merchant has isMiUpdated, use it; otherwise preserve existing
-      const finalIsMiUpdated = merchant.isMiUpdated !== undefined ? merchant.isMiUpdated : existingIsMiUpdated;
+      this.logger.log(`[GoogleSheets] isMiUpdated - incoming: ${merchant.isMiUpdated} (type: ${typeof merchant.isMiUpdated}), existing from sheet: ${existingValue} -> ${existingIsMiUpdated}`);
+      
+      // If merchant has isMiUpdated, use it (parse from boolean/string to boolean); otherwise preserve existing
+      let finalIsMiUpdated = existingIsMiUpdated;
+      if (merchant.isMiUpdated !== undefined && merchant.isMiUpdated !== null) {
+        // Parse incoming value to boolean
+        if (typeof merchant.isMiUpdated === 'boolean') {
+          finalIsMiUpdated = merchant.isMiUpdated;
+        } else if (typeof merchant.isMiUpdated === 'string') {
+          finalIsMiUpdated = merchant.isMiUpdated.toUpperCase() === 'TRUE';
+        } else {
+          finalIsMiUpdated = Boolean(merchant.isMiUpdated);
+        }
+      }
+      
+      // Convert boolean to string for Google Sheets: true -> "TRUE", false -> "FALSE"
+      const isMiUpdatedString = finalIsMiUpdated ? 'TRUE' : 'FALSE';
+      
+      this.logger.log(`[GoogleSheets] isMiUpdated - final boolean: ${finalIsMiUpdated}, will write string: "${isMiUpdatedString}"`);
       
       // Preserve existing values if merchant object doesn't have them (for partial updates)
       const values = [
@@ -480,7 +517,7 @@ export class GoogleSheetsService {
           JSON.stringify(historyLogs),                                                                        // L (index 11) - historyLogs
           JSON.stringify(supportLogs),                                                                        // M (index 12) - supportLogs (preserve existing)
           JSON.stringify(finalSupportNotes),                                                                   // N (index 13) - support_notes (JSON array)
-          finalIsMiUpdated ? 'TRUE' : 'FALSE',                                                                 // O (index 14) - is_mi_updated
+          isMiUpdatedString,                                                                                  // O (index 14) - is_mi_updated (string "TRUE" or "FALSE")
         ],
       ];
 
@@ -490,7 +527,10 @@ export class GoogleSheetsService {
         platform: values[0][7],
         lastModifiedAt: values[0][9],
         lastModifiedBy: values[0][10],
+        isMiUpdated: values[0][14],
       });
+      
+      this.logger.log(`[GoogleSheets] Full row values (A-O):`, values[0]);
 
       const updateResult = await this.sheets.spreadsheets.values.update({
         spreadsheetId,
@@ -500,6 +540,16 @@ export class GoogleSheetsService {
       });
 
       this.logger.log(`[GoogleSheets] Update successful! Updated cells:`, updateResult.data.updatedCells);
+      this.logger.log(`[GoogleSheets] Update range:`, updateResult.data.updatedRange);
+      
+      // Verify the update by reading back the row
+      const verifyResult = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `Merchants!O${rowIndex}:O${rowIndex}`,
+      });
+      const verifiedValue = verifyResult.data.values?.[0]?.[0];
+      this.logger.log(`[GoogleSheets] Verified isMiUpdated value after update:`, verifiedValue);
+      
       this.logger.log(`Merchant ${id} updated in Google Sheets`);
       } catch (error) {
         this.logger.error(`[GoogleSheets] Error updating merchant ${id}:`, error);
