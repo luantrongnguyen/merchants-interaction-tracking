@@ -37,6 +37,8 @@ const COLORS = [
 		storeId?: string;
 		log: SupportLog;
 	}>>([]);
+	const [selectedMiUpdatedStatus, setSelectedMiUpdatedStatus] = useState<boolean | null>(null);
+	const [miUpdatedMerchants, setMiUpdatedMerchants] = useState<MerchantWithStatus[]>([]);
 
 	// Helper function to split categories by comma and normalize
 	const splitAndNormalizeCategories = (categoryString: string): string[] => {
@@ -99,6 +101,100 @@ const COLORS = [
 	}, [merchants]);
 
 	const total = counts.reduce((a, b) => a + b, 0);
+
+	// Calculate MI Updated statistics
+	const miUpdatedStats = useMemo(() => {
+		const updated = merchants.filter(m => m.isMiUpdated === true).length;
+		const notUpdated = merchants.length - updated;
+		return {
+			updated,
+			notUpdated,
+			total: merchants.length,
+			updatedPercentage: merchants.length > 0 ? ((updated / merchants.length) * 100).toFixed(1) : '0.0',
+			notUpdatedPercentage: merchants.length > 0 ? ((notUpdated / merchants.length) * 100).toFixed(1) : '0.0',
+		};
+	}, [merchants]);
+
+	const miUpdatedData = {
+		labels: ['Đã Updated MI', 'Chưa Updated MI'],
+		datasets: [
+			{
+				label: 'MI Updated Status',
+				data: [miUpdatedStats.updated, miUpdatedStats.notUpdated],
+				backgroundColor: ['#22c55e', '#ef4444'], // Green for updated, Red for not updated
+				borderColor: '#ffffff',
+				borderWidth: 2,
+			},
+		],
+	};
+
+	const miUpdatedOptions = {
+		plugins: {
+			legend: { 
+				position: 'bottom' as const,
+				align: 'start' as const,
+				fullSize: false,
+				labels: {
+					padding: 6,
+					font: {
+						size: 12,
+						weight: 500,
+					},
+					color: '#475569',
+					boxWidth: 10,
+					boxHeight: 10,
+					usePointStyle: false,
+					maxWidth: 150,
+					textAlign: 'left' as const,
+				},
+				onClick: (e: any, legendItem: any, legend: any) => {
+					// Extract status from legend item text
+					const labelText = legendItem.text || '';
+					const isUpdated = labelText.includes('Đã Updated');
+					handleMiUpdatedClick(isUpdated);
+					return false;
+				},
+			},
+			tooltip: {
+				backgroundColor: 'rgba(30, 41, 59, 0.95)',
+				padding: 12,
+				titleFont: {
+					size: 14,
+					weight: 600,
+				},
+				bodyFont: {
+					size: 13,
+				},
+				callbacks: {
+					label: (ctx: any) => {
+						const value = ctx.parsed || 0;
+						const total = miUpdatedStats.total || 0;
+						const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+						return `${ctx.label}: ${value} (${pct}%)`;
+					}
+				}
+			},
+		},
+		onClick: (event: any, elements: any[]) => {
+			if (elements.length > 0) {
+				const elementIndex = elements[0].index;
+				const isUpdated = elementIndex === 0; // 0 = Đã Updated, 1 = Chưa Updated
+				handleMiUpdatedClick(isUpdated);
+			}
+		},
+	};
+
+	const handleMiUpdatedClick = (isUpdated: boolean) => {
+		const filtered = merchants.filter(m => {
+			if (isUpdated) {
+				return m.isMiUpdated === true;
+			} else {
+				return m.isMiUpdated !== true; // Includes false, undefined, null
+			}
+		});
+		setMiUpdatedMerchants(filtered);
+		setSelectedMiUpdatedStatus(isUpdated);
+	};
 
 	const handleCategoryClick = (category: string) => {
 		const logs: Array<{
@@ -518,6 +614,16 @@ const COLORS = [
 				)}
 			</div>
 
+			{/* MI Updated Status */}
+			<h2>MI Updated Status</h2>
+			<div className="chart-wrapper chart-wrapper-pie-category">
+				{miUpdatedStats.total === 0 ? (
+					<div className="empty-state">Không có dữ liệu merchant.</div>
+				) : (
+					<Pie data={miUpdatedData} options={miUpdatedOptions} />
+				)}
+			</div>
+
 			{/* Terminal Issues Over Time */}
 			<h2>Terminal Issues Over Time</h2>
 			<div style={{ marginBottom: '1rem' }}>
@@ -698,6 +804,87 @@ const COLORS = [
 								</div>
 							</div>
 						))}
+					</div>
+				)}
+			</Modal>
+
+			{/* MI Updated Merchants Modal */}
+			<Modal
+				isOpen={selectedMiUpdatedStatus !== null}
+				onClose={() => {
+					setSelectedMiUpdatedStatus(null);
+					setMiUpdatedMerchants([]);
+				}}
+				title={`Merchants - ${selectedMiUpdatedStatus ? 'Đã Updated MI' : 'Chưa Updated MI'}`}
+				width="90%"
+				maxWidth="1000px"
+				maxHeight="80vh"
+			>
+				{miUpdatedMerchants.length === 0 ? (
+					<div className="category-logs-empty" style={{ textAlign: 'center', color: '#64748b', padding: '2rem', fontSize: '0.9375rem' }}>
+						Không có merchant {selectedMiUpdatedStatus ? 'đã updated MI' : 'chưa updated MI'}.
+					</div>
+				) : (
+					<div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+						<div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+							<strong style={{ color: '#1e293b' }}>Tổng số: {miUpdatedMerchants.length} merchant(s)</strong>
+						</div>
+						<div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+							{miUpdatedMerchants.map((merchant, index) => (
+								<div 
+									key={merchant.id || index} 
+									style={{ 
+										background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', 
+										border: '1px solid #e5e7eb', 
+										borderRadius: '12px', 
+										padding: '1rem',
+										transition: 'all 0.2s'
+									}}
+								>
+									<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+										<div style={{ flex: 1 }}>
+											<div style={{ fontSize: '1rem', color: '#1e293b', marginBottom: '0.5rem' }}>
+												<strong style={{ fontWeight: 600 }}>{merchant.name}</strong>
+												{merchant.storeId && (
+													<span style={{ color: '#64748b', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
+														({merchant.storeId})
+													</span>
+												)}
+											</div>
+											{merchant.address && (
+												<div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.25rem' }}>
+													📍 {merchant.address}
+												</div>
+											)}
+											{merchant.phone && (
+												<div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+													📞 {merchant.phone}
+												</div>
+											)}
+										</div>
+										<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+											<div
+												style={{
+													padding: '0.25rem 0.75rem',
+													borderRadius: '6px',
+													background: selectedMiUpdatedStatus ? '#dcfce7' : '#fee2e2',
+													color: selectedMiUpdatedStatus ? '#166534' : '#991b1b',
+													fontSize: '0.75rem',
+													fontWeight: 600,
+												}}
+											>
+												{selectedMiUpdatedStatus ? '✓ Updated' : '✗ Not Updated'}
+											</div>
+											{merchant.supportLogs && merchant.supportLogs.length > 0 && (
+												<div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+													{merchant.supportLogs.length} interaction(s)
+												</div>
+											)}
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
 					</div>
 				)}
 			</Modal>
