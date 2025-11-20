@@ -38,13 +38,57 @@ const COLORS = [
 		log: SupportLog;
 	}>>([]);
 
+	// Helper function to split categories by comma and normalize
+	const splitAndNormalizeCategories = (categoryString: string): string[] => {
+		if (!categoryString || categoryString.trim() === '') {
+			return ['Uncategorized'];
+		}
+		// Split by comma, trim each part, and filter out empty strings
+		return categoryString
+			.split(',')
+			.map(cat => cat.trim())
+			.filter(cat => cat !== '');
+	};
+
+	// Helper function to normalize category name (for comparison)
+	const normalizeCategoryName = (category: string): string => {
+		return category.trim().toLowerCase();
+	};
+
 	const { labels, counts, categoryMap } = useMemo(() => {
 		const categoryCountMap = new Map<string, number>();
 		merchants.forEach(m => {
 			(m.supportLogs || []).forEach(log => {
 				const raw = (log.category || '').trim();
-				const key = raw !== '' ? raw : 'Uncategorized';
-				categoryCountMap.set(key, (categoryCountMap.get(key) || 0) + 1);
+				if (raw === '') {
+					categoryCountMap.set('Uncategorized', (categoryCountMap.get('Uncategorized') || 0) + 1);
+				} else {
+					// Split categories by comma
+					const categories = splitAndNormalizeCategories(raw);
+					categories.forEach(cat => {
+						// Use normalized name as key to avoid duplicates like "Terminal" and " Terminal "
+						const normalizedKey = normalizeCategoryName(cat);
+						// Store with original case for display, but use normalized key for counting
+						const displayName = cat; // Keep original case
+						
+						// Check if we already have this category (case-insensitive)
+						let existingKey = null;
+						for (const [key] of categoryCountMap) {
+							if (normalizeCategoryName(key) === normalizedKey) {
+								existingKey = key;
+								break;
+							}
+						}
+						
+						if (existingKey) {
+							// Use existing key (preserve first case encountered)
+							categoryCountMap.set(existingKey, (categoryCountMap.get(existingKey) || 0) + 1);
+						} else {
+							// New category
+							categoryCountMap.set(displayName, (categoryCountMap.get(displayName) || 0) + 1);
+						}
+					});
+				}
 			});
 		});
 		const labelsArr = Array.from(categoryCountMap.keys());
@@ -61,16 +105,35 @@ const COLORS = [
 			log: SupportLog;
 		}> = [];
 		
+		// Normalize the selected category for comparison
+		const normalizedSelectedCategory = normalizeCategoryName(category);
+		
 		merchants.forEach(merchant => {
 			(merchant.supportLogs || []).forEach(log => {
 				const logCategory = (log.category || '').trim();
-				const categoryKey = logCategory !== '' ? logCategory : 'Uncategorized';
-				if (categoryKey === category) {
-					logs.push({
-						merchant: merchant.name,
-						storeId: merchant.storeId,
-						log: log,
-					});
+				if (logCategory === '') {
+					// Check if selected category is "Uncategorized"
+					if (normalizedSelectedCategory === 'uncategorized') {
+						logs.push({
+							merchant: merchant.name,
+							storeId: merchant.storeId,
+							log: log,
+						});
+					}
+				} else {
+					// Split log category and check if it contains the selected category
+					const logCategories = splitAndNormalizeCategories(logCategory);
+					const hasMatchingCategory = logCategories.some(cat => 
+						normalizeCategoryName(cat) === normalizedSelectedCategory
+					);
+					
+					if (hasMatchingCategory) {
+						logs.push({
+							merchant: merchant.name,
+							storeId: merchant.storeId,
+							log: log,
+						});
+					}
 				}
 			});
 		});
@@ -398,8 +461,17 @@ const COLORS = [
 			const distinctCategorySet = new Set<string>();
 			logs.forEach(l => {
 				const raw = (l.category || '').trim();
-				const key = raw !== '' ? raw : 'Uncategorized';
-				distinctCategorySet.add(key);
+				if (raw === '') {
+					distinctCategorySet.add('Uncategorized');
+				} else {
+					// Split categories by comma and add each one
+					const categories = splitAndNormalizeCategories(raw);
+					categories.forEach(cat => {
+						// Use normalized name to avoid duplicates
+						const normalizedKey = normalizeCategoryName(cat);
+						distinctCategorySet.add(normalizedKey);
+					});
+				}
 			});
 			const distinctCategories = distinctCategorySet.size;
 			return {
