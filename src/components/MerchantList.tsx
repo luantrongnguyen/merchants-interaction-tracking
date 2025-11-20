@@ -65,7 +65,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                 <th>Last Interaction</th>
                 <th>Status</th>
                 <th>MI Updated</th>
-                <th>Z11/Not Go W Mango</th>
+                <th>Z11/Not Go With</th>
                 <th>Actions</th>
               </tr>
             </thead>
