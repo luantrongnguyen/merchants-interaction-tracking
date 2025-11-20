@@ -194,7 +194,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
             try {
                 const response = await this.sheets.spreadsheets.values.get({
                     spreadsheetId,
-                    range: 'Merchants!A:N',
+                    range: 'Merchants!A:O',
                 });
                 const rows = response.data.values;
                 if (!rows || rows.length <= 1) {
@@ -301,6 +301,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                         historyLogs,
                         supportLogs,
                         supportNotes,
+                        isMiUpdated: row[14] === 'TRUE' || row[14] === 'true' || row[14] === true,
                     };
                 });
                 return merchants;
@@ -372,7 +373,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                 this.logger.log(`[GoogleSheets] Updating merchant id=${id}, rowIndex=${rowIndex}, updatedBy=${meta.by}`);
                 const current = await this.sheets.spreadsheets.values.get({
                     spreadsheetId,
-                    range: `Merchants!A${rowIndex}:N${rowIndex}`,
+                    range: `Merchants!A${rowIndex}:O${rowIndex}`,
                 });
                 const row = current.data.values?.[0] || [];
                 if (!row || row.length === 0) {
@@ -433,22 +434,28 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                     }
                 }
                 const finalSupportNotes = merchant.supportNotes !== undefined ? merchant.supportNotes : supportNotes;
+                let existingIsMiUpdated = false;
+                if (row[14] !== undefined && row[14] !== null && row[14] !== '') {
+                    existingIsMiUpdated = row[14] === 'TRUE' || row[14] === 'true' || row[14] === true;
+                }
+                const finalIsMiUpdated = merchant.isMiUpdated !== undefined ? merchant.isMiUpdated : existingIsMiUpdated;
                 const values = [
                     [
-                        merchant.name,
-                        merchant.storeId || '',
-                        merchant.address,
-                        merchant.street,
-                        merchant.area,
-                        merchant.state,
-                        merchant.zipcode,
-                        merchant.platform,
-                        merchant.phone,
+                        merchant.name !== undefined ? merchant.name : (row[0] || ''),
+                        merchant.storeId !== undefined ? (merchant.storeId || '') : (row[1] || ''),
+                        merchant.address !== undefined ? merchant.address : (row[2] || ''),
+                        merchant.street !== undefined ? merchant.street : (row[3] || ''),
+                        merchant.area !== undefined ? merchant.area : (row[4] || ''),
+                        merchant.state !== undefined ? merchant.state : (row[5] || ''),
+                        merchant.zipcode !== undefined ? merchant.zipcode : (row[6] || ''),
+                        merchant.platform !== undefined ? merchant.platform : (row[7] || ''),
+                        merchant.phone !== undefined ? merchant.phone : (row[8] || ''),
                         meta.at ?? new Date().toISOString().slice(0, 10),
                         meta.by,
                         JSON.stringify(historyLogs),
                         JSON.stringify(supportLogs),
                         JSON.stringify(finalSupportNotes),
+                        finalIsMiUpdated ? 'TRUE' : 'FALSE',
                     ],
                 ];
                 this.logger.log(`[GoogleSheets] Updating row ${rowIndex} with values:`, {
@@ -460,7 +467,7 @@ let GoogleSheetsService = GoogleSheetsService_1 = class GoogleSheetsService {
                 });
                 const updateResult = await this.sheets.spreadsheets.values.update({
                     spreadsheetId,
-                    range: `Merchants!A${rowIndex}:N${rowIndex}`,
+                    range: `Merchants!A${rowIndex}:O${rowIndex}`,
                     valueInputOption: 'RAW',
                     resource: { values },
                 });

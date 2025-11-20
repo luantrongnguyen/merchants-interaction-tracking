@@ -463,23 +463,24 @@ export class GoogleSheetsService {
       // If merchant has isMiUpdated, use it; otherwise preserve existing
       const finalIsMiUpdated = merchant.isMiUpdated !== undefined ? merchant.isMiUpdated : existingIsMiUpdated;
       
+      // Preserve existing values if merchant object doesn't have them (for partial updates)
       const values = [
         [
-          merchant.name,                                        // A (index 0)
-          merchant.storeId || '',                               // B (index 1)
-          merchant.address,                                     // C (index 2)
-          merchant.street,                                      // D (index 3)
-          merchant.area,                                        // E (index 4)
-          merchant.state,                                       // F (index 5)
-          merchant.zipcode,                                     // G (index 6)
-          merchant.platform,                                    // H (index 7)
-          merchant.phone,                                       // I (index 8)
-          meta.at ?? new Date().toISOString().slice(0, 10),   // J (index 9) - lastModifiedAt
-          meta.by,                                              // K (index 10) - lastModifiedBy
-          JSON.stringify(historyLogs),                          // L (index 11) - historyLogs
-          JSON.stringify(supportLogs),                          // M (index 12) - supportLogs (preserve existing)
-          JSON.stringify(finalSupportNotes),                    // N (index 13) - support_notes (JSON array)
-          finalIsMiUpdated ? 'TRUE' : 'FALSE',                  // O (index 14) - is_mi_updated
+          merchant.name !== undefined ? merchant.name : (row[0] || ''),                                        // A (index 0)
+          merchant.storeId !== undefined ? (merchant.storeId || '') : (row[1] || ''),                      // B (index 1)
+          merchant.address !== undefined ? merchant.address : (row[2] || ''),                                // C (index 2)
+          merchant.street !== undefined ? merchant.street : (row[3] || ''),                                   // D (index 3)
+          merchant.area !== undefined ? merchant.area : (row[4] || ''),                                       // E (index 4)
+          merchant.state !== undefined ? merchant.state : (row[5] || ''),                                    // F (index 5)
+          merchant.zipcode !== undefined ? merchant.zipcode : (row[6] || ''),                                // G (index 6)
+          merchant.platform !== undefined ? merchant.platform : (row[7] || ''),                             // H (index 7)
+          merchant.phone !== undefined ? merchant.phone : (row[8] || ''),                                     // I (index 8)
+          meta.at ?? new Date().toISOString().slice(0, 10),                                                   // J (index 9) - lastModifiedAt
+          meta.by,                                                                                            // K (index 10) - lastModifiedBy
+          JSON.stringify(historyLogs),                                                                        // L (index 11) - historyLogs
+          JSON.stringify(supportLogs),                                                                        // M (index 12) - supportLogs (preserve existing)
+          JSON.stringify(finalSupportNotes),                                                                   // N (index 13) - support_notes (JSON array)
+          finalIsMiUpdated ? 'TRUE' : 'FALSE',                                                                 // O (index 14) - is_mi_updated
         ],
       ];
 
