@@ -147,12 +147,19 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                   </div>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '20px' }}>
-                    {merchant.z11OrNotGoWMango === true ? (
-                      <span style={{ fontSize: '1.2rem', color: '#22c55e', fontWeight: 'bold' }}>✓</span>
-                    ) : (
-                      <span style={{ color: '#9ca3af', fontSize: '0.9rem' }}>-</span>
-                    )}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={merchant.z11OrNotGoWMango === true}
+                      disabled={true}
+                      readOnly={true}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'not-allowed',
+                        opacity: 1,
+                      }}
+                    />
                   </div>
                 </td>
                 <td>
