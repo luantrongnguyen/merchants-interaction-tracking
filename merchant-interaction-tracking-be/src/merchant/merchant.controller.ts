@@ -8,11 +8,11 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { appConfig } from '../config/app.config';
 
 @Controller('merchants')
-@UseGuards(JwtAuthGuard)
 export class MerchantController {
   constructor(private readonly merchantService: MerchantService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   create(@Body() createMerchantDto: CreateMerchantDto, @Req() req: any) {
     const email = req?.user?.email || 'unknown@mangoforsalon.com';
     return this.merchantService.create(createMerchantDto, email);
@@ -29,6 +29,7 @@ export class MerchantController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   update(@Param('id', ParseIntPipe) id: number, @Body() updateMerchantDto: UpdateMerchantDto, @Req() req: any) {
     // Nếu có updatedBy trong body thì dùng nó, nếu không thì dùng email từ user
     const { updatedBy, ...merchantData } = updateMerchantDto;
@@ -47,6 +48,7 @@ export class MerchantController {
   }
 
   @Patch(':id/support-note')
+  @UseGuards(JwtAuthGuard)
   async addSupportNote(@Param('id', ParseIntPipe) id: number, @Body() updateSupportNoteDto: UpdateSupportNoteDto, @Req() req: any) {
     try {
       const userEmail = req?.user?.email || 'unknown@mangoforsalon.com';
@@ -73,23 +75,27 @@ export class MerchantController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.merchantService.remove(id);
   }
 
   @Post('sync')
+  @UseGuards(JwtAuthGuard)
   async syncMerchants(@Req() req: any) {
     const email = req?.user?.email || 'unknown@mangoforsalon.com';
     return this.merchantService.syncMerchantsFromExternal(email);
   }
 
   @Post('sync-call-logs')
+  @UseGuards(JwtAuthGuard)
   async syncCallLogs(@Req() req: any) {
     const email = req?.user?.email || 'unknown@mangoforsalon.com';
     return this.merchantService.syncCallLogs(email);
   }
 
   @Post('sync-call-logs-manual')
+  @UseGuards(JwtAuthGuard)
   async syncCallLogsManual(@Body() dto: SyncCallLogsManualDto, @Req() req: any) {
     try {
       // Validate passcode
