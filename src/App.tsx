@@ -399,49 +399,45 @@ function App() {
         
         {/* Protected routes - require authentication */}
         <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DashboardPage
+                  merchants={merchants}
+                  error={error}
+                  onRetry={loadMerchants}
+                  onSyncCallLogs={handleSyncCallLogsManual}
+                  isSyncing={isSyncingManual}
+                  syncProgress={syncProgress}
+                  syncStatus={syncStatus}
+                  syncResults={syncResults}
+                />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/"
           element={
             <ProtectedRoute>
               <Layout>
-                <Routes>
-                  <Route 
-                    index
-                    element={
-                      <MerchantListPage
-                        merchants={filteredMerchants}
-                        error={error}
-                        onRetry={loadMerchants}
-                        onSearch={handleSearch}
-                        onFilter={handleFilter}
-                        onClear={handleClearSearch}
-                        onEdit={handleEditMerchant}
-                        onDelete={handleDeleteMerchant}
-                        onUpdateIsMiUpdated={handleUpdateIsMiUpdated}
-                        onSyncCallLogs={handleSyncCallLogsManual}
-                        isSyncing={isSyncingManual}
-                        syncProgress={syncProgress}
-                        syncStatus={syncStatus}
-                        syncResults={syncResults}
-                      />
-                    } 
-                  />
-                  <Route 
-                    path="dashboard" 
-                    element={
-                      <DashboardPage
-                        merchants={merchants}
-                        error={error}
-                        onRetry={loadMerchants}
-                        onSyncCallLogs={handleSyncCallLogsManual}
-                        isSyncing={isSyncingManual}
-                        syncProgress={syncProgress}
-                        syncStatus={syncStatus}
-                        syncResults={syncResults}
-                      />
-                    } 
-                  />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <MerchantListPage
+                  merchants={filteredMerchants}
+                  error={error}
+                  onRetry={loadMerchants}
+                  onSearch={handleSearch}
+                  onFilter={handleFilter}
+                  onClear={handleClearSearch}
+                  onEdit={handleEditMerchant}
+                  onDelete={handleDeleteMerchant}
+                  onUpdateIsMiUpdated={handleUpdateIsMiUpdated}
+                  onSyncCallLogs={handleSyncCallLogsManual}
+                  isSyncing={isSyncingManual}
+                  syncProgress={syncProgress}
+                  syncStatus={syncStatus}
+                  syncResults={syncResults}
+                />
               </Layout>
             </ProtectedRoute>
           }
