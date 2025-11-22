@@ -39,6 +39,12 @@ const COLORS = [
 	}>>([]);
 	const [selectedMiUpdatedStatus, setSelectedMiUpdatedStatus] = useState<boolean | null>(null);
 	const [miUpdatedMerchants, setMiUpdatedMerchants] = useState<MerchantWithStatus[]>([]);
+	const [selectedTerminalDate, setSelectedTerminalDate] = useState<string | null>(null);
+	const [terminalLogs, setTerminalLogs] = useState<Array<{
+		merchant: string;
+		storeId?: string;
+		log: SupportLog;
+	}>>([]);
 
 	// Helper function to split categories by comma and normalize
 	const splitAndNormalizeCategories = (categoryString: string): string[] => {
@@ -514,6 +520,61 @@ const COLORS = [
 		],
 	};
 
+	const handleTerminalDateClick = (dateKey: string) => {
+		const logs: Array<{
+			merchant: string;
+			storeId?: string;
+			log: SupportLog;
+		}> = [];
+		
+		merchants.forEach(merchant => {
+			(merchant.supportLogs || []).forEach(log => {
+				if (!isTerminalRelated(log.category)) return;
+				
+				const logDate = parseDate(log.date);
+				if (!logDate) return;
+				
+				let logKey = '';
+				switch (terminalRange) {
+					case 'day': 
+						logKey = getDayKey(logDate);
+						break;
+					case 'week': 
+						logKey = getWeekKey(logDate);
+						break;
+					case 'month': 
+						logKey = getMonthKey(logDate);
+						break;
+					case 'year': 
+						logKey = getYearKey(logDate);
+						break;
+				}
+				
+				if (logKey === dateKey) {
+					logs.push({
+						merchant: merchant.name,
+						storeId: merchant.storeId,
+						log: log,
+					});
+				}
+			});
+		});
+		
+		// Sort by date and time (newest first)
+		logs.sort((a, b) => {
+			const dateA = a.log.date ? new Date(a.log.date).getTime() : 0;
+			const dateB = b.log.date ? new Date(b.log.date).getTime() : 0;
+			if (dateB !== dateA) return dateB - dateA;
+			// If same date, sort by time
+			const timeA = a.log.time || '';
+			const timeB = b.log.time || '';
+			return timeB.localeCompare(timeA);
+		});
+		
+		setTerminalLogs(logs);
+		setSelectedTerminalDate(dateKey);
+	};
+
 	const terminalLineOptions = {
 		plugins: {
 			legend: { 
@@ -544,6 +605,14 @@ const COLORS = [
 					label: (ctx: any) => `Terminal Issues: ${ctx.parsed.y}`,
 				},
 			},
+		},
+		onClick: (event: any, elements: any[]) => {
+			if (elements && elements.length > 0) {
+				const elementIndex = elements[0].index;
+				if (elementIndex !== undefined && terminalTimeAgg.labels[elementIndex]) {
+					handleTerminalDateClick(terminalTimeAgg.labels[elementIndex]);
+				}
+			}
 		},
 		maintainAspectRatio: false,
 		scales: {
@@ -907,6 +976,59 @@ const COLORS = [
 								</div>
 							))}
 						</div>
+					</div>
+				)}
+			</Modal>
+
+			{/* Terminal Logs Modal */}
+			<Modal
+				isOpen={!!selectedTerminalDate}
+				onClose={() => {
+					setSelectedTerminalDate(null);
+					setTerminalLogs([]);
+				}}
+				title={`Terminal Issues Call Logs - ${selectedTerminalDate || ''}`}
+				width="90%"
+				maxWidth="800px"
+				maxHeight="80vh"
+			>
+				{terminalLogs.length === 0 ? (
+					<div className="category-logs-empty" style={{ textAlign: 'center', color: '#64748b', padding: '2rem', fontSize: '0.9375rem' }}>
+						Không có call logs terminal issues cho ngày này.
+					</div>
+				) : (
+					<div className="category-logs-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+						{terminalLogs.map((item, index) => (
+							<div key={index} className="category-log-item" style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem', transition: 'all 0.2s' }}>
+								<div className="category-log-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '1rem' }}>
+									<div className="category-log-merchant" style={{ flex: 1, fontSize: '1rem', color: '#1e293b' }}>
+										<strong style={{ fontWeight: 600 }}>{item.merchant}</strong>
+										{item.storeId && <span className="category-log-storeid" style={{ color: '#64748b', fontSize: '0.875rem', marginLeft: '0.5rem' }}>({item.storeId})</span>}
+									</div>
+									<div className="category-log-date-time" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+										<span className="category-log-date" style={{ fontWeight: 500 }}>{item.log.date}</span>
+										{item.log.time && <span className="category-log-time" style={{ fontSize: '0.8125rem' }}>{item.log.time}</span>}
+									</div>
+								</div>
+								<div className="category-log-details" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9375rem', color: '#475569' }}>
+									{item.log.supporter && (
+										<div className="category-log-supporter" style={{ display: 'flex', gap: '0.5rem' }}>
+											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Supporter:</strong> {item.log.supporter}
+										</div>
+									)}
+									{item.log.category && (
+										<div className="category-log-category" style={{ display: 'flex', gap: '0.5rem' }}>
+											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Category:</strong> {item.log.category}
+										</div>
+									)}
+									{item.log.issue && (
+										<div className="category-log-issue" style={{ display: 'flex', gap: '0.5rem' }}>
+											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Issue:</strong> {item.log.issue}
+										</div>
+									)}
+								</div>
+							</div>
+						))}
 					</div>
 				)}
 			</Modal>
