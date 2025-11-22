@@ -37,10 +37,8 @@ const COLORS = [
 		storeId?: string;
 		log: SupportLog;
 	}>>([]);
-	const [selectedMiUpdatedStatus, setSelectedMiUpdatedStatus] = useState<boolean | null>(null);
+	const [selectedMiUpdatedStatus, setSelectedMiUpdatedStatus] = useState<string | null>(null);
 	const [miUpdatedMerchants, setMiUpdatedMerchants] = useState<MerchantWithStatus[]>([]);
-	const [selectedMiVersion, setSelectedMiVersion] = useState<string>('all');
-	const MI_VERSIONS = ['all', '11042025', '11112025', '11212025'];
 	const [selectedTerminalDate, setSelectedTerminalDate] = useState<string | null>(null);
 	const [terminalLogs, setTerminalLogs] = useState<Array<{
 		merchant: string;
@@ -166,49 +164,78 @@ const COLORS = [
 	const total = counts.reduce((a, b) => a + b, 0);
 
 	// Calculate MI Updated statistics
-	// Updated = MI Updated OR Uses Z11 (No Card Machine)
-	// Not Updated = Not MI Updated AND No Z11 (Uses Card Machine)
-	// Filter by selected version if not 'all'
+	// Categories: Ver 11042025, Ver 11112025, Ver 11212025, z11/no card machine, not updated yet
 	const miUpdatedStats = useMemo(() => {
-		// Filter merchants by version if selected
-		const filteredMerchants = selectedMiVersion === 'all' 
-			? merchants 
-			: merchants.filter(m => {
-				// Parse miVersion if it's a JSON string
-				let version = m.miVersion;
-				if (version && version.startsWith('"') && version.endsWith('"')) {
-					try {
-						version = JSON.parse(version);
-					} catch {
-						// If parsing fails, use as is
-					}
+		const ver11042025: MerchantWithStatus[] = [];
+		const ver11112025: MerchantWithStatus[] = [];
+		const ver11212025: MerchantWithStatus[] = [];
+		const z11NoCardMachine: MerchantWithStatus[] = [];
+		const notUpdatedYet: MerchantWithStatus[] = [];
+
+		merchants.forEach(m => {
+			// Parse miVersion if it's a JSON string
+			let version = m.miVersion;
+			if (version && version.startsWith('"') && version.endsWith('"')) {
+				try {
+					version = JSON.parse(version);
+				} catch {
+					// If parsing fails, use as is
 				}
-				return version === selectedMiVersion;
-			});
-		
-		const updated = filteredMerchants.filter(m => 
-			m.isMiUpdated === true || m.z11OrNotGoWMango === true
-		).length;
-		const notUpdated = filteredMerchants.length - updated;
+			}
+
+			// Check if has specific version
+			if (version === '11042025') {
+				ver11042025.push(m);
+			} else if (version === '11112025') {
+				ver11112025.push(m);
+			} else if (version === '11212025') {
+				ver11212025.push(m);
+			} else if (m.z11OrNotGoWMango === true) {
+				// z11/no card machine (and no specific version)
+				z11NoCardMachine.push(m);
+			} else if (!m.isMiUpdated && !m.z11OrNotGoWMango) {
+				// Not updated yet (no version, no z11, no isMiUpdated)
+				notUpdatedYet.push(m);
+			}
+		});
+
+		const total = merchants.length;
 		return {
-			updated,
-			notUpdated,
-			total: filteredMerchants.length,
-			updatedPercentage: filteredMerchants.length > 0 ? ((updated / filteredMerchants.length) * 100).toFixed(1) : '0.0',
-			notUpdatedPercentage: filteredMerchants.length > 0 ? ((notUpdated / filteredMerchants.length) * 100).toFixed(1) : '0.0',
+			ver11042025: ver11042025.length,
+			ver11112025: ver11112025.length,
+			ver11212025: ver11212025.length,
+			z11NoCardMachine: z11NoCardMachine.length,
+			notUpdatedYet: notUpdatedYet.length,
+			total,
+			categories: {
+				ver11042025,
+				ver11112025,
+				ver11212025,
+				z11NoCardMachine,
+				notUpdatedYet,
+			},
 		};
-	}, [merchants, selectedMiVersion]);
+	}, [merchants]);
 
 	const miUpdatedData = {
 		labels: [
-			'MI Updated or Uses Z11 / No Card Machine',
-			'Not MI Updated and No Z11 / Uses Card Machine'
+			'Ver 11042025',
+			'Ver 11112025',
+			'Ver 11212025',
+			'z11/no card machine',
+			'not updated yet'
 		],
 		datasets: [
 			{
 				label: 'MI Updated Status',
-				data: [miUpdatedStats.updated, miUpdatedStats.notUpdated],
-				backgroundColor: ['#22c55e', '#ef4444'], // Green for updated, Red for not updated
+				data: [
+					miUpdatedStats.ver11042025,
+					miUpdatedStats.ver11112025,
+					miUpdatedStats.ver11212025,
+					miUpdatedStats.z11NoCardMachine,
+					miUpdatedStats.notUpdatedYet,
+				],
+				backgroundColor: ['#22c55e', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'], // Green, Blue, Purple, Orange, Red
 				borderColor: '#ffffff',
 				borderWidth: 2,
 			},
@@ -237,10 +264,9 @@ const COLORS = [
 					textAlign: 'left' as const,
 				},
 				onClick: (e: any, legendItem: any, legend: any) => {
-					// Extract status from legend item text
+					// Extract category from legend item text
 					const labelText = legendItem.text || '';
-					const isUpdated = labelText.includes('MI Updated or Uses Z11');
-					handleMiUpdatedClick(isUpdated);
+					handleMiUpdatedClick(labelText);
 					return false;
 				},
 			},
@@ -270,8 +296,11 @@ const COLORS = [
 		onClick: (event: any, elements: any[]) => {
 			if (elements && elements.length > 0) {
 				const elementIndex = elements[0].index;
-				const isUpdated = elementIndex === 0; // 0 = MI Updated or Uses Z11, 1 = Not Updated and No Z11
-				handleMiUpdatedClick(isUpdated);
+				const labels = ['Ver 11042025', 'Ver 11112025', 'Ver 11212025', 'z11/no card machine', 'not updated yet'];
+				const category = labels[elementIndex];
+				if (category) {
+					handleMiUpdatedClick(category);
+				}
 			}
 		},
 		layout: {
@@ -284,35 +313,23 @@ const COLORS = [
 		},
 	};
 
-	const handleMiUpdatedClick = (isUpdated: boolean) => {
-		// First filter by version if selected
-		const versionFiltered = selectedMiVersion === 'all' 
-			? merchants 
-			: merchants.filter(m => {
-				// Parse miVersion if it's a JSON string
-				let version = m.miVersion;
-				if (version && version.startsWith('"') && version.endsWith('"')) {
-					try {
-						version = JSON.parse(version);
-					} catch {
-						// If parsing fails, use as is
-					}
-				}
-				return version === selectedMiVersion;
-			});
+	const handleMiUpdatedClick = (category: string) => {
+		let filtered: MerchantWithStatus[] = [];
 		
-		// Then filter by MI Updated status
-		const filtered = versionFiltered.filter(m => {
-			if (isUpdated) {
-				// MI Updated OR Uses Z11 (No Card Machine)
-				return m.isMiUpdated === true || m.z11OrNotGoWMango === true;
-			} else {
-				// Not MI Updated AND No Z11 (Uses Card Machine)
-				return m.isMiUpdated !== true && m.z11OrNotGoWMango !== true;
-			}
-		});
+		if (category === 'Ver 11042025') {
+			filtered = miUpdatedStats.categories.ver11042025;
+		} else if (category === 'Ver 11112025') {
+			filtered = miUpdatedStats.categories.ver11112025;
+		} else if (category === 'Ver 11212025') {
+			filtered = miUpdatedStats.categories.ver11212025;
+		} else if (category === 'z11/no card machine') {
+			filtered = miUpdatedStats.categories.z11NoCardMachine;
+		} else if (category === 'not updated yet') {
+			filtered = miUpdatedStats.categories.notUpdatedYet;
+		}
+		
 		setMiUpdatedMerchants(filtered);
-		setSelectedMiUpdatedStatus(isUpdated);
+		setSelectedMiUpdatedStatus(category as any);
 	};
 
 	const handleCategoryClick = (category: string) => {
@@ -927,26 +944,6 @@ const COLORS = [
 
 			{/* MI Updated Status */}
 			<h2>MI Updated Status</h2>
-			<div style={{ marginBottom: '1rem' }}>
-				<select 
-					value={selectedMiVersion} 
-					onChange={e => setSelectedMiVersion(e.target.value)}
-					style={{
-						padding: '0.5rem 1rem',
-						border: '1px solid #e5e7eb',
-						borderRadius: '6px',
-						background: '#fff',
-						color: '#1e293b',
-						fontSize: '0.875rem',
-						cursor: 'pointer',
-					}}
-				>
-					<option value="all">All Versions</option>
-					<option value="11042025">11042025</option>
-					<option value="11112025">11112025</option>
-					<option value="11212025">11212025</option>
-				</select>
-			</div>
 			<div className="chart-wrapper chart-wrapper-pie-category">
 				{miUpdatedStats.total === 0 ? (
 					<div className="empty-state">Không có dữ liệu merchant.</div>
@@ -1234,14 +1231,14 @@ const COLORS = [
 					setSelectedMiUpdatedStatus(null);
 					setMiUpdatedMerchants([]);
 				}}
-				title={`Merchants - ${selectedMiUpdatedStatus ? 'MI Updated or Uses Z11 / No Card Machine' : 'Not MI Updated and No Z11 / Uses Card Machine'}`}
+				title={`Merchants - ${selectedMiUpdatedStatus || 'MI Updated Status'}`}
 				width="90%"
 				maxWidth="1000px"
 				maxHeight="80vh"
 			>
 				{miUpdatedMerchants.length === 0 ? (
 					<div className="category-logs-empty" style={{ textAlign: 'center', color: '#64748b', padding: '2rem', fontSize: '0.9375rem' }}>
-						No merchants {selectedMiUpdatedStatus ? 'with MI Updated or Uses Z11 / No Card Machine' : 'without MI Updated and No Z11 / Uses Card Machine'}.
+						No merchants found for category: {selectedMiUpdatedStatus || 'Unknown'}.
 					</div>
 				) : (
 					<div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
@@ -1286,13 +1283,19 @@ const COLORS = [
 												style={{
 													padding: '0.25rem 0.75rem',
 													borderRadius: '6px',
-													background: selectedMiUpdatedStatus ? '#dcfce7' : '#fee2e2',
-													color: selectedMiUpdatedStatus ? '#166534' : '#991b1b',
+													background: (() => {
+														if (selectedMiUpdatedStatus === 'not updated yet') return '#fee2e2';
+														return '#dcfce7';
+													})(),
+													color: (() => {
+														if (selectedMiUpdatedStatus === 'not updated yet') return '#991b1b';
+														return '#166534';
+													})(),
 													fontSize: '0.75rem',
 													fontWeight: 600,
 												}}
 											>
-												{selectedMiUpdatedStatus ? '✓ Updated' : '✗ Not Updated'}
+												{selectedMiUpdatedStatus === 'not updated yet' ? '✗ Not Updated' : '✓ Updated'}
 											</div>
 											{merchant.supportLogs && merchant.supportLogs.length > 0 && (
 												<div style={{ fontSize: '0.75rem', color: '#64748b' }}>

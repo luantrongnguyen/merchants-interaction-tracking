@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import GoogleAuth from './GoogleAuth';
 import HeaderProgressBar from './HeaderProgressBar';
 import GreetingBanner from './GreetingBanner';
 import { useAuth } from '../contexts/AuthContext';
-import apiService from '../services/apiService';
-import { CONFIG } from '../config';
 
 interface HeaderProps {
   // Progress bar props
@@ -28,28 +26,6 @@ const Header: React.FC<HeaderProps> = ({
   onCloseSyncResults,
 }) => {
   const { user, isAuthenticated, login, logout } = useAuth();
-  const [isMigrating, setIsMigrating] = useState(false);
-  const [migrateResult, setMigrateResult] = useState<{ updated: number; errors: number; skipped: number } | null>(null);
-
-  const handleMigrateMi = async () => {
-    if (!window.confirm('Bạn có chắc muốn migrate MI version? Hành động này sẽ cập nhật các row có isMiUpdated = TRUE thành JSON format "11042025".')) {
-      return;
-    }
-
-    setIsMigrating(true);
-    setMigrateResult(null);
-    
-    try {
-      const result = await apiService.migrateMiVersion(CONFIG.PASSSCODE, '11042025');
-      setMigrateResult(result);
-      alert(`Migration hoàn tất!\nUpdated: ${result.updated}\nSkipped: ${result.skipped}\nErrors: ${result.errors}`);
-    } catch (error: any) {
-      alert(`Lỗi khi migrate: ${error.message || 'Unknown error'}`);
-      console.error('Migration error:', error);
-    } finally {
-      setIsMigrating(false);
-    }
-  };
 
   return (
     <header className="app-header">
@@ -74,19 +50,6 @@ const Header: React.FC<HeaderProps> = ({
                   />
                 )}
                 <span className="user-name">{user.name || user.email}</span>
-                <button 
-                  onClick={handleMigrateMi}
-                  className="btn-secondary migrate-btn"
-                  title="Migrate MI Version"
-                  disabled={isMigrating}
-                  style={{
-                    backgroundColor: isMigrating ? '#f3f4f6' : '#fff',
-                    color: isMigrating ? '#9ca3af' : '#1e293b',
-                    cursor: isMigrating ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {isMigrating ? 'Migrating...' : 'Migrate MI'}
-                </button>
                 <button 
                   onClick={logout}
                   className="btn-secondary logout-btn"
