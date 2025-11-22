@@ -37,9 +37,13 @@
       // the single page app to route accordingly.
       (function(l) {
         if (l.search[1] === '/' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) { 
-            return s.replace(/~and~/g, '&')
-          }).join('?');
+          // Get the path from query string (everything after ?/)
+          var pathPart = l.search.slice(1);
+          // Split by & to handle query parameters, but take only the first part (the path)
+          var pathAndQuery = pathPart.split('&');
+          var pathString = pathAndQuery[0];
+          // Replace ~and~ with / to restore the original path
+          var decoded = pathString.replace(/~and~/g, '/');
           var basename = '/merchants-interaction-tracking';
           var newPath = basename + decoded + l.hash;
           window.history.replaceState(null, null, newPath);
