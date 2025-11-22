@@ -393,18 +393,19 @@ function App() {
       />
 
       <Routes>
-        {/* Guest view route - no authentication required */}
+        {/* Guest view route - no authentication required - must be before catch-all route */}
+        <Route path="/views" element={<ViewPage />} />
         <Route path="/views/*" element={<ViewPage />} />
         
         {/* Protected routes - require authentication */}
         <Route
-          path="/*"
+          path="/"
           element={
             <ProtectedRoute>
               <Layout>
                 <Routes>
                   <Route 
-                    path="/" 
+                    index
                     element={
                       <MerchantListPage
                         merchants={filteredMerchants}
@@ -425,7 +426,7 @@ function App() {
                     } 
                   />
                   <Route 
-                    path="/dashboard" 
+                    path="dashboard" 
                     element={
                       <DashboardPage
                         merchants={merchants}
@@ -445,6 +446,13 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={
+          <ProtectedRoute>
+            <Layout>
+              <Navigate to="/" replace />
+            </Layout>
+          </ProtectedRoute>
+        } />
       </Routes>
 
       <MerchantForm
