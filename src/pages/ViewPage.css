@@ -2,15 +2,19 @@
   overflow: visible !important; /* Allow scrolling */
   height: auto !important; /* Let content determine height */
   min-height: 100vh; /* Ensure minimum viewport height */
+  display: block; /* Change from flex to block for natural flow */
+  position: relative;
 }
 
 .view-page-main {
   padding: 0;
   margin-left: 0 !important; /* Override sidebar margin since ViewPage doesn't have sidebar */
+  margin-top: 80px !important; /* Add margin to account for fixed header */
+  padding: 2rem 1rem; /* Add padding for content */
   height: auto;
   min-height: calc(100vh - 80px); /* Subtract header height */
-  overflow-y: visible;
-  overflow-x: hidden;
+  overflow: visible; /* Allow natural scrolling */
+  position: relative;
 }
 
 .view-page-banner {
