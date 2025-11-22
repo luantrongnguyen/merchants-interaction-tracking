@@ -549,10 +549,24 @@ export class GoogleSheetsService {
         }
       }
       
-      // Convert boolean to string for Google Sheets: true -> "TRUE", false -> "FALSE"
-      const isMiUpdatedString = finalIsMiUpdated ? 'TRUE' : 'FALSE';
+      // Determine value for column O (is_mi_updated / miVersion)
+      // Priority: if miVersion is provided, use it; otherwise use isMiUpdated boolean
+      let columnOValue: string;
+      if (merchant.miVersion !== undefined && merchant.miVersion !== null && merchant.miVersion !== '') {
+        // If miVersion is provided, use it directly (should be JSON string like "11042025")
+        columnOValue = merchant.miVersion;
+        this.logger.log(`[GoogleSheets] Using miVersion for column O: "${columnOValue}"`);
+      } else if (finalIsMiUpdated) {
+        // If isMiUpdated is true but no miVersion, use "TRUE" (legacy format)
+        columnOValue = 'TRUE';
+        this.logger.log(`[GoogleSheets] Using isMiUpdated=true for column O: "${columnOValue}"`);
+      } else {
+        // If isMiUpdated is false, use "FALSE"
+        columnOValue = 'FALSE';
+        this.logger.log(`[GoogleSheets] Using isMiUpdated=false for column O: "${columnOValue}"`);
+      }
       
-      this.logger.log(`[GoogleSheets] isMiUpdated - final boolean: ${finalIsMiUpdated}, will write string: "${isMiUpdatedString}"`);
+      this.logger.log(`[GoogleSheets] Final value for column O: "${columnOValue}"`);
       
       // Preserve existing values if merchant object doesn't have them (for partial updates)
       const values = [
@@ -571,7 +585,7 @@ export class GoogleSheetsService {
           JSON.stringify(historyLogs),                                                                        // L (index 11) - historyLogs
           JSON.stringify(supportLogs),                                                                        // M (index 12) - supportLogs (preserve existing)
           JSON.stringify(finalSupportNotes),                                                                   // N (index 13) - support_notes (JSON array)
-          isMiUpdatedString,                                                                                  // O (index 14) - is_mi_updated (string "TRUE" or "FALSE")
+          columnOValue,                                                                                       // O (index 14) - is_mi_updated / miVersion (JSON string or "TRUE"/"FALSE")
         ],
       ];
 
@@ -581,7 +595,7 @@ export class GoogleSheetsService {
         platform: values[0][7],
         lastModifiedAt: values[0][9],
         lastModifiedBy: values[0][10],
-        isMiUpdated: values[0][14],
+        columnO: values[0][14],
       });
       
       this.logger.log(`[GoogleSheets] Full row values (A-O):`, values[0]);
