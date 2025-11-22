@@ -1,5 +1,16 @@
+.view-page-container {
+  overflow: visible !important; /* Allow scrolling */
+  height: auto !important; /* Let content determine height */
+  min-height: 100vh; /* Ensure minimum viewport height */
+}
+
 .view-page-main {
   padding: 0;
+  margin-left: 0 !important; /* Override sidebar margin since ViewPage doesn't have sidebar */
+  height: auto;
+  min-height: calc(100vh - 80px); /* Subtract header height */
+  overflow-y: visible;
+  overflow-x: hidden;
 }
 
 .view-page-banner {

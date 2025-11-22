@@ -117,7 +117,7 @@ const ViewPage: React.FC = () => {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container view-page-container">
       <header className="app-header">
         <div className="header-content">
           <h1>Merchant Tracking</h1>
