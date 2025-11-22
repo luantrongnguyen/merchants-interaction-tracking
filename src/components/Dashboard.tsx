@@ -483,7 +483,7 @@ const COLORS = [
 	} as const;
 
 	// ---------- Terminal Issues Over Time ----------
-	const terminalKeywords = ['terminal', 'disconnected', 'processing', 'connection', 'connectivity', 'network', 'offline', 'online'];
+	const terminalKeywords = ['terminal', 'disconnected', 'processing', 'connection', 'connectivity', 'network', 'offline', 'online', 'feedback update mi', 'update mi'];
 	const isTerminalRelated = (category: string | undefined): boolean => {
 		if (!category) return false;
 		const lowerCategory = category.toLowerCase();
