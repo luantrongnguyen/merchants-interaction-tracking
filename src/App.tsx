@@ -215,13 +215,23 @@ function App() {
     setSyncResults(null);
   };
 
-  const handleUpdateIsMiUpdated = (id: number, isMiUpdated: boolean) => {
+  const handleUpdateIsMiUpdated = (id: number, isMiUpdated: boolean, miVersion?: string) => {
     // Update in both merchants and filteredMerchants
     setMerchants(prevMerchants => 
-      prevMerchants.map(m => m.id === id ? { ...m, isMiUpdated } : m)
+      prevMerchants.map(m => m.id === id ? { ...m, isMiUpdated, miVersion } : m)
     );
     setFilteredMerchants(prevFiltered => 
-      prevFiltered.map(m => m.id === id ? { ...m, isMiUpdated } : m)
+      prevFiltered.map(m => m.id === id ? { ...m, isMiUpdated, miVersion } : m)
+    );
+  };
+
+  const handleUpdateMiVersion = (id: number, miVersion: string) => {
+    // Update in both merchants and filteredMerchants
+    setMerchants(prevMerchants => 
+      prevMerchants.map(m => m.id === id ? { ...m, miVersion } : m)
+    );
+    setFilteredMerchants(prevFiltered => 
+      prevFiltered.map(m => m.id === id ? { ...m, miVersion } : m)
     );
   };
 
@@ -436,6 +446,7 @@ function App() {
                   onEdit={handleEditMerchant}
                   onDelete={handleDeleteMerchant}
                   onUpdateIsMiUpdated={handleUpdateIsMiUpdated}
+                  onUpdateMiVersion={handleUpdateMiVersion}
                   onSyncCallLogs={handleSyncCallLogsManual}
                   isSyncing={isSyncingManual}
                   syncProgress={syncProgress}

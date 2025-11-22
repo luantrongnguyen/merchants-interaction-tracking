@@ -16,10 +16,11 @@ interface MerchantListProps {
   onSearch?: (query: string) => void;
   onFilter?: (status: 'all' | 'green' | 'orange' | 'red' | 'terminal-device-issues') => void;
   onClear?: () => void;
-  onUpdateIsMiUpdated?: (id: number, isMiUpdated: boolean) => void;
+  onUpdateIsMiUpdated?: (id: number, isMiUpdated: boolean, miVersion?: string) => void;
+  onUpdateMiVersion?: (id: number, miVersion: string) => void;
 }
 
-const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete, onSearch, onFilter, onClear, onUpdateIsMiUpdated }) => {
+const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete, onSearch, onFilter, onClear, onUpdateIsMiUpdated, onUpdateMiVersion }) => {
   const { user } = useAuth();
   const [showHistoryFor, setShowHistoryFor] = React.useState<MerchantWithStatus | null>(null);
   const [showCallLogsFor, setShowCallLogsFor] = React.useState<MerchantWithStatus | null>(null);
@@ -120,18 +121,27 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                           // Show confirm dialog when unchecking
                           setConfirmUncheckFor({ merchant, newValue });
                         } else {
-                          // Directly update when checking - optimistic update
+                          // When checking, set default version (first option)
+                          const defaultVersion = MI_VERSIONS[0]; // '11042025'
+                          const versionJson = JSON.stringify(defaultVersion);
+                          
+                          // Optimistic update
                           if (onUpdateIsMiUpdated) {
-                            onUpdateIsMiUpdated(merchant.id!, newValue);
+                            onUpdateIsMiUpdated(merchant.id!, newValue, versionJson);
                           }
+                          
                           try {
                             setIsUpdatingIsMiUpdated(true);
-                            await apiService.updateMerchantIsMiUpdated(merchant.id!, newValue);
+                            // Update both isMiUpdated and miVersion
+                            await apiService.updateMerchant(merchant.id!, {
+                              isMiUpdated: newValue,
+                              miVersion: versionJson,
+                            } as any);
                           } catch (err) {
                             console.error('Error updating isMiUpdated:', err);
                             // Revert on error
                             if (onUpdateIsMiUpdated) {
-                              onUpdateIsMiUpdated(merchant.id!, false);
+                              onUpdateIsMiUpdated(merchant.id!, false, undefined);
                             }
                             alert('Không thể cập nhật. Vui lòng thử lại.');
                           } finally {
@@ -167,12 +177,18 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                           const versionJson = JSON.stringify(newVersion);
                           setIsUpdatingMiVersion(merchant.id!);
                           
+                          // Optimistic update
+                          if (onUpdateMiVersion) {
+                            onUpdateMiVersion(merchant.id!, versionJson);
+                          }
+                          
                           try {
                             await apiService.updateMerchantMiVersion(merchant.id!, versionJson);
-                            // Refresh page to show updated data
-                            window.location.reload();
+                            // No reload needed - state already updated
                           } catch (err) {
                             console.error('Error updating miVersion:', err);
+                            // Revert on error - reload to get correct state
+                            window.location.reload();
                             alert('Không thể cập nhật version. Vui lòng thử lại.');
                           } finally {
                             setIsUpdatingMiVersion(null);
