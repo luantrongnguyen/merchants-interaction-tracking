@@ -192,6 +192,13 @@ class ApiService {
     });
   }
 
+  async migrateMiVersion(passcode: string, defaultVersion: string = '11042025'): Promise<{ updated: number; errors: number; skipped: number }> {
+    return this.request<{ updated: number; errors: number; skipped: number }>('/merchants/migrate-mi-version', {
+      method: 'POST',
+      body: JSON.stringify({ passcode, defaultVersion }),
+    });
+  }
+
   // Authentication methods
   async login(user: User): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/auth/login', {
