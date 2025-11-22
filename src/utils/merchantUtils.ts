@@ -1,6 +1,7 @@
 import { Merchant, MerchantWithStatus, MerchantStatus } from '../types/merchant';
 
 // Parse date from various formats (MM/DD/YYYY, YYYY-MM-DD, etc.)
+// Use UTC to avoid timezone issues
 const parseDate = (dateString: string): Date | null => {
   if (!dateString) return null;
   
@@ -10,11 +11,22 @@ const parseDate = (dateString: string): Date | null => {
       const parts = dateString.split('/');
       if (parts.length === 3) {
         const [month, day, year] = parts;
-        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        // Use UTC to avoid timezone issues
+        return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
       }
     }
     
     // Try ISO format (YYYY-MM-DD)
+    if (dateString.includes('-') && dateString.length === 10) {
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        const [year, month, day] = parts;
+        // Use UTC to avoid timezone issues
+        return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+      }
+    }
+    
+    // Fallback: try parsing as-is
     const date = new Date(dateString);
     if (!isNaN(date.getTime())) {
       return date;
@@ -101,11 +113,11 @@ export const calculateMerchantStatus = (merchant: Merchant): MerchantWithStatus 
     }
   }
 
-  // Format date to YYYY-MM-DD using local date (not UTC) to avoid timezone issues
+  // Format date to YYYY-MM-DD using UTC date to avoid timezone issues
   const formatDateToString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
@@ -147,8 +159,41 @@ export const getStatusText = (status: MerchantStatus): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US');
+  if (!dateString) return '';
+  
+  // Parse date string (YYYY-MM-DD or MM/DD/YYYY)
+  let date: Date;
+  if (dateString.includes('/')) {
+    // MM/DD/YYYY format
+    const parts = dateString.split('/');
+    if (parts.length === 3) {
+      const [month, day, year] = parts;
+      date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+    } else {
+      date = new Date(dateString);
+    }
+  } else if (dateString.includes('-')) {
+    // YYYY-MM-DD format
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+    } else {
+      date = new Date(dateString);
+    }
+  } else {
+    date = new Date(dateString);
+  }
+  
+  if (isNaN(date.getTime())) {
+    return dateString; // Return original if invalid
+  }
+  
+  // Format using UTC to avoid timezone issues
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const year = date.getUTCFullYear();
+  return `${month}/${day}/${year}`;
 };
 
 // Keywords để xác định vấn đề về terminal và device

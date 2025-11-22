@@ -245,7 +245,15 @@ export class GoogleSheetsService {
                 if (dateStr.includes('/')) {
                   const parts = dateStr.split('/');
                   if (parts.length === 3) {
-                    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                    // Use UTC to avoid timezone issues
+                    return new Date(Date.UTC(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1])));
+                  }
+                }
+                if (dateStr.includes('-') && dateStr.length === 10) {
+                  const parts = dateStr.split('-');
+                  if (parts.length === 3) {
+                    // Use UTC to avoid timezone issues
+                    return new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
                   }
                 }
                 return new Date(dateStr);
@@ -263,14 +271,17 @@ export class GoogleSheetsService {
             const latestLog = sortedLogs[0];
             if (latestLog.date) {
               // Convert MM/DD/YYYY to YYYY-MM-DD
+              // Direct string conversion to avoid timezone issues
               if (latestLog.date.includes('/')) {
                 const parts = latestLog.date.split('/');
                 if (parts.length === 3) {
+                  // Direct conversion: MM/DD/YYYY -> YYYY-MM-DD
                   lastInteractionDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
                 } else {
                   lastInteractionDate = latestLog.date;
                 }
               } else {
+                // Already in YYYY-MM-DD format, use as-is
                 lastInteractionDate = latestLog.date;
               }
             }
