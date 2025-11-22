@@ -161,4 +161,8 @@ export class MerchantService {
   async syncAllCallLogs(userEmail: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
     return await this.googleSheetsService.syncAllCallLogsToMerchants(userEmail);
   }
+
+  async migrateMiVersionToJson(defaultVersion: string = '11042025'): Promise<{ updated: number; errors: number; skipped: number }> {
+    return await this.googleSheetsService.migrateMiVersionToJson(defaultVersion);
+  }
 }

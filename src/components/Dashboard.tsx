@@ -39,6 +39,8 @@ const COLORS = [
 	}>>([]);
 	const [selectedMiUpdatedStatus, setSelectedMiUpdatedStatus] = useState<boolean | null>(null);
 	const [miUpdatedMerchants, setMiUpdatedMerchants] = useState<MerchantWithStatus[]>([]);
+	const [selectedMiVersion, setSelectedMiVersion] = useState<string>('all');
+	const MI_VERSIONS = ['all', '11042025', '11112025', '11212025'];
 	const [selectedTerminalDate, setSelectedTerminalDate] = useState<string | null>(null);
 	const [terminalLogs, setTerminalLogs] = useState<Array<{
 		merchant: string;
@@ -166,19 +168,36 @@ const COLORS = [
 	// Calculate MI Updated statistics
 	// Updated = MI Updated OR Uses Z11 (No Card Machine)
 	// Not Updated = Not MI Updated AND No Z11 (Uses Card Machine)
+	// Filter by selected version if not 'all'
 	const miUpdatedStats = useMemo(() => {
-		const updated = merchants.filter(m => 
+		// Filter merchants by version if selected
+		const filteredMerchants = selectedMiVersion === 'all' 
+			? merchants 
+			: merchants.filter(m => {
+				// Parse miVersion if it's a JSON string
+				let version = m.miVersion;
+				if (version && version.startsWith('"') && version.endsWith('"')) {
+					try {
+						version = JSON.parse(version);
+					} catch {
+						// If parsing fails, use as is
+					}
+				}
+				return version === selectedMiVersion;
+			});
+		
+		const updated = filteredMerchants.filter(m => 
 			m.isMiUpdated === true || m.z11OrNotGoWMango === true
 		).length;
-		const notUpdated = merchants.length - updated;
+		const notUpdated = filteredMerchants.length - updated;
 		return {
 			updated,
 			notUpdated,
-			total: merchants.length,
-			updatedPercentage: merchants.length > 0 ? ((updated / merchants.length) * 100).toFixed(1) : '0.0',
-			notUpdatedPercentage: merchants.length > 0 ? ((notUpdated / merchants.length) * 100).toFixed(1) : '0.0',
+			total: filteredMerchants.length,
+			updatedPercentage: filteredMerchants.length > 0 ? ((updated / filteredMerchants.length) * 100).toFixed(1) : '0.0',
+			notUpdatedPercentage: filteredMerchants.length > 0 ? ((notUpdated / filteredMerchants.length) * 100).toFixed(1) : '0.0',
 		};
-	}, [merchants]);
+	}, [merchants, selectedMiVersion]);
 
 	const miUpdatedData = {
 		labels: [
@@ -266,7 +285,24 @@ const COLORS = [
 	};
 
 	const handleMiUpdatedClick = (isUpdated: boolean) => {
-		const filtered = merchants.filter(m => {
+		// First filter by version if selected
+		const versionFiltered = selectedMiVersion === 'all' 
+			? merchants 
+			: merchants.filter(m => {
+				// Parse miVersion if it's a JSON string
+				let version = m.miVersion;
+				if (version && version.startsWith('"') && version.endsWith('"')) {
+					try {
+						version = JSON.parse(version);
+					} catch {
+						// If parsing fails, use as is
+					}
+				}
+				return version === selectedMiVersion;
+			});
+		
+		// Then filter by MI Updated status
+		const filtered = versionFiltered.filter(m => {
 			if (isUpdated) {
 				// MI Updated OR Uses Z11 (No Card Machine)
 				return m.isMiUpdated === true || m.z11OrNotGoWMango === true;
@@ -891,6 +927,26 @@ const COLORS = [
 
 			{/* MI Updated Status */}
 			<h2>MI Updated Status</h2>
+			<div style={{ marginBottom: '1rem' }}>
+				<select 
+					value={selectedMiVersion} 
+					onChange={e => setSelectedMiVersion(e.target.value)}
+					style={{
+						padding: '0.5rem 1rem',
+						border: '1px solid #e5e7eb',
+						borderRadius: '6px',
+						background: '#fff',
+						color: '#1e293b',
+						fontSize: '0.875rem',
+						cursor: 'pointer',
+					}}
+				>
+					<option value="all">All Versions</option>
+					<option value="11042025">11042025</option>
+					<option value="11112025">11112025</option>
+					<option value="11212025">11212025</option>
+				</select>
+			</div>
 			<div className="chart-wrapper chart-wrapper-pie-category">
 				{miUpdatedStats.total === 0 ? (
 					<div className="empty-state">Không có dữ liệu merchant.</div>

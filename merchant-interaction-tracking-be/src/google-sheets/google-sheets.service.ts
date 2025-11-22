@@ -293,22 +293,55 @@ export class GoogleSheetsService {
             historyLogs,
             supportLogs,
             supportNotes, // Cột N: support_notes (array)
-            // Parse isMiUpdated from string "TRUE"/"FALSE" to boolean
-            isMiUpdated: (() => {
+            // Parse isMiUpdated and miVersion from column O
+            // Supports both legacy format (TRUE/FALSE) and new format (JSON string like "11042025")
+            ...(() => {
               const value = row[14];
               if (value === undefined || value === null || value === '') {
-                return false;
+                return { isMiUpdated: false, miVersion: undefined };
               }
-              // Handle string "TRUE" or "FALSE"
+              
+              // Try to parse as JSON string first (new format)
               if (typeof value === 'string') {
-                return value.toUpperCase() === 'TRUE';
+                // Check if it's a JSON string (starts and ends with quotes)
+                if (value.trim().startsWith('"') && value.trim().endsWith('"')) {
+                  try {
+                    const parsed = JSON.parse(value);
+                    if (typeof parsed === 'string' && /^\d{8}$/.test(parsed)) {
+                      // It's a version string like "11042025"
+                      return { isMiUpdated: true, miVersion: value }; // Keep as JSON string
+                    }
+                  } catch {
+                    // Not valid JSON, continue to legacy format
+                  }
+                }
+                
+                // Check if it's already a version number (8 digits)
+                if (/^\d{8}$/.test(value.trim())) {
+                  return { isMiUpdated: true, miVersion: JSON.stringify(value.trim()) }; // Convert to JSON string
+                }
+                
+                // Legacy format: "TRUE" or "FALSE"
+                const upperValue = value.toUpperCase();
+                if (upperValue === 'TRUE' || upperValue === '1' || upperValue === 'YES') {
+                  return { isMiUpdated: true, miVersion: undefined };
+                } else if (upperValue === 'FALSE' || upperValue === '0' || upperValue === 'NO') {
+                  return { isMiUpdated: false, miVersion: undefined };
+                }
               }
+              
               // Handle boolean
               if (typeof value === 'boolean') {
-                return value;
+                return { isMiUpdated: value, miVersion: undefined };
               }
-              return false;
-            })(), // Cột O: is_mi_updated
+              
+              // Handle number (1 = true, 0 = false)
+              if (typeof value === 'number') {
+                return { isMiUpdated: value === 1, miVersion: undefined };
+              }
+              
+              return { isMiUpdated: false, miVersion: undefined };
+            })(), // Cột O: is_mi_updated và miVersion
             // Parse z11OrNotGoWMango from string "TRUE"/"FALSE" to boolean (cột P)
             z11OrNotGoWMango: (() => {
               const value = row[15];
@@ -1733,5 +1766,138 @@ export class GoogleSheetsService {
       // Return empty array on error to prevent blocking access
       return [];
     }
+  }
+
+  // Migrate isMiUpdated from TRUE/FALSE to JSON format with default version
+  async migrateMiVersionToJson(defaultVersion: string = '11042025'): Promise<{ updated: number; errors: number; skipped: number }> {
+    return this.withWriteLock(async () => {
+      try {
+        if (!this.sheets) {
+          throw new Error('Google Sheets service not initialized');
+        }
+
+        const spreadsheetId = appConfig.spreadsheetId;
+        
+        // Read all merchants
+        this.logger.log('[Migrate MI Version] Reading all merchants from Google Sheets...');
+        const response = await this.sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'Merchants!A:P', // Read all columns including O (is_mi_updated) and P (z11_or_not_go_w_mango)
+        });
+
+        const rows = response.data.values;
+        if (!rows || rows.length <= 1) {
+          this.logger.warn('[Migrate MI Version] No merchants found');
+          return { updated: 0, errors: 0, skipped: 0 };
+        }
+
+        // Skip header row
+        const dataRows = rows.slice(1);
+        let updated = 0;
+        let errors = 0;
+        let skipped = 0;
+
+        this.logger.log(`[Migrate MI Version] Processing ${dataRows.length} merchants...`);
+
+        // Process each row
+        for (let index = 0; index < dataRows.length; index++) {
+          const row = dataRows[index];
+          const rowIndex = index + 2; // +2 because: 1 for header, 1 for 0-based index
+
+          try {
+            // Check column O (index 14) - is_mi_updated
+            const currentValue = row[14];
+            
+            // Skip if already in JSON format or empty
+            if (!currentValue || currentValue === '' || currentValue === 'null') {
+              skipped++;
+              continue;
+            }
+
+            // Check if it's already a JSON string (starts with quote or is a valid version number)
+            if (typeof currentValue === 'string') {
+              // If it's already a version number (like "11042025"), skip
+              if (/^\d{8}$/.test(currentValue.trim())) {
+                skipped++;
+                continue;
+              }
+              
+              // If it's a JSON string (starts and ends with quotes), try to parse
+              if (currentValue.trim().startsWith('"') && currentValue.trim().endsWith('"')) {
+                try {
+                  const parsed = JSON.parse(currentValue);
+                  // If it's already a valid version string, skip
+                  if (typeof parsed === 'string' && /^\d{8}$/.test(parsed)) {
+                    skipped++;
+                    continue;
+                  }
+                } catch {
+                  // Not valid JSON, continue to migration
+                }
+              }
+            }
+
+            // Check if it's TRUE/FALSE (string or boolean)
+            let isTrue = false;
+            if (typeof currentValue === 'string') {
+              const upperValue = currentValue.trim().toUpperCase();
+              isTrue = upperValue === 'TRUE' || upperValue === '1' || upperValue === 'YES';
+            } else if (typeof currentValue === 'boolean') {
+              isTrue = currentValue;
+            } else if (typeof currentValue === 'number') {
+              isTrue = currentValue === 1;
+            }
+
+            // Only update if it's TRUE (FALSE rows will be skipped)
+            if (!isTrue) {
+              skipped++;
+              continue;
+            }
+
+            // Convert to JSON string format
+            const newValue = JSON.stringify(defaultVersion); // Will be "11042025"
+
+            // Read current row to preserve all other values
+            const currentRowResponse = await this.sheets.spreadsheets.values.get({
+              spreadsheetId,
+              range: `Merchants!A${rowIndex}:P${rowIndex}`,
+            });
+            const currentRow = currentRowResponse.data.values?.[0] || [];
+
+            // Update only column O (is_mi_updated)
+            const updatedRow = [...currentRow];
+            while (updatedRow.length < 15) {
+              updatedRow.push('');
+            }
+            updatedRow[14] = newValue; // Column O (index 14)
+
+            // Update the row
+            await this.sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `Merchants!O${rowIndex}:O${rowIndex}`, // Only update column O
+              valueInputOption: 'RAW',
+              resource: { values: [[newValue]] },
+            });
+
+            updated++;
+            this.logger.log(`[Migrate MI Version] Updated row ${rowIndex}: "${currentValue}" -> "${newValue}"`);
+
+            // Add delay to avoid rate limit
+            if (index < dataRows.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500)); // 0.5 second delay
+            }
+          } catch (error: any) {
+            errors++;
+            this.logger.error(`[Migrate MI Version] Error updating row ${rowIndex}:`, error);
+          }
+        }
+
+        this.logger.log(`[Migrate MI Version] Migration completed: ${updated} updated, ${skipped} skipped, ${errors} errors`);
+        return { updated, errors, skipped };
+      } catch (error) {
+        this.logger.error('[Migrate MI Version] Error during migration:', error);
+        throw error;
+      }
+    }, 'migrateMiVersionToJson');
   }
 }

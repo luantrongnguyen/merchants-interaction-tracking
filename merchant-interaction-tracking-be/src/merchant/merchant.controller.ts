@@ -136,4 +136,49 @@ export class MerchantController {
       );
     }
   }
+
+  @Post('migrate-mi-version')
+  @UseGuards(JwtAuthGuard)
+  async migrateMiVersion(@Body() body: { passcode?: string; defaultVersion?: string }, @Req() req: any) {
+    try {
+      // Validate passcode
+      if (!body || !body.passcode) {
+        throw new UnauthorizedException('Passcode is required');
+      }
+      
+      if (body.passcode !== appConfig.passcode) {
+        throw new UnauthorizedException('Invalid passcode');
+      }
+      
+      const defaultVersion = body.defaultVersion || '11042025';
+      const email = req?.user?.email || 'unknown@mangoforsalon.com';
+      
+      console.log(`[MerchantController] Starting MI version migration for user: ${email}, default version: ${defaultVersion}`);
+      const result = await this.merchantService.migrateMiVersionToJson(defaultVersion);
+      console.log(`[MerchantController] MI version migration completed:`, result);
+      return result;
+    } catch (error: any) {
+      console.error('[MerchantController] Error in migrateMiVersion:', error);
+      console.error('[MerchantController] Error stack:', error?.stack);
+      
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      // Convert other errors to HttpException
+      const errorMessage = error?.message || 'Internal server error';
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: errorMessage,
+          error: 'Internal Server Error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
