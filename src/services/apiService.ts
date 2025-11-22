@@ -93,6 +93,31 @@ class ApiService {
     return this.request<Merchant[]>('/merchants');
   }
 
+  async getMerchantsForGuest(): Promise<Merchant[]> {
+    // Get merchants without authentication for guest view
+    const url = `${API_BASE_URL}/merchants`;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        mode: 'cors',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to server. Please check your network connection.');
+      }
+      throw error;
+    }
+  }
+
   async getMerchant(id: number): Promise<Merchant> {
     return this.request<Merchant>(`/merchants/${id}`);
   }

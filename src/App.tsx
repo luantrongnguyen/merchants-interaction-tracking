@@ -10,6 +10,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import MerchantListPage from './pages/MerchantListPage';
+import ViewPage from './pages/ViewPage';
 import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
@@ -391,64 +392,75 @@ function App() {
         onCloseSyncResults={handleCloseSyncResults}
       />
 
-      <ProtectedRoute>
-        <Layout>
-                  <Routes>
-                    <Route 
-                      path="/" 
-                      element={
-                        <MerchantListPage
-                          merchants={filteredMerchants}
-                          error={error}
-                          onRetry={loadMerchants}
-                          onSearch={handleSearch}
-                          onFilter={handleFilter}
-                          onClear={handleClearSearch}
-                          onEdit={handleEditMerchant}
-                          onDelete={handleDeleteMerchant}
-                          onUpdateIsMiUpdated={handleUpdateIsMiUpdated}
-                          onSyncCallLogs={handleSyncCallLogsManual}
-                          isSyncing={isSyncingManual}
-                          syncProgress={syncProgress}
-                          syncStatus={syncStatus}
-                          syncResults={syncResults}
-                        />
-                      } 
-                    />
-                    <Route 
-                      path="/dashboard" 
-                      element={
-                        <DashboardPage
-                          merchants={merchants}
-                          error={error}
-                          onRetry={loadMerchants}
-                          onSyncCallLogs={handleSyncCallLogsManual}
-                          isSyncing={isSyncingManual}
-                          syncProgress={syncProgress}
-                          syncStatus={syncStatus}
-                          syncResults={syncResults}
-                        />
-                      } 
-                    />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-        </Layout>
-
-        <MerchantForm
-          merchant={editingMerchant}
-          isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          onSubmit={handleFormSubmit}
-          title={formTitle}
+      <Routes>
+        {/* Guest view route - no authentication required */}
+        <Route path="/views/*" element={<ViewPage />} />
+        
+        {/* Protected routes - require authentication */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Routes>
+                  <Route 
+                    path="/" 
+                    element={
+                      <MerchantListPage
+                        merchants={filteredMerchants}
+                        error={error}
+                        onRetry={loadMerchants}
+                        onSearch={handleSearch}
+                        onFilter={handleFilter}
+                        onClear={handleClearSearch}
+                        onEdit={handleEditMerchant}
+                        onDelete={handleDeleteMerchant}
+                        onUpdateIsMiUpdated={handleUpdateIsMiUpdated}
+                        onSyncCallLogs={handleSyncCallLogsManual}
+                        isSyncing={isSyncingManual}
+                        syncProgress={syncProgress}
+                        syncStatus={syncStatus}
+                        syncResults={syncResults}
+                      />
+                    } 
+                  />
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <DashboardPage
+                        merchants={merchants}
+                        error={error}
+                        onRetry={loadMerchants}
+                        onSyncCallLogs={handleSyncCallLogsManual}
+                        isSyncing={isSyncingManual}
+                        syncProgress={syncProgress}
+                        syncStatus={syncStatus}
+                        syncResults={syncResults}
+                      />
+                    } 
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Layout>
+            </ProtectedRoute>
+          }
         />
+      </Routes>
 
-        <PasscodeModal
-          isOpen={isPasscodeOpen}
-          onClose={handlePasscodeClose}
-          onSuccess={handlePasscodeSuccess}
-          title={pendingAction ? "Authentication Required" : "Authentication Required"}
-        />
-      </ProtectedRoute>
+      <MerchantForm
+        merchant={editingMerchant}
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleFormSubmit}
+        title={formTitle}
+      />
+
+      <PasscodeModal
+        isOpen={isPasscodeOpen}
+        onClose={handlePasscodeClose}
+        onSuccess={handlePasscodeSuccess}
+        title={pendingAction ? "Authentication Required" : "Authentication Required"}
+      />
     </div>
   );
 }
