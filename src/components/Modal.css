@@ -33,6 +33,13 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+/* Ensure modals appear above header when view-page-container exists */
+.view-page-container .modal-overlay-animated,
+.view-page-container ~ .modal-overlay-animated,
+body:has(.view-page-container) .modal-overlay-animated {
+  z-index: 3000 !important;
+}
+
 .modal-content-animated {
   background: white;
   border-radius: 16px;

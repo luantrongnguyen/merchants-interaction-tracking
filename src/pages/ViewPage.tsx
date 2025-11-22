@@ -7,6 +7,7 @@ import MerchantListView from '../components/MerchantListView';
 import Dashboard from '../components/Dashboard';
 import './ViewPage.css';
 
+
 const ViewPage: React.FC = () => {
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
   const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
@@ -102,12 +103,7 @@ const ViewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="app-container">
-        <header className="app-header">
-          <div className="header-content">
-            <h1>Merchant Tracking</h1>
-          </div>
-        </header>
+      <div className="app-container view-page-container">
         <div className="loading">
           <div className="spinner"></div>
           <p>Loading data...</p>
@@ -118,11 +114,6 @@ const ViewPage: React.FC = () => {
 
   return (
     <div className="app-container view-page-container">
-      <header className="app-header">
-        <div className="header-content">
-          <h1>Merchant Tracking</h1>
-        </div>
-      </header>
       <main className="app-main view-page-main">
         {error && (
           <div className="error-banner">

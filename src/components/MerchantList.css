@@ -406,6 +406,13 @@
   z-index: 2000;
 }
 
+/* Ensure modals appear above header when view-page-container exists */
+.view-page-container .modal-overlay,
+.view-page-container ~ .modal-overlay,
+body:has(.view-page-container) .modal-overlay {
+  z-index: 3000 !important;
+}
+
 .modal-content.history-modal {
   width: 960px;
   max-width: 96vw;

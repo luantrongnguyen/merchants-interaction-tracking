@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { MerchantWithStatus, SupportLog } from '../types/merchant';
 import { Pie, Bar, Line } from 'react-chartjs-2';
 import {
@@ -51,6 +51,55 @@ const COLORS = [
 		last30DaysCount: number;
 		trend: 'increase' | 'decrease' | 'stable';
 	}>>(new Map());
+	const [interactionsChartIndex, setInteractionsChartIndex] = useState(0);
+	const [terminalChartIndex, setTerminalChartIndex] = useState(0);
+	const MAX_VISIBLE_COLUMNS = 15;
+
+	// Helper functions for date keys (moved before getDefaultIndexForCurrentDate)
+	const getDayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+	const getMonthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+	const getYearKey = (d: Date) => `${d.getFullYear()}`;
+	const getWeekKey = (d: Date) => {
+		const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+		const dayNum = date.getUTCDay() || 7; // 1..7, Mon..Sun
+		if (dayNum !== 1) {
+			date.setUTCDate(date.getUTCDate() + (1 - dayNum));
+		}
+		const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+		const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+		return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
+	};
+
+	// Calculate default index to show current date
+	const getDefaultIndexForCurrentDate = (labels: string[], range: 'day' | 'week' | 'month' | 'year'): number => {
+		if (labels.length === 0) return 0;
+		if (labels.length <= MAX_VISIBLE_COLUMNS) return 0;
+		
+		const now = new Date();
+		let currentKey = '';
+		switch (range) {
+			case 'day': currentKey = getDayKey(now); break;
+			case 'week': currentKey = getWeekKey(now); break;
+			case 'month': currentKey = getMonthKey(now); break;
+			case 'year': currentKey = getYearKey(now); break;
+		}
+		
+		// Find index of current date (or nearest date before current)
+		// Labels are sorted, so we find the last label <= currentKey
+		let currentIndex = labels.length - 1;
+		for (let i = labels.length - 1; i >= 0; i--) {
+			if (labels[i] <= currentKey) {
+				currentIndex = i;
+				break;
+			}
+		}
+		
+		// Calculate index so current date appears at the end of visible columns
+		// If current date is at index i, we want to show columns ending at i
+		// So start index should be max(0, i - MAX_VISIBLE_COLUMNS + 1)
+		const defaultIndex = Math.max(0, currentIndex - MAX_VISIBLE_COLUMNS + 1);
+		return Math.min(defaultIndex, Math.max(0, labels.length - MAX_VISIBLE_COLUMNS));
+	};
 
 	// Helper function to split categories by comma and normalize
 	const splitAndNormalizeCategories = (categoryString: string): string[] => {
@@ -384,20 +433,6 @@ const COLORS = [
 		}
 	};
 
-	const getDayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-	const getMonthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-	const getYearKey = (d: Date) => `${d.getFullYear()}`;
-	const getWeekKey = (d: Date) => {
-		const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-		const dayNum = date.getUTCDay() || 7; // 1..7, Mon..Sun
-		if (dayNum !== 1) {
-			date.setUTCDate(date.getUTCDate() + (1 - dayNum));
-		}
-		const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-		const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-		return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
-	};
-
 	const timeAgg = useMemo(() => {
 		const map = new Map<string, number>();
 		merchants.forEach(m => {
@@ -418,12 +453,28 @@ const COLORS = [
 		return { labels: keys, counts: keys.map(k => map.get(k) || 0) };
 	}, [merchants, range]);
 
+	// Set default index to show current date when data or range changes
+	useEffect(() => {
+		if (timeAgg.labels.length > 0) {
+			const defaultIndex = getDefaultIndexForCurrentDate(timeAgg.labels, range);
+			setInteractionsChartIndex(defaultIndex);
+		}
+	}, [timeAgg.labels, range]);
+
+	// Slice data for Interactions chart (max 15 columns)
+	const interactionsStartIndex = Math.max(0, Math.min(interactionsChartIndex, timeAgg.labels.length - MAX_VISIBLE_COLUMNS));
+	const interactionsEndIndex = interactionsStartIndex + MAX_VISIBLE_COLUMNS;
+	const interactionsVisibleLabels = timeAgg.labels.slice(interactionsStartIndex, interactionsEndIndex);
+	const interactionsVisibleCounts = timeAgg.counts.slice(interactionsStartIndex, interactionsEndIndex);
+	const canScrollInteractionsLeft = interactionsStartIndex > 0;
+	const canScrollInteractionsRight = interactionsEndIndex < timeAgg.labels.length;
+
 	const barData = {
-		labels: timeAgg.labels,
+		labels: interactionsVisibleLabels,
 		datasets: [
 			{
 				label: 'Interactions',
-				data: timeAgg.counts,
+				data: interactionsVisibleCounts,
 				backgroundColor: 'rgba(255, 179, 0, 0.8)',
 				borderColor: '#FFB300',
 				borderWidth: 2,
@@ -511,12 +562,28 @@ const COLORS = [
 		return { labels: keys, counts: keys.map(k => map.get(k) || 0) };
 	}, [merchants, terminalRange]);
 
+	// Set default index to show current date when data or range changes
+	useEffect(() => {
+		if (terminalTimeAgg.labels.length > 0) {
+			const defaultIndex = getDefaultIndexForCurrentDate(terminalTimeAgg.labels, terminalRange);
+			setTerminalChartIndex(defaultIndex);
+		}
+	}, [terminalTimeAgg.labels, terminalRange]);
+
+	// Slice data for Terminal chart (max 15 columns)
+	const terminalStartIndex = Math.max(0, Math.min(terminalChartIndex, terminalTimeAgg.labels.length - MAX_VISIBLE_COLUMNS));
+	const terminalEndIndex = terminalStartIndex + MAX_VISIBLE_COLUMNS;
+	const terminalVisibleLabels = terminalTimeAgg.labels.slice(terminalStartIndex, terminalEndIndex);
+	const terminalVisibleCounts = terminalTimeAgg.counts.slice(terminalStartIndex, terminalEndIndex);
+	const canScrollTerminalLeft = terminalStartIndex > 0;
+	const canScrollTerminalRight = terminalEndIndex < terminalTimeAgg.labels.length;
+
 	const terminalLineData = {
-		labels: terminalTimeAgg.labels,
+		labels: terminalVisibleLabels,
 		datasets: [
 			{
 				label: 'Terminal Issues',
-				data: terminalTimeAgg.counts,
+				data: terminalVisibleCounts,
 				borderColor: '#EF4444',
 				backgroundColor: 'rgba(239, 68, 68, 0.1)',
 				borderWidth: 2,
@@ -676,8 +743,8 @@ const COLORS = [
 		onClick: (event: any, elements: any[]) => {
 			if (elements && elements.length > 0) {
 				const elementIndex = elements[0].index;
-				if (elementIndex !== undefined && terminalTimeAgg.labels[elementIndex]) {
-					handleTerminalDateClick(terminalTimeAgg.labels[elementIndex]);
+				if (elementIndex !== undefined && terminalVisibleLabels[elementIndex]) {
+					handleTerminalDateClick(terminalVisibleLabels[elementIndex]);
 				}
 			}
 		},
@@ -756,15 +823,65 @@ const COLORS = [
 			</div>
 
 			<h2>Interactions Over Time</h2>
-			<div style={{ marginBottom: '1rem' }}>
-				<select value={range} onChange={e => setRange(e.target.value as any)}>
+			<div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+				<select value={range} onChange={e => {
+					setRange(e.target.value as any);
+					setInteractionsChartIndex(0); // Reset to start when range changes
+				}}>
 					<option value="day">Day</option>
 					<option value="week">Week</option>
 					<option value="month">Month</option>
 					<option value="year">Year</option>
 				</select>
+				{timeAgg.labels.length > MAX_VISIBLE_COLUMNS && (
+					<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+						<button
+							onClick={() => setInteractionsChartIndex(Math.max(0, interactionsChartIndex - MAX_VISIBLE_COLUMNS))}
+							disabled={!canScrollInteractionsLeft}
+							style={{
+								padding: '0.5rem 1rem',
+								border: '1px solid #e5e7eb',
+								borderRadius: '6px',
+								background: canScrollInteractionsLeft ? '#fff' : '#f3f4f6',
+								color: canScrollInteractionsLeft ? '#1e293b' : '#9ca3af',
+								cursor: canScrollInteractionsLeft ? 'pointer' : 'not-allowed',
+								fontSize: '1.25rem',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								minWidth: '40px',
+							}}
+							title="Previous"
+						>
+							←
+						</button>
+						<span style={{ fontSize: '0.875rem', color: '#64748b', minWidth: '120px', textAlign: 'center' }}>
+							{interactionsStartIndex + 1}-{Math.min(interactionsEndIndex, timeAgg.labels.length)} / {timeAgg.labels.length}
+						</span>
+						<button
+							onClick={() => setInteractionsChartIndex(Math.min(timeAgg.labels.length - MAX_VISIBLE_COLUMNS, interactionsChartIndex + MAX_VISIBLE_COLUMNS))}
+							disabled={!canScrollInteractionsRight}
+							style={{
+								padding: '0.5rem 1rem',
+								border: '1px solid #e5e7eb',
+								borderRadius: '6px',
+								background: canScrollInteractionsRight ? '#fff' : '#f3f4f6',
+								color: canScrollInteractionsRight ? '#1e293b' : '#9ca3af',
+								cursor: canScrollInteractionsRight ? 'pointer' : 'not-allowed',
+								fontSize: '1.25rem',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								minWidth: '40px',
+							}}
+							title="Next"
+						>
+							→
+						</button>
+					</div>
+				)}
 			</div>
-			<div className="chart-wrapper" style={{ height: 380 }}>
+			<div className="chart-wrapper" style={{ height: 380, position: 'relative' }}>
 				{timeAgg.labels.length === 0 ? (
 					<div className="empty-state">Không có dữ liệu interactions.</div>
 				) : (
@@ -784,15 +901,65 @@ const COLORS = [
 
 			{/* Terminal Issues Over Time */}
 			<h2>Terminal Issues Over Time</h2>
-			<div style={{ marginBottom: '1rem' }}>
-				<select value={terminalRange} onChange={e => setTerminalRange(e.target.value as any)}>
+			<div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+				<select value={terminalRange} onChange={e => {
+					setTerminalRange(e.target.value as any);
+					setTerminalChartIndex(0); // Reset to start when range changes
+				}}>
 					<option value="day">Day</option>
 					<option value="week">Week</option>
 					<option value="month">Month</option>
 					<option value="year">Year</option>
 				</select>
+				{terminalTimeAgg.labels.length > MAX_VISIBLE_COLUMNS && (
+					<div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+						<button
+							onClick={() => setTerminalChartIndex(Math.max(0, terminalChartIndex - MAX_VISIBLE_COLUMNS))}
+							disabled={!canScrollTerminalLeft}
+							style={{
+								padding: '0.5rem 1rem',
+								border: '1px solid #e5e7eb',
+								borderRadius: '6px',
+								background: canScrollTerminalLeft ? '#fff' : '#f3f4f6',
+								color: canScrollTerminalLeft ? '#1e293b' : '#9ca3af',
+								cursor: canScrollTerminalLeft ? 'pointer' : 'not-allowed',
+								fontSize: '1.25rem',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								minWidth: '40px',
+							}}
+							title="Previous"
+						>
+							←
+						</button>
+						<span style={{ fontSize: '0.875rem', color: '#64748b', minWidth: '120px', textAlign: 'center' }}>
+							{terminalStartIndex + 1}-{Math.min(terminalEndIndex, terminalTimeAgg.labels.length)} / {terminalTimeAgg.labels.length}
+						</span>
+						<button
+							onClick={() => setTerminalChartIndex(Math.min(terminalTimeAgg.labels.length - MAX_VISIBLE_COLUMNS, terminalChartIndex + MAX_VISIBLE_COLUMNS))}
+							disabled={!canScrollTerminalRight}
+							style={{
+								padding: '0.5rem 1rem',
+								border: '1px solid #e5e7eb',
+								borderRadius: '6px',
+								background: canScrollTerminalRight ? '#fff' : '#f3f4f6',
+								color: canScrollTerminalRight ? '#1e293b' : '#9ca3af',
+								cursor: canScrollTerminalRight ? 'pointer' : 'not-allowed',
+								fontSize: '1.25rem',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								minWidth: '40px',
+							}}
+							title="Next"
+						>
+							→
+						</button>
+					</div>
+				)}
 			</div>
-			<div className="chart-wrapper" style={{ height: 380 }}>
+			<div className="chart-wrapper" style={{ height: 380, position: 'relative' }}>
 				{terminalTimeAgg.labels.length === 0 ? (
 					<div className="empty-state">No terminal-related interactions found.</div>
 				) : (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { MerchantFormData, Merchant, MerchantWithStatus } from './types/merchant';
 import { calculateMerchantStatus, countTerminalDeviceIssues } from './utils/merchantUtils';
 import apiService from './services/apiService';
@@ -15,7 +15,9 @@ import { useAuth } from './contexts/AuthContext';
 import './App.css';
 
 function App() {
+  const location = useLocation();
   const { user, isAuthenticated, login, logout } = useAuth();
+  const isViewPage = location.pathname.startsWith('/views');
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
   const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
@@ -384,13 +386,15 @@ function App() {
 
   return (
     <div className="app-container">
-      <Header 
-        isSyncingManual={isSyncingManual}
-        syncProgress={syncProgress}
-        syncStatus={syncStatus}
-        syncResults={syncResults}
-        onCloseSyncResults={handleCloseSyncResults}
-      />
+      {!isViewPage && (
+        <Header 
+          isSyncingManual={isSyncingManual}
+          syncProgress={syncProgress}
+          syncStatus={syncStatus}
+          syncResults={syncResults}
+          onCloseSyncResults={handleCloseSyncResults}
+        />
+      )}
 
       <Routes>
         {/* Guest view route - no authentication required - must be before catch-all route */}

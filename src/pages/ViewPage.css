@@ -1,20 +1,25 @@
 .view-page-container {
-  overflow: visible !important; /* Allow scrolling */
-  height: auto !important; /* Let content determine height */
-  min-height: 100vh; /* Ensure minimum viewport height */
-  display: block; /* Change from flex to block for natural flow */
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .view-page-main {
   padding: 0;
   margin-left: 0 !important; /* Override sidebar margin since ViewPage doesn't have sidebar */
-  margin-top: 80px !important; /* Add margin to account for fixed header */
+  margin-top: 0 !important; /* No header, so no margin needed */
   padding: 2rem 1rem; /* Add padding for content */
-  height: auto;
-  min-height: calc(100vh - 80px); /* Subtract header height */
-  overflow: visible; /* Allow natural scrolling */
-  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Important for flex scrolling */
 }
 
 .view-page-banner {
@@ -29,5 +34,26 @@
 
 .view-page-banner p {
   margin: 0;
+}
+
+.view-page-main .dashboard-page-content {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Ensure modals appear above header in view page - use more specific selectors */
+body:has(.view-page-container) .modal-overlay-animated,
+body:has(.view-page-container) .modal-overlay {
+  z-index: 3000 !important;
+}
+
+/* Fallback for browsers that don't support :has() */
+.view-page-container ~ .modal-overlay-animated,
+.view-page-container ~ .modal-overlay,
+.view-page-container .modal-overlay-animated,
+.view-page-container .modal-overlay {
+  z-index: 3000 !important;
 }
 
