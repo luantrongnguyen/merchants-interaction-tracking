@@ -45,6 +45,12 @@ const COLORS = [
 		storeId?: string;
 		log: SupportLog;
 	}>>([]);
+	const [merchantFrequency, setMerchantFrequency] = useState<Map<string, {
+		todayCount: number;
+		last7DaysCount: number;
+		last30DaysCount: number;
+		trend: 'increase' | 'decrease' | 'stable';
+	}>>(new Map());
 
 	// Helper function to split categories by comma and normalize
 	const splitAndNormalizeCategories = (categoryString: string): string[] => {
@@ -527,7 +533,30 @@ const COLORS = [
 			log: SupportLog;
 		}> = [];
 		
+		// Parse the selected date key to get the actual date
+		let selectedDate: Date | null = null;
+		if (terminalRange === 'day') {
+			// dateKey format: "YYYY-MM-DD"
+			const parts = dateKey.split('-');
+			if (parts.length === 3) {
+				selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+			}
+		}
+		
+		// Calculate frequency for each merchant
+		const frequencyMap = new Map<string, {
+			todayCount: number;
+			last7DaysCount: number;
+			last30DaysCount: number;
+			trend: 'increase' | 'decrease' | 'stable';
+		}>();
+		
 		merchants.forEach(merchant => {
+			const merchantKey = merchant.storeId || merchant.name;
+			let todayCount = 0;
+			let last7DaysCount = 0;
+			let last30DaysCount = 0;
+			
 			(merchant.supportLogs || []).forEach(log => {
 				if (!isTerminalRelated(log.category)) return;
 				
@@ -550,14 +579,51 @@ const COLORS = [
 						break;
 				}
 				
+				// Count for selected day
 				if (logKey === dateKey) {
+					todayCount++;
 					logs.push({
 						merchant: merchant.name,
 						storeId: merchant.storeId,
 						log: log,
 					});
 				}
+				
+				// Count for last 7 days and 30 days (only if range is 'day')
+				if (terminalRange === 'day' && selectedDate) {
+					const daysDiff = Math.floor((selectedDate.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24));
+					if (daysDiff >= 0 && daysDiff <= 7) {
+						last7DaysCount++;
+					}
+					if (daysDiff >= 0 && daysDiff <= 30) {
+						last30DaysCount++;
+					}
+				}
 			});
+			
+			// Calculate trend
+			let trend: 'increase' | 'decrease' | 'stable' = 'stable';
+			if (todayCount > 0) {
+				const avgLast7Days = (last7DaysCount - todayCount) / 6; // Exclude today
+				if (avgLast7Days > 0) {
+					if (todayCount > avgLast7Days * 1.5) {
+						trend = 'increase';
+					} else if (todayCount < avgLast7Days * 0.5) {
+						trend = 'decrease';
+					}
+				} else if (last7DaysCount === 0 && todayCount > 0) {
+					trend = 'increase'; // First time in 7 days
+				}
+			}
+			
+			if (todayCount > 0 || last7DaysCount > 0 || last30DaysCount > 0) {
+				frequencyMap.set(merchantKey, {
+					todayCount,
+					last7DaysCount,
+					last30DaysCount,
+					trend,
+				});
+			}
 		});
 		
 		// Sort by date and time (newest first)
@@ -572,6 +638,7 @@ const COLORS = [
 		});
 		
 		setTerminalLogs(logs);
+		setMerchantFrequency(frequencyMap);
 		setSelectedTerminalDate(dateKey);
 	};
 
@@ -740,7 +807,7 @@ const COLORS = [
 						{leaderboards.topInteractions.length === 0 ? (
 							<div className="empty-state">Không có dữ liệu.</div>
 						) : (
-							<Pie 
+							<Bar 
 								data={{
 									labels: leaderboards.topInteractions.map((m) => `${m.name}${m.storeId ? ` (${m.storeId})` : ''}`),
 									datasets: [{
@@ -749,22 +816,16 @@ const COLORS = [
 										backgroundColor: leaderboards.topInteractions.map((_, i) => COLORS[i % COLORS.length]),
 										borderColor: '#fff',
 										borderWidth: 1,
+										borderRadius: 4,
 									}],
 								}}
 								options={{
+									indexAxis: 'y',
 									responsive: true,
 									maintainAspectRatio: false,
 									plugins: {
 										legend: { 
-											position: 'right',
-											labels: {
-												padding: 12,
-												font: {
-													size: 11,
-													weight: 500,
-												},
-												color: '#475569',
-											},
+											display: false,
 										},
 										tooltip: {
 											backgroundColor: 'rgba(30, 41, 59, 0.95)',
@@ -781,13 +842,38 @@ const COLORS = [
 											borderWidth: 1,
 											callbacks: {
 												label: (ctx: any) => {
-													const value = ctx.parsed || 0;
+													const value = ctx.parsed.x || 0;
 													const totalVal = leaderboards.grandTotalInteractions || 0;
 													const pct = totalVal > 0 ? ((value / totalVal) * 100).toFixed(1) : '0.0';
-													return `${ctx.label}: ${value} (${pct}%)`;
+													return `Interactions: ${value} (${pct}%)`;
 												}
 											}
 										}
+									},
+									scales: {
+										x: {
+											beginAtZero: true,
+											grid: {
+												color: 'rgba(0, 0, 0, 0.05)',
+											},
+											ticks: {
+												color: '#64748b',
+												font: {
+													size: 12,
+												},
+											},
+										},
+										y: {
+											grid: {
+												display: false,
+											},
+											ticks: {
+												color: '#64748b',
+												font: {
+													size: 11,
+												},
+											},
+										},
 									}
 								}}
 							/>
@@ -800,7 +886,7 @@ const COLORS = [
 						{leaderboards.topIssues.length === 0 ? (
 							<div className="empty-state">Không có dữ liệu.</div>
 						) : (
-							<Pie 
+							<Bar 
 								data={{
 									labels: leaderboards.topIssues.map((m) => `${m.name}${m.storeId ? ` (${m.storeId})` : ''}`),
 									datasets: [{
@@ -809,22 +895,16 @@ const COLORS = [
 										backgroundColor: leaderboards.topIssues.map((_, i) => COLORS[i % COLORS.length]),
 										borderColor: '#fff',
 										borderWidth: 1,
+										borderRadius: 4,
 									}],
 								}}
 								options={{
+									indexAxis: 'y',
 									responsive: true,
 									maintainAspectRatio: false,
 									plugins: {
 										legend: { 
-											position: 'right',
-											labels: {
-												padding: 12,
-												font: {
-													size: 11,
-													weight: 500,
-												},
-												color: '#475569',
-											},
+											display: false,
 										},
 										tooltip: {
 											backgroundColor: 'rgba(30, 41, 59, 0.95)',
@@ -841,13 +921,38 @@ const COLORS = [
 											borderWidth: 1,
 											callbacks: {
 												label: (ctx: any) => {
-													const value = ctx.parsed || 0;
+													const value = ctx.parsed.x || 0;
 													const totalVal = leaderboards.grandTotalDistinctCategories || 0;
 													const pct = totalVal > 0 ? ((value / totalVal) * 100).toFixed(1) : '0.0';
-													return `${ctx.label}: ${value} (${pct}%)`;
+													return `Issues: ${value} (${pct}%)`;
 												}
 											}
 										}
+									},
+									scales: {
+										x: {
+											beginAtZero: true,
+											grid: {
+												color: 'rgba(0, 0, 0, 0.05)',
+											},
+											ticks: {
+												color: '#64748b',
+												font: {
+													size: 12,
+												},
+											},
+										},
+										y: {
+											grid: {
+												display: false,
+											},
+											ticks: {
+												color: '#64748b',
+												font: {
+													size: 11,
+												},
+											},
+										},
 									}
 								}}
 							/>
@@ -986,10 +1091,11 @@ const COLORS = [
 				onClose={() => {
 					setSelectedTerminalDate(null);
 					setTerminalLogs([]);
+					setMerchantFrequency(new Map());
 				}}
 				title={`Terminal Issues Call Logs - ${selectedTerminalDate || ''}`}
 				width="90%"
-				maxWidth="800px"
+				maxWidth="900px"
 				maxHeight="80vh"
 			>
 				{terminalLogs.length === 0 ? (
@@ -997,38 +1103,113 @@ const COLORS = [
 						Không có call logs terminal issues cho ngày này.
 					</div>
 				) : (
-					<div className="category-logs-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-						{terminalLogs.map((item, index) => (
-							<div key={index} className="category-log-item" style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem', transition: 'all 0.2s' }}>
-								<div className="category-log-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '1rem' }}>
-									<div className="category-log-merchant" style={{ flex: 1, fontSize: '1rem', color: '#1e293b' }}>
-										<strong style={{ fontWeight: 600 }}>{item.merchant}</strong>
-										{item.storeId && <span className="category-log-storeid" style={{ color: '#64748b', fontSize: '0.875rem', marginLeft: '0.5rem' }}>({item.storeId})</span>}
+					<div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+						{/* Group logs by merchant */}
+						{Array.from(new Set(terminalLogs.map(item => item.storeId || item.merchant))).map(merchantKey => {
+							const merchantLogs = terminalLogs.filter(item => (item.storeId || item.merchant) === merchantKey);
+							const firstLog = merchantLogs[0];
+							const frequency = merchantFrequency.get(merchantKey);
+							
+							return (
+								<div key={merchantKey} style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1rem', transition: 'all 0.2s' }}>
+									{/* Merchant Header with Frequency Info */}
+									<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+										<div style={{ flex: 1 }}>
+											<div style={{ fontSize: '1.1rem', color: '#1e293b', marginBottom: '0.5rem' }}>
+												<strong style={{ fontWeight: 600 }}>{firstLog.merchant}</strong>
+												{firstLog.storeId && (
+													<span style={{ color: '#64748b', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
+														({firstLog.storeId})
+													</span>
+												)}
+											</div>
+											{/* Frequency Statistics */}
+											{terminalRange === 'day' && frequency && (
+												<div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#475569' }}>
+													<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+														<span style={{ fontWeight: 600, color: '#1e293b' }}>Hôm nay:</span>
+														<span style={{ 
+															padding: '0.125rem 0.5rem', 
+															borderRadius: '4px', 
+															background: '#fee2e2', 
+															color: '#991b1b',
+															fontWeight: 600
+														}}>
+															{frequency.todayCount} lần
+														</span>
+													</div>
+													<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+														<span style={{ fontWeight: 600, color: '#1e293b' }}>7 ngày qua:</span>
+														<span style={{ color: '#64748b' }}>{frequency.last7DaysCount} lần</span>
+													</div>
+													<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+														<span style={{ fontWeight: 600, color: '#1e293b' }}>30 ngày qua:</span>
+														<span style={{ color: '#64748b' }}>{frequency.last30DaysCount} lần</span>
+													</div>
+													{/* Trend Indicator */}
+													{frequency.trend !== 'stable' && (
+														<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+															<span style={{ fontWeight: 600, color: '#1e293b' }}>Xu hướng:</span>
+															<span style={{ 
+																padding: '0.125rem 0.5rem', 
+																borderRadius: '4px', 
+																background: frequency.trend === 'increase' ? '#fee2e2' : '#dcfce7',
+																color: frequency.trend === 'increase' ? '#991b1b' : '#166534',
+																fontWeight: 600,
+																fontSize: '0.8125rem'
+															}}>
+																{frequency.trend === 'increase' ? '📈 Tăng' : '📉 Giảm'}
+															</span>
+														</div>
+													)}
+												</div>
+											)}
+										</div>
 									</div>
-									<div className="category-log-date-time" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem', color: '#64748b' }}>
-										<span className="category-log-date" style={{ fontWeight: 500 }}>{item.log.date}</span>
-										{item.log.time && <span className="category-log-time" style={{ fontSize: '0.8125rem' }}>{item.log.time}</span>}
+									
+									{/* Logs for this merchant */}
+									<div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+										{merchantLogs.map((item, index) => (
+											<div key={index} style={{ 
+												background: '#ffffff', 
+												border: '1px solid #e5e7eb', 
+												borderRadius: '8px', 
+												padding: '0.75rem',
+												marginLeft: '0.5rem'
+											}}>
+												<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', gap: '1rem' }}>
+													<div style={{ flex: 1, fontSize: '0.9375rem', color: '#1e293b' }}>
+														{item.log.issue && (
+															<div style={{ marginBottom: '0.25rem', fontWeight: 500 }}>
+																{item.log.issue}
+															</div>
+														)}
+													</div>
+													<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.8125rem', color: '#64748b' }}>
+														<span style={{ fontWeight: 500 }}>{item.log.date}</span>
+														{item.log.time && <span>{item.log.time}</span>}
+													</div>
+												</div>
+												<div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem', color: '#475569' }}>
+													{item.log.supporter && (
+														<div style={{ display: 'flex', gap: '0.5rem' }}>
+															<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Supporter:</strong> 
+															<span>{item.log.supporter}</span>
+														</div>
+													)}
+													{item.log.category && (
+														<div style={{ display: 'flex', gap: '0.5rem' }}>
+															<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Category:</strong> 
+															<span>{item.log.category}</span>
+														</div>
+													)}
+												</div>
+											</div>
+										))}
 									</div>
 								</div>
-								<div className="category-log-details" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9375rem', color: '#475569' }}>
-									{item.log.supporter && (
-										<div className="category-log-supporter" style={{ display: 'flex', gap: '0.5rem' }}>
-											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Supporter:</strong> {item.log.supporter}
-										</div>
-									)}
-									{item.log.category && (
-										<div className="category-log-category" style={{ display: 'flex', gap: '0.5rem' }}>
-											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Category:</strong> {item.log.category}
-										</div>
-									)}
-									{item.log.issue && (
-										<div className="category-log-issue" style={{ display: 'flex', gap: '0.5rem' }}>
-											<strong style={{ color: '#1e293b', fontWeight: 600, minWidth: '80px' }}>Issue:</strong> {item.log.issue}
-										</div>
-									)}
-								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				)}
 			</Modal>
