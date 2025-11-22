@@ -134,7 +134,7 @@ const ViewPage: React.FC = () => {
         )}
         <Routes>
           <Route 
-            path="/" 
+            index
             element={
               <MerchantListView
                 merchants={filteredMerchants}
@@ -147,14 +147,14 @@ const ViewPage: React.FC = () => {
             } 
           />
           <Route 
-            path="/dashboard" 
+            path="dashboard" 
             element={
               <div className="dashboard-page-content">
                 <Dashboard merchants={merchants} />
               </div>
             } 
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/views" replace />} />
         </Routes>
       </main>
     </div>
