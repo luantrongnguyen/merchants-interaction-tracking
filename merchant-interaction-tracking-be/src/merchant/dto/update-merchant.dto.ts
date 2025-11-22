@@ -10,4 +10,8 @@ export class UpdateMerchantDto extends PartialType(CreateMerchantDto) {
   @IsOptional()
   @IsBoolean()
   isMiUpdated?: boolean; // is_mi_updated flag
+
+  @IsOptional()
+  @IsString()
+  miVersion?: string; // MI version (JSON string: "11042025", "11112025", "11212025")
 }

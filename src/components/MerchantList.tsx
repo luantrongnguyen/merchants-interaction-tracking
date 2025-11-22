@@ -30,6 +30,8 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
   const [noteError, setNoteError] = useState<string | null>(null);
   const [confirmUncheckFor, setConfirmUncheckFor] = useState<{ merchant: MerchantWithStatus; newValue: boolean } | null>(null);
   const [isUpdatingIsMiUpdated, setIsUpdatingIsMiUpdated] = useState(false);
+  const [isUpdatingMiVersion, setIsUpdatingMiVersion] = useState<number | null>(null);
+  const MI_VERSIONS = ['11042025', '11112025', '11212025'];
 
   return (
     <div className="merchant-list">
@@ -108,7 +110,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                   </div>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                     <input
                       type="checkbox"
                       checked={merchant.isMiUpdated || false}
@@ -144,6 +146,57 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                         cursor: isUpdatingIsMiUpdated ? 'not-allowed' : 'pointer',
                       }}
                     />
+                    {merchant.isMiUpdated && (
+                      <select
+                        value={(() => {
+                          // Parse miVersion if it's a JSON string
+                          let version = merchant.miVersion;
+                          if (version && version.startsWith('"') && version.endsWith('"')) {
+                            try {
+                              version = JSON.parse(version);
+                            } catch {
+                              // If parsing fails, use as is
+                            }
+                          }
+                          return version && MI_VERSIONS.includes(version) ? version : '';
+                        })()}
+                        onChange={async (e) => {
+                          const newVersion = e.target.value;
+                          if (!newVersion) return;
+                          
+                          const versionJson = JSON.stringify(newVersion);
+                          setIsUpdatingMiVersion(merchant.id!);
+                          
+                          try {
+                            await apiService.updateMerchantMiVersion(merchant.id!, versionJson);
+                            // Refresh page to show updated data
+                            window.location.reload();
+                          } catch (err) {
+                            console.error('Error updating miVersion:', err);
+                            alert('Không thể cập nhật version. Vui lòng thử lại.');
+                          } finally {
+                            setIsUpdatingMiVersion(null);
+                          }
+                        }}
+                        disabled={isUpdatingMiVersion === merchant.id!}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
+                          borderRadius: '4px',
+                          border: '1px solid #e5e7eb',
+                          background: 'white',
+                          color: '#1e293b',
+                          cursor: isUpdatingMiVersion === merchant.id! ? 'not-allowed' : 'pointer',
+                          minWidth: '90px',
+                          opacity: isUpdatingMiVersion === merchant.id! ? 0.6 : 1,
+                        }}
+                      >
+                        <option value="">Select version</option>
+                        {MI_VERSIONS.map(version => (
+                          <option key={version} value={version}>{version}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </td>
                 <td>

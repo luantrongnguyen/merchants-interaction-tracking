@@ -167,6 +167,13 @@ class ApiService {
     });
   }
 
+  async updateMerchantMiVersion(id: number, miVersion: string | undefined): Promise<Merchant> {
+    return this.request<Merchant>(`/merchants/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ miVersion }),
+    });
+  }
+
   async deleteMerchant(id: number): Promise<void> {
     return this.request<void>(`/merchants/${id}`, {
       method: 'DELETE',
