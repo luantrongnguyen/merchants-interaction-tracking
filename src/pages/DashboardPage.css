@@ -1,0 +1,24 @@
+.dashboard-fullscreen-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #f8fafc;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1000;
+}
+
+.dashboard-fullscreen-container .dashboard-page-content {
+  width: 100%;
+  max-width: 100%;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.dashboard-fullscreen-container .dashboard-container {
+  width: 100%;
+  max-width: 100%;
+}
+
