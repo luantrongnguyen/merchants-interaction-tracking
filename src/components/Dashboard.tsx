@@ -125,6 +125,67 @@ const COLORS = [
 		return category.trim().toLowerCase();
 	};
 
+	// Helper function to group similar categories together
+	const groupCategory = (category: string): string => {
+		const normalized = normalizeCategoryName(category);
+		
+		// Terminal - keep as is
+		if (normalized === 'terminal') {
+			return 'Terminal';
+		}
+		
+		// Devices - group Printer and Devices
+		if (normalized === 'printer' || normalized === 'devices' || normalized === 'device') {
+			return 'Devices';
+		}
+		
+		// Payment - group Payment, Gift card, Mango Pay
+		if (normalized === 'payment' || normalized === 'gift card' || normalized === 'mango pay') {
+			return 'Payment';
+		}
+		
+		// System Operations - group System Operations, System Slow/Down, Batch, Report/Payroll, Notifications, Chain Management, Mango Manage
+		if (normalized === 'system operations' || normalized === 'system slow/down' || normalized === 'system slow' || normalized === 'system down' ||
+		    normalized === 'batch' || normalized === 'report/payroll' || normalized === 'report' || normalized === 'payroll' ||
+		    normalized === 'notifications' || normalized === 'chain management' || normalized === 'mango manage') {
+			return 'System Operations';
+		}
+		
+		// Marketing - group Marketing, Marketing Plus, SMS/Promotion
+		if (normalized === 'marketing' || normalized === 'marketing plus' || normalized === 'sms/promotion' || normalized === 'sms' || normalized === 'promotion') {
+			return 'Marketing';
+		}
+		
+		// App/Software Issues - group Check-in app, Tech portal, Mango phone app, Display Error
+		if (normalized === 'check-in app' || normalized === 'check-in' || normalized === 'tech portal' || 
+		    normalized === 'mango phone app' || normalized === 'mango phone' || normalized === 'display error') {
+			return 'App/Software Issues';
+		}
+		
+		// Support/Training - group Training, Take care, Merchant Services
+		if (normalized === 'training' || normalized === 'take care' || normalized === 'merchant services') {
+			return 'Support/Training';
+		}
+		
+		// Feedback - group all Feedback update MI variants
+		if (normalized.includes('feedback')) {
+			return 'Feedback';
+		}
+		
+		// BUG - keep as is
+		if (normalized === 'bug') {
+			return 'BUG';
+		}
+		
+		// Others - keep as is, also group Book, Turn if they don't fit elsewhere
+		if (normalized === 'others' || normalized === 'other' || normalized === 'book' || normalized === 'turn') {
+			return 'Others';
+		}
+		
+		// Return original category if no grouping found
+		return category;
+	};
+
 	const { labels, counts, categoryMap } = useMemo(() => {
 		const categoryCountMap = new Map<string, number>();
 		merchants.forEach(m => {
@@ -136,12 +197,13 @@ const COLORS = [
 					// Split categories by comma
 					const categories = splitAndNormalizeCategories(raw);
 					categories.forEach(cat => {
-						// Use normalized name as key to avoid duplicates like "Terminal" and " Terminal "
-						const normalizedKey = normalizeCategoryName(cat);
-						// Store with original case for display, but use normalized key for counting
-						const displayName = cat; // Keep original case
+						// Group similar categories together
+						const groupedCategory = groupCategory(cat);
 						
-						// Check if we already have this category (case-insensitive)
+						// Use normalized name as key to avoid duplicates
+						const normalizedKey = normalizeCategoryName(groupedCategory);
+						
+						// Check if we already have this grouped category (case-insensitive)
 						let existingKey = null;
 						const existingKeys = Array.from(categoryCountMap.keys());
 						for (let i = 0; i < existingKeys.length; i++) {
@@ -156,8 +218,8 @@ const COLORS = [
 							// Use existing key (preserve first case encountered)
 							categoryCountMap.set(existingKey, (categoryCountMap.get(existingKey) || 0) + 1);
 						} else {
-							// New category
-							categoryCountMap.set(displayName, (categoryCountMap.get(displayName) || 0) + 1);
+							// New grouped category
+							categoryCountMap.set(groupedCategory, (categoryCountMap.get(groupedCategory) || 0) + 1);
 						}
 					});
 				}
@@ -362,11 +424,12 @@ const COLORS = [
 						});
 					}
 				} else {
-					// Split log category and check if it contains the selected category
+					// Split log category and check if grouping matches the selected category
 					const logCategories = splitAndNormalizeCategories(logCategory);
-					const hasMatchingCategory = logCategories.some(cat => 
-						normalizeCategoryName(cat) === normalizedSelectedCategory
-					);
+					const hasMatchingCategory = logCategories.some(cat => {
+						const groupedCat = groupCategory(cat);
+						return normalizeCategoryName(groupedCat) === normalizedSelectedCategory;
+					});
 					
 					if (hasMatchingCategory) {
 						logs.push({

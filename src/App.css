@@ -192,7 +192,7 @@ body {
 
 .app-layout {
   display: flex;
-  height: calc(100vh - 80px); /* Subtract header height */
+  height: calc(100vh - 1px); /* Subtract header height */
   overflow: hidden;
 }
 
