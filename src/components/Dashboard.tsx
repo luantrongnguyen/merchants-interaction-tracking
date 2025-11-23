@@ -1206,7 +1206,7 @@ const COLORS = [
 					</div>
 				</div>
 				<div className="board">
-					<h3>Top Merchants by Issues</h3>
+					<h3>Top Merchants by Categories</h3>
 					<div style={{ height: 360, width: '100%', position: 'relative' }}>
 						{leaderboards.topIssues.length === 0 ? (
 							<div className="empty-state">Không có dữ liệu.</div>
@@ -1431,7 +1431,7 @@ const COLORS = [
 			>
 				{terminalLogs.length === 0 ? (
 					<div className="category-logs-empty" style={{ textAlign: 'center', color: '#64748b', padding: '2rem', fontSize: '0.9375rem' }}>
-						Không có call logs terminal issues cho ngày này.
+						No terminal issues call logs for this date.
 					</div>
 				) : (
 					<div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1458,7 +1458,7 @@ const COLORS = [
 											{terminalRange === 'day' && frequency && (
 												<div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#475569' }}>
 													<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-														<span style={{ fontWeight: 600, color: '#1e293b' }}>Hôm nay:</span>
+														<span style={{ fontWeight: 600, color: '#1e293b' }}>Today:</span>
 														<span style={{ 
 															padding: '0.125rem 0.5rem', 
 															borderRadius: '4px', 
@@ -1466,21 +1466,21 @@ const COLORS = [
 															color: '#991b1b',
 															fontWeight: 600
 														}}>
-															{frequency.todayCount} lần
+															{frequency.todayCount} times
 														</span>
 													</div>
 													<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-														<span style={{ fontWeight: 600, color: '#1e293b' }}>7 ngày qua:</span>
-														<span style={{ color: '#64748b' }}>{frequency.last7DaysCount} lần</span>
+														<span style={{ fontWeight: 600, color: '#1e293b' }}>Last 7 days:</span>
+														<span style={{ color: '#64748b' }}>{frequency.last7DaysCount} times</span>
 													</div>
 													<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-														<span style={{ fontWeight: 600, color: '#1e293b' }}>30 ngày qua:</span>
-														<span style={{ color: '#64748b' }}>{frequency.last30DaysCount} lần</span>
+														<span style={{ fontWeight: 600, color: '#1e293b' }}>Last 30 days:</span>
+														<span style={{ color: '#64748b' }}>{frequency.last30DaysCount} times</span>
 													</div>
 													{/* Trend Indicator */}
 													{frequency.trend !== 'stable' && (
 														<div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-															<span style={{ fontWeight: 600, color: '#1e293b' }}>Xu hướng:</span>
+															<span style={{ fontWeight: 600, color: '#1e293b' }}>Trend:</span>
 															<span style={{ 
 																padding: '0.125rem 0.5rem', 
 																borderRadius: '4px', 
@@ -1489,7 +1489,7 @@ const COLORS = [
 																fontWeight: 600,
 																fontSize: '0.8125rem'
 															}}>
-																{frequency.trend === 'increase' ? '📈 Tăng' : '📉 Giảm'}
+																{frequency.trend === 'increase' ? '📈 Increase' : '📉 Decrease'}
 															</span>
 														</div>
 													)}
