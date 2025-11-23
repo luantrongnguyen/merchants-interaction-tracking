@@ -1288,7 +1288,7 @@ const COLORS = [
 
 			{/* Category Logs Modal */}
 			<Modal
-				isOpen={!!selectedCategory}
+				isOpen={!!selectedCategory && !isFullscreen}
 				onClose={() => setSelectedCategory(null)}
 				title={`Support Logs - Category: ${selectedCategory || ''}`}
 				width="90%"
@@ -1331,7 +1331,7 @@ const COLORS = [
 
 			{/* MI Updated Merchants Modal */}
 			<Modal
-				isOpen={selectedMiUpdatedStatus !== null}
+				isOpen={selectedMiUpdatedStatus !== null && !isFullscreen}
 				onClose={() => {
 					setSelectedMiUpdatedStatus(null);
 					setMiUpdatedMerchants([]);
@@ -1418,7 +1418,7 @@ const COLORS = [
 
 			{/* Terminal Logs Modal */}
 			<Modal
-				isOpen={!!selectedTerminalDate}
+				isOpen={!!selectedTerminalDate && !isFullscreen}
 				onClose={() => {
 					setSelectedTerminalDate(null);
 					setTerminalLogs([]);
