@@ -10,6 +10,7 @@ import './ViewPage.css';
 
 
 const ViewPage: React.FC = () => {
+  const location = useLocation();
   const [merchants, setMerchants] = useState<MerchantWithStatus[]>([]);
   const [filteredMerchants, setFilteredMerchants] = useState<MerchantWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,19 +103,6 @@ const ViewPage: React.FC = () => {
     setFilteredMerchants(filtered);
   };
 
-  if (loading) {
-    return (
-      <div className="app-container view-page-container">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Loading data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const location = useLocation();
-  
   // Determine active page from pathname for views
   const getActivePage = (): 'dashboard' | 'merchant-list' => {
     if (location.pathname.includes('/views/dashboard')) return 'dashboard';
@@ -125,6 +113,17 @@ const ViewPage: React.FC = () => {
     // Navigation is handled by Routes, so we don't need to do anything here
     // The Sidebar will use navigate internally
   };
+
+  if (loading) {
+    return (
+      <div className="app-container view-page-container">
+        <div className="loading">
+          <div className="spinner"></div>
+          <p>Loading data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container view-page-container">
