@@ -127,6 +127,11 @@ const ViewPage: React.FC = () => {
 
   return (
     <div className="app-container view-page-container">
+      <header className="app-header view-page-header">
+        <div className="header-content">
+          <h1>Merchant Tracking</h1>
+        </div>
+      </header>
       <div className="app-layout">
         <Sidebar activePage={getActivePage()} onPageChange={handlePageChange} />
         <main className="app-main view-page-main">
