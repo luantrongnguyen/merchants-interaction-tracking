@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { MerchantWithStatus } from '../types/merchant';
 import { calculateMerchantStatus, countTerminalDeviceIssues } from '../utils/merchantUtils';
 import apiService from '../services/apiService';
 import MerchantListView from '../components/MerchantListView';
 import Dashboard from '../components/Dashboard';
+import Sidebar from '../components/Sidebar';
 import './ViewPage.css';
 
 
@@ -112,42 +113,58 @@ const ViewPage: React.FC = () => {
     );
   }
 
+  const location = useLocation();
+  
+  // Determine active page from pathname for views
+  const getActivePage = (): 'dashboard' | 'merchant-list' => {
+    if (location.pathname.includes('/views/dashboard')) return 'dashboard';
+    return 'merchant-list';
+  };
+
+  const handlePageChange = (page: 'dashboard' | 'merchant-list') => {
+    // Navigation is handled by Routes, so we don't need to do anything here
+    // The Sidebar will use navigate internally
+  };
+
   return (
     <div className="app-container view-page-container">
-      <main className="app-main view-page-main">
-        {error && (
-          <div className="error-banner">
-            <p>{error}</p>
-            <button onClick={loadMerchants} className="retry-button">
-              Retry
-            </button>
-          </div>
-        )}
-        <Routes>
-          <Route 
-            index
-            element={
-              <MerchantListView
-                merchants={filteredMerchants}
-                error={error}
-                onRetry={loadMerchants}
-                onSearch={handleSearch}
-                onFilter={handleFilter}
-                onClear={handleClear}
-              />
+      <div className="app-layout">
+        <Sidebar activePage={getActivePage()} onPageChange={handlePageChange} />
+        <main className="app-main view-page-main">
+          {error && (
+            <div className="error-banner">
+              <p>{error}</p>
+              <button onClick={loadMerchants} className="retry-button">
+                Retry
+              </button>
+            </div>
+          )}
+          <Routes>
+            <Route 
+              index
+              element={
+                <MerchantListView
+                  merchants={filteredMerchants}
+                  error={error}
+                  onRetry={loadMerchants}
+                  onSearch={handleSearch}
+                  onFilter={handleFilter}
+                  onClear={handleClear}
+                />
+              } 
+            />
+            <Route 
+              path="dashboard" 
+              element={
+                <div className="dashboard-page-content">
+                  <Dashboard merchants={merchants} />
+                </div>
             } 
           />
-          <Route 
-            path="dashboard" 
-            element={
-              <div className="dashboard-page-content">
-                <Dashboard merchants={merchants} />
-              </div>
-            } 
-          />
-          <Route path="*" element={<Navigate to="/views" replace />} />
-        </Routes>
-      </main>
+            <Route path="*" element={<Navigate to="/views" replace />} />
+          </Routes>
+        </main>
+      </div>
     </div>
   );
 };

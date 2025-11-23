@@ -13,7 +13,7 @@
 
 .view-page-main {
   padding: 0;
-  margin-left: 0 !important; /* Override sidebar margin since ViewPage doesn't have sidebar */
+  margin-left: 280px; /* Sidebar width */
   margin-top: 0 !important; /* No header, so no margin needed */
   padding: 2rem 1rem; /* Add padding for content */
   flex: 1;

@@ -13,17 +13,33 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onPageChange }) => {
   
   // Determine active page from pathname
   const getActivePage = (): 'dashboard' | 'merchant-list' => {
-    if (location.pathname === '/dashboard') return 'dashboard';
+    const path = location.pathname;
+    // Check for views routes first
+    if (path.includes('/views/dashboard')) return 'dashboard';
+    if (path.includes('/views')) return 'merchant-list';
+    // Check for regular routes
+    if (path === '/dashboard') return 'dashboard';
     return 'merchant-list';
   };
 
   const currentActivePage = getActivePage();
   
   const handlePageChange = (page: 'dashboard' | 'merchant-list') => {
-    if (page === 'dashboard') {
-      navigate('/dashboard');
+    const path = location.pathname;
+    // If we're in views, navigate to views routes
+    if (path.includes('/views')) {
+      if (page === 'dashboard') {
+        navigate('/views/dashboard');
+      } else {
+        navigate('/views');
+      }
     } else {
-      navigate('/');
+      // Regular routes
+      if (page === 'dashboard') {
+        navigate('/dashboard');
+      } else {
+        navigate('/');
+      }
     }
   };
   return (
