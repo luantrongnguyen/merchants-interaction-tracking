@@ -36,7 +36,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isChatOpen, setIsChatOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const isFullscreen = location.pathname === '/dashboard/fullscreen';
+  const isFullscreen = location.pathname === '/views/dashboard/fullscreen' || location.pathname === '/dashboard/fullscreen';
   
   return (
     <div className={isFullscreen ? 'dashboard-fullscreen-container' : ''}>

@@ -409,26 +409,10 @@ function App() {
       <Routes>
         {/* Guest view route - no authentication required - must be before catch-all route */}
         <Route path="/views" element={<ViewPage />} />
+        <Route path="/views/dashboard/fullscreen" element={<ViewPage />} />
         <Route path="/views/*" element={<ViewPage />} />
         
         {/* Protected routes - require authentication */}
-        <Route
-          path="/dashboard/fullscreen"
-          element={
-            <ProtectedRoute>
-              <DashboardPage
-                merchants={merchants}
-                error={error}
-                onRetry={loadMerchants}
-                onSyncCallLogs={handleSyncCallLogsManual}
-                isSyncing={isSyncingManual}
-                syncProgress={syncProgress}
-                syncStatus={syncStatus}
-                syncResults={syncResults}
-              />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/dashboard"
           element={

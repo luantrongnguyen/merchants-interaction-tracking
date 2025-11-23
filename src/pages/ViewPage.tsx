@@ -105,7 +105,7 @@ const ViewPage: React.FC = () => {
 
   // Determine active page from pathname for views
   const getActivePage = (): 'dashboard' | 'merchant-list' => {
-    if (location.pathname.includes('/views/dashboard')) return 'dashboard';
+    if (location.pathname.includes('/views/dashboard') && !location.pathname.includes('/views/dashboard/fullscreen')) return 'dashboard';
     return 'merchant-list';
   };
 
@@ -120,6 +120,20 @@ const ViewPage: React.FC = () => {
         <div className="loading">
           <div className="spinner"></div>
           <p>Loading data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isFullscreen = location.pathname === '/views/dashboard/fullscreen';
+
+  if (isFullscreen) {
+    return (
+      <div className="app-container view-page-container">
+        <div className="dashboard-fullscreen-container">
+          <div className="dashboard-page-content">
+            <Dashboard merchants={merchants} />
+          </div>
         </div>
       </div>
     );
@@ -162,6 +176,16 @@ const ViewPage: React.FC = () => {
               element={
                 <div className="dashboard-page-content">
                   <Dashboard merchants={merchants} />
+                </div>
+            } 
+          />
+            <Route 
+              path="dashboard/fullscreen" 
+              element={
+                <div className="dashboard-fullscreen-container">
+                  <div className="dashboard-page-content">
+                    <Dashboard merchants={merchants} />
+                  </div>
                 </div>
             } 
           />

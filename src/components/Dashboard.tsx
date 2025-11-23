@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { MerchantWithStatus, SupportLog } from '../types/merchant';
 import { Pie, Bar, Line } from 'react-chartjs-2';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
 	Chart as ChartJS,
 	ArcElement,
@@ -32,7 +33,9 @@ const COLORS = [
 	const Dashboard: React.FC<DashboardProps> = ({ merchants }) => {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const isFullscreen = location.pathname === '/dashboard/fullscreen';
+	const { isAuthenticated } = useAuth();
+	const isFullscreen = location.pathname === '/views/dashboard/fullscreen' || location.pathname === '/dashboard/fullscreen';
+	const isViewPage = location.pathname.startsWith('/views');
 	const [range, setRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
 	const [terminalRange, setTerminalRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -870,10 +873,10 @@ const COLORS = [
 
 	return (
 		<div className="dashboard-container">
-			{!isFullscreen && (
+			{!isFullscreen && !isAuthenticated && (
 				<div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: '1.5rem' }}>
 					<button
-						onClick={() => navigate('/dashboard/fullscreen')}
+						onClick={() => navigate(isViewPage ? '/views/dashboard/fullscreen' : '/dashboard/fullscreen')}
 						style={{
 							padding: '0.5rem 1rem',
 							border: '1px solid #e5e7eb',
