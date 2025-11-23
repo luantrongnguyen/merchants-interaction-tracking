@@ -193,7 +193,6 @@ body {
 .app-layout {
   display: flex;
   height: calc(100vh - 80px); /* Subtract header height */
-  margin-top: 80px; /* Header height - will adjust if progress bar is shown */
   overflow: hidden;
 }
 
@@ -203,6 +202,7 @@ body {
   overflow-x: hidden;
   padding: 2rem 1rem;
   margin-left: 280px; /* Sidebar width */
+  margin-top: 80px; /* Header height */
 }
 
 .app-content {

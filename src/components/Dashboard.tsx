@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { MerchantWithStatus, SupportLog } from '../types/merchant';
 import { Pie, Bar, Line } from 'react-chartjs-2';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
 	Chart as ChartJS,
 	ArcElement,
@@ -29,6 +30,9 @@ const COLORS = [
 ];
 
 	const Dashboard: React.FC<DashboardProps> = ({ merchants }) => {
+	const navigate = useNavigate();
+	const location = useLocation();
+	const isFullscreen = location.pathname === '/dashboard/fullscreen';
 	const [range, setRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
 	const [terminalRange, setTerminalRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -866,6 +870,41 @@ const COLORS = [
 
 	return (
 		<div className="dashboard-container">
+			{!isFullscreen && (
+				<div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: '1.5rem' }}>
+					<button
+						onClick={() => navigate('/dashboard/fullscreen')}
+						style={{
+							padding: '0.5rem 1rem',
+							border: '1px solid #e5e7eb',
+							borderRadius: '6px',
+							background: '#fff',
+							color: '#1e293b',
+							fontSize: '0.875rem',
+							fontWeight: 500,
+							cursor: 'pointer',
+							display: 'flex',
+							alignItems: 'center',
+							gap: '0.5rem',
+							transition: 'all 0.2s',
+						}}
+						onMouseEnter={(e) => {
+							e.currentTarget.style.background = '#f8fafc';
+							e.currentTarget.style.borderColor = '#FFB300';
+						}}
+						onMouseLeave={(e) => {
+							e.currentTarget.style.background = '#fff';
+							e.currentTarget.style.borderColor = '#e5e7eb';
+						}}
+						title="Open Dashboard in Fullscreen"
+					>
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+							<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+						</svg>
+						Open
+					</button>
+				</div>
+			)}
 			<h2>Category Distribution</h2>
 			<div className="chart-wrapper chart-wrapper-pie-category">
 				{labels.length === 0 ? (

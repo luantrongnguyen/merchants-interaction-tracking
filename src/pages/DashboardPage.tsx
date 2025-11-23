@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Dashboard from '../components/Dashboard';
 import ChatBox from '../components/ChatBox';
 import { MerchantWithStatus } from '../types/merchant';
 import { useAuth } from '../contexts/AuthContext';
+import './DashboardPage.css';
 
 interface DashboardPageProps {
   merchants: MerchantWithStatus[];
@@ -32,9 +34,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
 }) => {
   const { user } = useAuth();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isFullscreen = location.pathname === '/dashboard/fullscreen';
   
   return (
-    <>
+    <div className={isFullscreen ? 'dashboard-fullscreen-container' : ''}>
       {error && (
         <div className="error-banner">
           <p>{error}</p>
@@ -48,7 +53,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         <Dashboard merchants={merchants} />
       </div>
 
-      {!isChatOpen && (
+      {!isFullscreen && !isChatOpen && (
         <button 
           className="chatbox-toggle-btn" 
           onClick={() => setIsChatOpen(true)}
@@ -59,17 +64,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         </button>
       )}
 
-      <ChatBox 
-        merchants={merchants} 
-        isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)}
-        onSyncCallLogs={onSyncCallLogs}
-        isSyncing={isSyncing}
-        syncProgress={syncProgress}
-        syncStatus={syncStatus}
-        syncResults={syncResults}
-      />
-    </>
+      {!isFullscreen && (
+        <ChatBox 
+          merchants={merchants} 
+          isOpen={isChatOpen} 
+          onClose={() => setIsChatOpen(false)}
+          onSyncCallLogs={onSyncCallLogs}
+          isSyncing={isSyncing}
+          syncProgress={syncProgress}
+          syncStatus={syncStatus}
+          syncResults={syncResults}
+        />
+      )}
+    </div>
   );
 };
 
