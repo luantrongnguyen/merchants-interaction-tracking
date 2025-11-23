@@ -172,8 +172,8 @@ const COLORS = [
 			return 'Feedback';
 		}
 		
-		// BUG - keep as is
-		if (normalized === 'bug') {
+		// BUG - group Bug, Bug system, BUG
+		if (normalized === 'bug' || normalized === 'bug system' || normalized.includes('bug')) {
 			return 'BUG';
 		}
 		
@@ -191,38 +191,38 @@ const COLORS = [
 		merchants.forEach(m => {
 			(m.supportLogs || []).forEach(log => {
 				const raw = (log.category || '').trim();
+				// Skip empty categories (Uncategorized)
 				if (raw === '') {
-					categoryCountMap.set('Uncategorized', (categoryCountMap.get('Uncategorized') || 0) + 1);
-				} else {
-					// Split categories by comma
-					const categories = splitAndNormalizeCategories(raw);
-					categories.forEach(cat => {
-						// Group similar categories together
-						const groupedCategory = groupCategory(cat);
-						
-						// Use normalized name as key to avoid duplicates
-						const normalizedKey = normalizeCategoryName(groupedCategory);
-						
-						// Check if we already have this grouped category (case-insensitive)
-						let existingKey = null;
-						const existingKeys = Array.from(categoryCountMap.keys());
-						for (let i = 0; i < existingKeys.length; i++) {
-							const key = existingKeys[i];
-							if (normalizeCategoryName(key) === normalizedKey) {
-								existingKey = key;
-								break;
-							}
-						}
-						
-						if (existingKey) {
-							// Use existing key (preserve first case encountered)
-							categoryCountMap.set(existingKey, (categoryCountMap.get(existingKey) || 0) + 1);
-						} else {
-							// New grouped category
-							categoryCountMap.set(groupedCategory, (categoryCountMap.get(groupedCategory) || 0) + 1);
-						}
-					});
+					return; // Don't count Uncategorized
 				}
+				// Split categories by comma
+				const categories = splitAndNormalizeCategories(raw);
+				categories.forEach(cat => {
+					// Group similar categories together
+					const groupedCategory = groupCategory(cat);
+					
+					// Use normalized name as key to avoid duplicates
+					const normalizedKey = normalizeCategoryName(groupedCategory);
+					
+					// Check if we already have this grouped category (case-insensitive)
+					let existingKey = null;
+					const existingKeys = Array.from(categoryCountMap.keys());
+					for (let i = 0; i < existingKeys.length; i++) {
+						const key = existingKeys[i];
+						if (normalizeCategoryName(key) === normalizedKey) {
+							existingKey = key;
+							break;
+						}
+					}
+					
+					if (existingKey) {
+						// Use existing key (preserve first case encountered)
+						categoryCountMap.set(existingKey, (categoryCountMap.get(existingKey) || 0) + 1);
+					} else {
+						// New grouped category
+						categoryCountMap.set(groupedCategory, (categoryCountMap.get(groupedCategory) || 0) + 1);
+					}
+				});
 			});
 		});
 		const labelsArr = Array.from(categoryCountMap.keys());
