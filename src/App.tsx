@@ -4,7 +4,7 @@ import { MerchantFormData, Merchant, MerchantWithStatus } from './types/merchant
 import { calculateMerchantStatus, countTerminalDeviceIssues } from './utils/merchantUtils';
 import apiService from './services/apiService';
 import MerchantForm from './components/MerchantForm';
-import PasscodeModal from './components/PasscodeModal';
+import Modal from './components/Modal';
 import SheetSelectionModal from './components/SheetSelectionModal';
 import Header from './components/Header';
 import Layout from './components/Layout';
@@ -26,12 +26,11 @@ function App() {
   
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isPasscodeOpen, setIsPasscodeOpen] = useState(false);
   const [isSheetSelectionOpen, setIsSheetSelectionOpen] = useState(false);
   const [pendingPasscode, setPendingPasscode] = useState<string | null>(null);
   const [editingMerchant, setEditingMerchant] = useState<MerchantWithStatus | undefined>();
   const [formTitle, setFormTitle] = useState('');
-  const [pendingAction, setPendingAction] = useState<((passcode?: string) => Promise<void>) | null>(null);
+  const [merchantToDelete, setMerchantToDelete] = useState<{ id: number; name: string } | null>(null);
 
   // Sync manual states
   const [isSyncingManual, setIsSyncingManual] = useState(false);
@@ -98,10 +97,10 @@ function App() {
   };
 
   const handleDeleteMerchant = (id: number) => {
-    setPendingAction(() => async () => {
-      await deleteMerchant(id);
-    });
-    setIsPasscodeOpen(true);
+    const merchant = merchants.find(m => m.id === id);
+    if (merchant) {
+      setMerchantToDelete({ id, name: merchant.name });
+    }
   };
 
   const deleteMerchant = async (id: number) => {
@@ -131,37 +130,15 @@ function App() {
     }
   };
 
-  const handlePasscodeSuccess = async (passcode?: string) => {
-    if (pendingAction) {
-      // Check if this is for sync call logs - show sheet selection instead
-      const actionString = pendingAction.toString();
-      if (actionString.includes('handleSyncCallLogsManual') || actionString.includes('sync')) {
-        // For sync call logs, show sheet selection modal
-        if (passcode) {
-          setPendingPasscode(passcode);
-          setIsPasscodeOpen(false);
-          setIsSheetSelectionOpen(true);
-          setPendingAction(null);
-        }
-        return;
-      }
-      
-      try {
-        // Pass passcode to the action if it needs it
-        await pendingAction(passcode);
-        setPendingAction(null);
-        setIsPasscodeOpen(false); // Close modal after successful action
-      } catch (error) {
-        // Error is already handled in the action function
-        setPendingAction(null);
-        setIsPasscodeOpen(false); // Close modal even on error
-      }
+  const handleConfirmDelete = async () => {
+    if (merchantToDelete) {
+      await deleteMerchant(merchantToDelete.id);
+      setMerchantToDelete(null);
     }
   };
 
-  const handlePasscodeClose = () => {
-    setIsPasscodeOpen(false);
-    setPendingAction(null);
+  const handleCancelDelete = () => {
+    setMerchantToDelete(null);
   };
 
   const handleSyncCallLogsManual = async (passcode: string, selectedSheets?: string[]) => {
@@ -507,12 +484,56 @@ function App() {
         title={formTitle}
       />
 
-      <PasscodeModal
-        isOpen={isPasscodeOpen}
-        onClose={handlePasscodeClose}
-        onSuccess={handlePasscodeSuccess}
-        title={pendingAction ? "Authentication Required" : "Authentication Required"}
-      />
+      {merchantToDelete && (
+        <Modal
+          isOpen={!!merchantToDelete}
+          onClose={handleCancelDelete}
+          title="Confirm Delete"
+          width="400px"
+          maxWidth="90%"
+          headerBackground="white"
+        >
+          <div style={{ padding: '1rem 0' }}>
+            <p style={{ marginBottom: '1.5rem', color: '#475569' }}>
+              Are you sure you want to delete merchant <strong>{merchantToDelete.name}</strong>? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  border: '1px solid #d1d5db',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: '#ef4444',
+                  color: '#ffffff',
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       <SheetSelectionModal
         isOpen={isSheetSelectionOpen}
         onClose={handleSheetSelectionClose}

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MerchantWithStatus } from '../types/merchant';
 import apiService from '../services/apiService';
+import SheetSelectionModal from './SheetSelectionModal';
 import './ChatBox.css';
 
 interface Message {
@@ -14,7 +15,7 @@ interface ChatBoxProps {
   merchants: MerchantWithStatus[];
   isOpen: boolean;
   onClose: () => void;
-  onSyncCallLogs?: (passcode: string) => Promise<void>;
+  onSyncCallLogs?: (passcode: string, selectedSheets?: string[]) => Promise<void>;
   isSyncing?: boolean;
   syncProgress?: number;
   syncStatus?: string;
@@ -49,6 +50,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   const [needsPasscode, setNeedsPasscode] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [passcodeError, setPasscodeError] = useState('');
+  const [isSheetSelectionOpen, setIsSheetSelectionOpen] = useState(false);
+  const [pendingPasscode, setPendingPasscode] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const passcodeInputRef = useRef<HTMLInputElement>(null);
@@ -217,9 +220,11 @@ const ChatBox: React.FC<ChatBoxProps> = ({
 
     try {
       setPasscodeError('');
-      await onSyncCallLogs(passcode.trim());
+      // Open sheet selection modal instead of calling sync directly
+      setPendingPasscode(passcode.trim());
       setNeedsPasscode(false);
       setPasscode('');
+      setIsSheetSelectionOpen(true);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Invalid authentication code';
       setPasscodeError(errorMsg);
@@ -231,6 +236,31 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       };
       setMessages((prev) => [...prev, errorMessage]);
     }
+  };
+
+  const handleSheetSelectionConfirm = async (selectedSheets: string[]) => {
+    if (pendingPasscode && onSyncCallLogs) {
+      setIsSheetSelectionOpen(false);
+      try {
+        await onSyncCallLogs(pendingPasscode, selectedSheets);
+        setPendingPasscode(null);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Failed to sync call logs';
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `❌ ${errorMsg}. Vui lòng thử lại.`,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        setPendingPasscode(null);
+      }
+    }
+  };
+
+  const handleSheetSelectionClose = () => {
+    setIsSheetSelectionOpen(false);
+    setPendingPasscode(null);
   };
 
   const handlePasscodeKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -542,6 +572,12 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           </div>
         )}
       </div>
+      <SheetSelectionModal
+        isOpen={isSheetSelectionOpen}
+        onClose={handleSheetSelectionClose}
+        onConfirm={handleSheetSelectionConfirm}
+        passcode={pendingPasscode || ''}
+      />
     </div>
   );
 };

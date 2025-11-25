@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MerchantWithStatus } from '../types/merchant';
-import { CONFIG } from '../config';
-import PasscodeModal from './PasscodeModal';
+import Modal from './Modal';
 import './UpdateProgressModal.css';
 
 interface UpdateProgressModalProps {
@@ -26,7 +25,7 @@ const UpdateProgressModal: React.FC<UpdateProgressModalProps> = ({
   merchants,
   onUpdateComplete,
 }) => {
-  const [showPasscode, setShowPasscode] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [shouldStop, setShouldStop] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -38,7 +37,7 @@ const UpdateProgressModal: React.FC<UpdateProgressModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setShowPasscode(true);
+      setShowConfirm(true);
       setProgress(0);
       setResults([]);
       setErrors([]);
@@ -50,8 +49,8 @@ const UpdateProgressModal: React.FC<UpdateProgressModalProps> = ({
     }
   }, [isOpen]);
 
-  const handlePasscodeSuccess = () => {
-    setShowPasscode(false);
+  const handleConfirm = () => {
+    setShowConfirm(false);
     setShouldStop(false);
     startUpdate();
   };
@@ -60,9 +59,9 @@ const UpdateProgressModal: React.FC<UpdateProgressModalProps> = ({
     setShouldStop(true);
   };
 
-  const handlePasscodeClose = () => {
+  const handleConfirmClose = () => {
     if (!isUpdating) {
-      setShowPasscode(false);
+      setShowConfirm(false);
       onClose();
     }
   };
@@ -236,15 +235,57 @@ const UpdateProgressModal: React.FC<UpdateProgressModalProps> = ({
   const skippedCount = results.filter(r => r.success && !r.updated).length;
   const errorCount = results.filter(r => !r.success).length;
 
-  // Chỉ hiển thị PasscodeModal khi cần, không hiển thị UpdateProgressModal lúc này
-  if (showPasscode) {
+  // Show confirm dialog before starting update
+  if (showConfirm) {
     return (
-      <PasscodeModal
-        isOpen={showPasscode}
-        onClose={handlePasscodeClose}
-        onSuccess={handlePasscodeSuccess}
-        title="Confirm to update all merchants"
-      />
+      <Modal
+        isOpen={showConfirm}
+        onClose={handleConfirmClose}
+        title="Confirm Update All Merchants"
+        width="400px"
+        maxWidth="90%"
+        headerBackground="white"
+      >
+        <div style={{ padding: '1rem 0' }}>
+          <p style={{ marginBottom: '1.5rem', color: '#475569' }}>
+            Are you sure you want to update last interaction date for all {merchants.length} merchants? This may take a while.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={handleConfirmClose}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                border: '1px solid #d1d5db',
+                background: '#f3f4f6',
+                color: '#374151',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '6px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: 'none',
+                background: '#fbbf24',
+                color: '#1f2937',
+              }}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
     );
   }
 
