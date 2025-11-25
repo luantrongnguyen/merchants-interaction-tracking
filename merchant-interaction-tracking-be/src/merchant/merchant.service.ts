@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
 import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
+import { appConfig } from '../config/app.config';
 
 @Injectable()
 export class MerchantService {
@@ -158,8 +159,12 @@ export class MerchantService {
     return await this.googleSheetsService.syncCallLogsToMerchants(userEmail);
   }
 
-  async syncAllCallLogs(userEmail: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
-    return await this.googleSheetsService.syncAllCallLogsToMerchants(userEmail);
+  async getCallLogsSheets(): Promise<string[]> {
+    return await this.googleSheetsService.getAllSheetNames(appConfig.callLogsSpreadsheetId);
+  }
+
+  async syncAllCallLogs(userEmail: string, selectedSheets?: string[]): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
+    return await this.googleSheetsService.syncAllCallLogsToMerchants(userEmail, selectedSheets);
   }
 
   async migrateMiVersionToJson(defaultVersion: string = '11042025'): Promise<{ updated: number; errors: number; skipped: number }> {

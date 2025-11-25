@@ -746,7 +746,7 @@ export class GoogleSheetsService {
   }
 
   // Get all sheet names from Call Logs spreadsheet (excluding the first sheet)
-  private async getAllSheetNames(spreadsheetId: string): Promise<string[]> {
+  async getAllSheetNames(spreadsheetId: string): Promise<string[]> {
     try {
       if (!this.sheets) {
         throw new Error('Google Sheets service not initialized');
@@ -1477,7 +1477,7 @@ export class GoogleSheetsService {
   }
 
   // Sync call logs from all sheets (except the first one) to merchants
-  async syncAllCallLogsToMerchants(userEmail: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
+  async syncAllCallLogsToMerchants(userEmail: string, selectedSheets?: string[]): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
     return this.withWriteLock(async () => {
       try {
         if (!this.sheets) {
@@ -1486,12 +1486,18 @@ export class GoogleSheetsService {
 
         const spreadsheetId = appConfig.callLogsSpreadsheetId;
         
-        // Get all sheet names (excluding the first sheet)
-        this.logSync(`[Sync All Call Logs] Bắt đầu sync từ tất cả sheets (trừ sheet đầu tiên)...`);
-        const sheetNames = await this.getAllSheetNames(spreadsheetId);
+        // Get sheet names - use selected sheets if provided, otherwise get all (excluding first)
+        let sheetNames: string[];
+        if (selectedSheets && selectedSheets.length > 0) {
+          sheetNames = selectedSheets;
+          this.logSync(`[Sync All Call Logs] Bắt đầu sync từ ${sheetNames.length} sheets được chọn: ${sheetNames.join(', ')}`);
+        } else {
+          this.logSync(`[Sync All Call Logs] Bắt đầu sync từ tất cả sheets (trừ sheet đầu tiên)...`);
+          sheetNames = await this.getAllSheetNames(spreadsheetId);
+        }
         
         if (sheetNames.length === 0) {
-          this.logSync(`[Sync All Call Logs] Không có sheets nào để sync (trừ sheet đầu tiên)`);
+          this.logSync(`[Sync All Call Logs] Không có sheets nào để sync`);
           return { matched: 0, updated: 0, errors: 0, totalCallLogsAdded: 0 };
         }
 

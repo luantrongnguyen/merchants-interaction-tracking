@@ -192,10 +192,17 @@ class ApiService {
     });
   }
 
-  async syncCallLogsManual(passcode: string): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
+  async getCallLogsSheets(): Promise<string[]> {
+    const response = await this.request<{ sheets: string[] }>('/merchants/call-logs-sheets', {
+      method: 'GET',
+    });
+    return response.sheets;
+  }
+
+  async syncCallLogsManual(passcode: string, selectedSheets?: string[]): Promise<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }> {
     return this.request<{ matched: number; updated: number; errors: number; totalCallLogsAdded: number }>('/merchants/sync-call-logs-manual', {
       method: 'POST',
-      body: JSON.stringify({ passcode }),
+      body: JSON.stringify({ passcode, selectedSheets }),
     });
   }
 

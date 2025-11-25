@@ -5,6 +5,7 @@ import { calculateMerchantStatus, countTerminalDeviceIssues } from './utils/merc
 import apiService from './services/apiService';
 import MerchantForm from './components/MerchantForm';
 import PasscodeModal from './components/PasscodeModal';
+import SheetSelectionModal from './components/SheetSelectionModal';
 import Header from './components/Header';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,6 +27,8 @@ function App() {
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPasscodeOpen, setIsPasscodeOpen] = useState(false);
+  const [isSheetSelectionOpen, setIsSheetSelectionOpen] = useState(false);
+  const [pendingPasscode, setPendingPasscode] = useState<string | null>(null);
   const [editingMerchant, setEditingMerchant] = useState<MerchantWithStatus | undefined>();
   const [formTitle, setFormTitle] = useState('');
   const [pendingAction, setPendingAction] = useState<((passcode?: string) => Promise<void>) | null>(null);
@@ -130,6 +133,19 @@ function App() {
 
   const handlePasscodeSuccess = async (passcode?: string) => {
     if (pendingAction) {
+      // Check if this is for sync call logs - show sheet selection instead
+      const actionString = pendingAction.toString();
+      if (actionString.includes('handleSyncCallLogsManual') || actionString.includes('sync')) {
+        // For sync call logs, show sheet selection modal
+        if (passcode) {
+          setPendingPasscode(passcode);
+          setIsPasscodeOpen(false);
+          setIsSheetSelectionOpen(true);
+          setPendingAction(null);
+        }
+        return;
+      }
+      
       try {
         // Pass passcode to the action if it needs it
         await pendingAction(passcode);
@@ -148,7 +164,7 @@ function App() {
     setPendingAction(null);
   };
 
-  const handleSyncCallLogsManual = async (passcode: string) => {
+  const handleSyncCallLogsManual = async (passcode: string, selectedSheets?: string[]) => {
     try {
       if (!passcode) {
         throw new Error('Passcode is required');
@@ -172,8 +188,11 @@ function App() {
       }, 500);
 
       try {
-        setSyncStatus('Đang đọc call logs từ tất cả sheets...');
-        const result = await apiService.syncCallLogsManual(passcode);
+        const sheetInfo = selectedSheets && selectedSheets.length > 0 
+          ? `từ ${selectedSheets.length} sheets được chọn` 
+          : 'từ tất cả sheets';
+        setSyncStatus(`Đang đọc call logs ${sheetInfo}...`);
+        const result = await apiService.syncCallLogsManual(passcode, selectedSheets);
         
         clearInterval(progressInterval);
         setSyncProgress(100);
@@ -206,6 +225,19 @@ function App() {
       setError(errorMessage);
       throw err;
     }
+  };
+
+  const handleSheetSelectionConfirm = (selectedSheets: string[]) => {
+    if (pendingPasscode) {
+      setIsSheetSelectionOpen(false);
+      handleSyncCallLogsManual(pendingPasscode, selectedSheets);
+      setPendingPasscode(null);
+    }
+  };
+
+  const handleSheetSelectionClose = () => {
+    setIsSheetSelectionOpen(false);
+    setPendingPasscode(null);
   };
 
   const handleCloseSyncResults = () => {
@@ -480,6 +512,12 @@ function App() {
         onClose={handlePasscodeClose}
         onSuccess={handlePasscodeSuccess}
         title={pendingAction ? "Authentication Required" : "Authentication Required"}
+      />
+      <SheetSelectionModal
+        isOpen={isSheetSelectionOpen}
+        onClose={handleSheetSelectionClose}
+        onConfirm={handleSheetSelectionConfirm}
+        passcode={pendingPasscode || ''}
       />
     </div>
   );

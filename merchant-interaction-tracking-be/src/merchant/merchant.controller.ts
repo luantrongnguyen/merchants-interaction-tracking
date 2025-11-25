@@ -94,6 +94,25 @@ export class MerchantController {
     return this.merchantService.syncCallLogs(email);
   }
 
+  @Get('call-logs-sheets')
+  @UseGuards(JwtAuthGuard)
+  async getCallLogsSheets() {
+    try {
+      const sheets = await this.merchantService.getCallLogsSheets();
+      return { sheets };
+    } catch (error: any) {
+      console.error('[MerchantController] Error getting call logs sheets:', error);
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error?.message || 'Internal server error',
+          error: 'Internal Server Error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Post('sync-call-logs-manual')
   @UseGuards(JwtAuthGuard)
   async syncCallLogsManual(@Body() dto: SyncCallLogsManualDto, @Req() req: any) {
@@ -108,8 +127,8 @@ export class MerchantController {
       }
       
       const email = req?.user?.email || 'unknown@mangoforsalon.com';
-      console.log(`[MerchantController] Starting manual sync for user: ${email}`);
-      const result = await this.merchantService.syncAllCallLogs(email);
+      console.log(`[MerchantController] Starting manual sync for user: ${email}`, dto.selectedSheets ? `with selected sheets: ${dto.selectedSheets.join(', ')}` : 'with all sheets');
+      const result = await this.merchantService.syncAllCallLogs(email, dto.selectedSheets);
       console.log(`[MerchantController] Manual sync completed:`, result);
       return result;
     } catch (error: any) {
