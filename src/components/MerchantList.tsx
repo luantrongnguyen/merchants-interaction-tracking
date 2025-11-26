@@ -204,6 +204,8 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                         placeholder="Select version"
                         isClearable={false}
                         isSearchable={false}
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
                         styles={{
                           control: (base, state) => ({
                             ...base,
@@ -217,6 +219,10 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                             },
                             opacity: isUpdatingMiVersion === merchant.id! ? 0.6 : 1,
                             cursor: isUpdatingMiVersion === merchant.id! ? 'not-allowed' : 'pointer',
+                          }),
+                          menuPortal: (base) => ({
+                            ...base,
+                            zIndex: 9999,
                           }),
                           menu: (base) => ({
                             ...base,
