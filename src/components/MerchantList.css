@@ -686,3 +686,27 @@ body:has(.view-page-container) .modal-overlay {
     grid-template-columns: 1fr;
   }
 }
+
+/* React Select styles for MI Version dropdown */
+.merchant-table td .react-select-container {
+  display: inline-block;
+  width: 100%;
+  max-width: 120px;
+}
+
+.merchant-table td .react-select__control {
+  min-height: 28px !important;
+  height: 28px;
+}
+
+.merchant-table td .react-select__value-container {
+  padding: 0 8px;
+}
+
+.merchant-table td .react-select__indicator {
+  padding: 4px;
+}
+
+.merchant-table td .react-select__menu {
+  z-index: 9999 !important;
+}

@@ -233,11 +233,12 @@ const COLORS = [
 	const total = counts.reduce((a, b) => a + b, 0);
 
 	// Calculate MI Updated statistics
-	// Categories: Ver 11042025, Ver 11112025, Ver 11212025, z11/no card machine, not updated yet
+	// Categories: Ver 11112025, Ver 11212025, Ver 11242025, z11/no card machine, not updated yet
 	const miUpdatedStats = useMemo(() => {
-		const ver11042025: MerchantWithStatus[] = [];
+		const ver11042025: MerchantWithStatus[] = []; // Legacy version, keep for backward compatibility
 		const ver11112025: MerchantWithStatus[] = [];
 		const ver11212025: MerchantWithStatus[] = [];
+		const ver11242025: MerchantWithStatus[] = [];
 		const z11NoCardMachine: MerchantWithStatus[] = [];
 		const notUpdatedYet: MerchantWithStatus[] = [];
 
@@ -253,12 +254,15 @@ const COLORS = [
 			}
 
 			// Check if has specific version
-			if (version === '11042025') {
-				ver11042025.push(m);
-			} else if (version === '11112025') {
+			if (version === '11112025') {
 				ver11112025.push(m);
 			} else if (version === '11212025') {
 				ver11212025.push(m);
+			} else if (version === '11242025') {
+				ver11242025.push(m);
+			} else if (version === '11042025') {
+				// Legacy version - still count but don't show in dropdown
+				ver11042025.push(m);
 			} else if (m.z11OrNotGoWMango === true) {
 				// z11/no card machine (and no specific version)
 				z11NoCardMachine.push(m);
@@ -270,16 +274,18 @@ const COLORS = [
 
 		const total = merchants.length;
 		return {
-			ver11042025: ver11042025.length,
+			ver11042025: ver11042025.length, // Legacy, keep for backward compatibility
 			ver11112025: ver11112025.length,
 			ver11212025: ver11212025.length,
+			ver11242025: ver11242025.length,
 			z11NoCardMachine: z11NoCardMachine.length,
 			notUpdatedYet: notUpdatedYet.length,
 			total,
 			categories: {
-				ver11042025,
+				ver11042025, // Legacy
 				ver11112025,
 				ver11212025,
+				ver11242025,
 				z11NoCardMachine,
 				notUpdatedYet,
 			},
@@ -288,19 +294,19 @@ const COLORS = [
 
 	const miUpdatedData = {
 		labels: [
-			'Ver 11042025',
 			'Ver 11112025',
 			'Ver 11212025',
-			'z11/no card machine',
-			'not updated yet'
+			'Ver 11242025',
+			'Z11 / No Card Machine',
+			'Not Updated Yet'
 		],
 		datasets: [
 			{
 				label: 'MI Updated Status',
 				data: [
-					miUpdatedStats.ver11042025,
 					miUpdatedStats.ver11112025,
 					miUpdatedStats.ver11212025,
+					miUpdatedStats.ver11242025,
 					miUpdatedStats.z11NoCardMachine,
 					miUpdatedStats.notUpdatedYet,
 				],
@@ -365,7 +371,7 @@ const COLORS = [
 		onClick: (event: any, elements: any[]) => {
 			if (elements && elements.length > 0) {
 				const elementIndex = elements[0].index;
-				const labels = ['Ver 11042025', 'Ver 11112025', 'Ver 11212025', 'z11/no card machine', 'not updated yet'];
+				const labels = ['Ver 11112025', 'Ver 11212025', 'Ver 11242025', 'Z11 / No Card Machine', 'Not Updated Yet'];
 				const category = labels[elementIndex];
 				if (category) {
 					handleMiUpdatedClick(category);
@@ -385,15 +391,15 @@ const COLORS = [
 	const handleMiUpdatedClick = (category: string) => {
 		let filtered: MerchantWithStatus[] = [];
 		
-		if (category === 'Ver 11042025') {
-			filtered = miUpdatedStats.categories.ver11042025;
-		} else if (category === 'Ver 11112025') {
+		if (category === 'Ver 11112025') {
 			filtered = miUpdatedStats.categories.ver11112025;
 		} else if (category === 'Ver 11212025') {
 			filtered = miUpdatedStats.categories.ver11212025;
-		} else if (category === 'z11/no card machine') {
+		} else if (category === 'Ver 11242025') {
+			filtered = miUpdatedStats.categories.ver11242025;
+		} else if (category === 'Z11 / No Card Machine') {
 			filtered = miUpdatedStats.categories.z11NoCardMachine;
-		} else if (category === 'not updated yet') {
+		} else if (category === 'Not Updated Yet') {
 			filtered = miUpdatedStats.categories.notUpdatedYet;
 		}
 		

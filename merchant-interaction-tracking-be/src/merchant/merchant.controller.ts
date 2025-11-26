@@ -23,6 +23,25 @@ export class MerchantController {
     return this.merchantService.findAll();
   }
 
+  @Get('call-logs-sheets')
+  @UseGuards(JwtAuthGuard)
+  async getCallLogsSheets() {
+    try {
+      const sheets = await this.merchantService.getCallLogsSheets();
+      return { sheets };
+    } catch (error: any) {
+      console.error('[MerchantController] Error getting call logs sheets:', error);
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error?.message || 'Internal server error',
+          error: 'Internal Server Error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.merchantService.findOne(id);
@@ -92,25 +111,6 @@ export class MerchantController {
   async syncCallLogs(@Req() req: any) {
     const email = req?.user?.email || 'unknown@mangoforsalon.com';
     return this.merchantService.syncCallLogs(email);
-  }
-
-  @Get('call-logs-sheets')
-  @UseGuards(JwtAuthGuard)
-  async getCallLogsSheets() {
-    try {
-      const sheets = await this.merchantService.getCallLogsSheets();
-      return { sheets };
-    } catch (error: any) {
-      console.error('[MerchantController] Error getting call logs sheets:', error);
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: error?.message || 'Internal server error',
-          error: 'Internal Server Error',
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
   }
 
   @Post('sync-call-logs-manual')

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Select from 'react-select';
 import { MerchantWithStatus, SupportNote } from '../types/merchant';
 import { getStatusColor, getStatusText, formatDate } from '../utils/merchantUtils';
 import apiService from '../services/apiService';
@@ -32,7 +33,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
   const [confirmUncheckFor, setConfirmUncheckFor] = useState<{ merchant: MerchantWithStatus; newValue: boolean } | null>(null);
   const [isUpdatingIsMiUpdated, setIsUpdatingIsMiUpdated] = useState(false);
   const [isUpdatingMiVersion, setIsUpdatingMiVersion] = useState<number | null>(null);
-  const MI_VERSIONS = ['11042025', '11112025', '11212025'];
+  const MI_VERSIONS = ['11112025', '11212025', '11242025'];
 
   return (
     <div className="merchant-list">
@@ -157,7 +158,7 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                       }}
                     />
                     {merchant.isMiUpdated && (
-                      <select
+                      <Select
                         value={(() => {
                           // Parse miVersion if it's a JSON string
                           let version = merchant.miVersion;
@@ -168,12 +169,13 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                               // If parsing fails, use as is
                             }
                           }
-                          return version && MI_VERSIONS.includes(version) ? version : '';
+                          const foundVersion = version && MI_VERSIONS.includes(version) ? version : '';
+                          return foundVersion ? { value: foundVersion, label: foundVersion } : null;
                         })()}
-                        onChange={async (e) => {
-                          const newVersion = e.target.value;
-                          if (!newVersion) return;
+                        onChange={async (selectedOption) => {
+                          if (!selectedOption) return;
                           
+                          const newVersion = selectedOption.value;
                           const versionJson = JSON.stringify(newVersion);
                           setIsUpdatingMiVersion(merchant.id!);
                           
@@ -194,24 +196,46 @@ const MerchantList: React.FC<MerchantListProps> = ({ merchants, onEdit, onDelete
                             setIsUpdatingMiVersion(null);
                           }
                         }}
-                        disabled={isUpdatingMiVersion === merchant.id!}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.75rem',
-                          borderRadius: '4px',
-                          border: '1px solid #e5e7eb',
-                          background: 'white',
-                          color: '#1e293b',
-                          cursor: isUpdatingMiVersion === merchant.id! ? 'not-allowed' : 'pointer',
-                          minWidth: '90px',
-                          opacity: isUpdatingMiVersion === merchant.id! ? 0.6 : 1,
+                        isDisabled={isUpdatingMiVersion === merchant.id!}
+                        options={MI_VERSIONS.map(version => ({
+                          value: version,
+                          label: version
+                        }))}
+                        placeholder="Select version"
+                        isClearable={false}
+                        isSearchable={false}
+                        styles={{
+                          control: (base, state) => ({
+                            ...base,
+                            minWidth: '90px',
+                            fontSize: '0.75rem',
+                            padding: '0.125rem 0.25rem',
+                            borderColor: '#e5e7eb',
+                            boxShadow: 'none',
+                            '&:hover': {
+                              borderColor: '#d1d5db',
+                            },
+                            opacity: isUpdatingMiVersion === merchant.id! ? 0.6 : 1,
+                            cursor: isUpdatingMiVersion === merchant.id! ? 'not-allowed' : 'pointer',
+                          }),
+                          menu: (base) => ({
+                            ...base,
+                            fontSize: '0.75rem',
+                            zIndex: 9999,
+                          }),
+                          option: (base, state) => ({
+                            ...base,
+                            padding: '0.375rem 0.5rem',
+                            cursor: 'pointer',
+                            backgroundColor: state.isSelected
+                              ? '#3b82f6'
+                              : state.isFocused
+                              ? '#eff6ff'
+                              : 'white',
+                            color: state.isSelected ? 'white' : '#1e293b',
+                          }),
                         }}
-                      >
-                        <option value="">Select version</option>
-                        {MI_VERSIONS.map(version => (
-                          <option key={version} value={version}>{version}</option>
-                        ))}
-                      </select>
+                      />
                     )}
                   </div>
                 </td>
