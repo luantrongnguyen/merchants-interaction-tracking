@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { MerchantWithStatus } from '../types/merchant';
 import { Pie, Bar } from 'react-chartjs-2';
 import {
@@ -11,6 +11,7 @@ import {
   BarElement,
 } from 'chart.js';
 import Modal from './Modal';
+import './MerchantStatsModal.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
@@ -57,23 +58,77 @@ const getWeekKey = (d: Date) => {
   return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
 };
 
+interface ProcessedData {
+  labels: string[];
+  counts: number[];
+  total: number;
+  timeAgg: {
+    labels: string[];
+    counts: number[];
+  };
+}
+
 const MerchantStatsModal: React.FC<MerchantStatsModalProps> = ({ merchant, onClose }) => {
   const [range, setRange] = useState<'day' | 'week' | 'month' | 'year'>('day');
+  const [isLoading, setIsLoading] = useState(true);
+  const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
 
   const supportLogs = merchant.supportLogs || [];
 
-  const { labels, counts, total } = useMemo(() => {
-    const map = new Map<string, number>();
-    supportLogs.forEach(log => {
-      const raw = (log.category || '').trim();
-      const key = raw !== '' ? raw : 'Uncategorized';
-      map.set(key, (map.get(key) || 0) + 1);
-    });
-    const labs = Array.from(map.keys());
-    const cnts = labs.map(l => map.get(l) || 0);
-    const tot = cnts.reduce((a, b) => a + b, 0);
-    return { labels: labs, counts: cnts, total: tot };
-  }, [supportLogs]);
+  // Process data asynchronously
+  useEffect(() => {
+    setIsLoading(true);
+    
+    // Use setTimeout to make it async and not block UI
+    const processData = async () => {
+      // Small delay to allow UI to render loading state
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Process category data
+      const categoryMap = new Map<string, number>();
+      supportLogs.forEach(log => {
+        const raw = (log.category || '').trim();
+        const key = raw !== '' ? raw : 'Uncategorized';
+        categoryMap.set(key, (categoryMap.get(key) || 0) + 1);
+      });
+      const categoryLabels = Array.from(categoryMap.keys());
+      const categoryCounts = categoryLabels.map(l => categoryMap.get(l) || 0);
+      const total = categoryCounts.reduce((a, b) => a + b, 0);
+
+      // Process time aggregation data
+      const timeMap = new Map<string, number>();
+      supportLogs.forEach(log => {
+        const d = parseDate(log.date);
+        if (!d) return;
+        let key = '';
+        switch (range) {
+          case 'day': key = getDayKey(d); break;
+          case 'week': key = getWeekKey(d); break;
+          case 'month': key = getMonthKey(d); break;
+          case 'year': key = getYearKey(d); break;
+        }
+        timeMap.set(key, (timeMap.get(key) || 0) + 1);
+      });
+      const timeKeys = Array.from(timeMap.keys()).sort();
+      const timeCounts = timeKeys.map(k => timeMap.get(k) || 0);
+
+      setProcessedData({
+        labels: categoryLabels,
+        counts: categoryCounts,
+        total,
+        timeAgg: {
+          labels: timeKeys,
+          counts: timeCounts,
+        },
+      });
+      
+      setIsLoading(false);
+    };
+
+    processData();
+  }, [supportLogs, range]);
+
+  const { labels, counts, total } = processedData || { labels: [], counts: [], total: 0 };
 
   const pieData = {
     labels,
@@ -104,23 +159,7 @@ const MerchantStatsModal: React.FC<MerchantStatsModalProps> = ({ merchant, onClo
     maintainAspectRatio: false,
   } as const;
 
-  const timeAgg = useMemo(() => {
-    const map = new Map<string, number>();
-    supportLogs.forEach(log => {
-      const d = parseDate(log.date);
-      if (!d) return;
-      let key = '';
-      switch (range) {
-        case 'day': key = getDayKey(d); break;
-        case 'week': key = getWeekKey(d); break;
-        case 'month': key = getMonthKey(d); break;
-        case 'year': key = getYearKey(d); break;
-      }
-      map.set(key, (map.get(key) || 0) + 1);
-    });
-    const keys = Array.from(map.keys()).sort();
-    return { labels: keys, counts: keys.map(k => map.get(k) || 0) };
-  }, [supportLogs, range]);
+  const timeAgg = processedData?.timeAgg || { labels: [], counts: [] };
 
   const barData = {
     labels: timeAgg.labels,
@@ -159,29 +198,38 @@ const MerchantStatsModal: React.FC<MerchantStatsModalProps> = ({ merchant, onClo
       maxWidth="96vw"
       maxHeight="90vh"
     >
-      <div className="chart-wrapper" style={{ height: 320, marginBottom: 16 }}>
-        {labels.length === 0 ? (
-          <div className="empty-state">Không có dữ liệu category.</div>
-        ) : (
-          <Pie data={pieData} options={pieOptions} />
-        )}
-      </div>
+      {isLoading ? (
+        <div className="stats-loading-container">
+          <div className="stats-loading-spinner"></div>
+          <p className="stats-loading-text">Đang xử lý dữ liệu...</p>
+        </div>
+      ) : (
+        <>
+          <div className="chart-wrapper" style={{ height: 320, marginBottom: 16 }}>
+            {labels.length === 0 ? (
+              <div className="empty-state">Không có dữ liệu category.</div>
+            ) : (
+              <Pie data={pieData} options={pieOptions} />
+            )}
+          </div>
 
-      <div style={{ marginBottom: 8 }}>
-        <select value={range} onChange={e => setRange(e.target.value as any)}>
-          <option value="day">Day</option>
-          <option value="week">Week</option>
-          <option value="month">Month</option>
-          <option value="year">Year</option>
-        </select>
-      </div>
-      <div className="chart-wrapper" style={{ height: 280 }}>
-        {timeAgg.labels.length === 0 ? (
-          <div className="empty-state">Không có dữ liệu interactions.</div>
-        ) : (
-          <Bar data={barData} options={barOptions} />
-        )}
-      </div>
+          <div style={{ marginBottom: 8 }}>
+            <select value={range} onChange={e => setRange(e.target.value as any)}>
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </select>
+          </div>
+          <div className="chart-wrapper" style={{ height: 280 }}>
+            {timeAgg.labels.length === 0 ? (
+              <div className="empty-state">Không có dữ liệu interactions.</div>
+            ) : (
+              <Bar data={barData} options={barOptions} />
+            )}
+          </div>
+        </>
+      )}
     </Modal>
   );
 };
