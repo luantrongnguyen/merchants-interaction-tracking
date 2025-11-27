@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Req, UnauthorizedException, HttpException, HttpStatus, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGuards, Req, UnauthorizedException, HttpException, HttpStatus, Put, Header } from '@nestjs/common';
 import { MerchantService } from './merchant.service';
 import { CreateMerchantDto } from './dto/create-merchant.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
@@ -111,6 +111,43 @@ export class MerchantController {
   async syncCallLogs(@Req() req: any) {
     const email = req?.user?.email || 'unknown@mangoforsalon.com';
     return this.merchantService.syncCallLogs(email);
+  }
+
+  @Post('webhook/sync-call-logs')
+  async webhookSyncCallLogs(@Body() body: { secret?: string; sheetName?: string }, @Req() req: any) {
+    try {
+      // Validate webhook secret (optional but recommended for security)
+      const expectedSecret = process.env.WEBHOOK_SECRET || appConfig.passcode;
+      if (body.secret && body.secret !== expectedSecret) {
+        throw new UnauthorizedException('Invalid webhook secret');
+      }
+
+      const userEmail = 'system@mangoforsalon.com';
+      const sheetName = body.sheetName; // Optional: specific sheet name (for logging)
+      
+      console.log(`[Webhook] Received real-time sync request${sheetName ? ` for sheet: ${sheetName}` : ' (latest sheet)'}`);
+      
+      // Sync from latest sheet (real-time sync always syncs from the latest sheet)
+      // The sheetName parameter is just for logging purposes
+      const result = await this.merchantService.syncCallLogs(userEmail);
+      
+      console.log(`[Webhook] Real-time sync completed:`, result);
+      return {
+        success: true,
+        ...result,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error: any) {
+      console.error('[Webhook] Error in real-time sync:', error);
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error?.message || 'Internal server error',
+          error: 'Internal Server Error',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Post('sync-call-logs-manual')
