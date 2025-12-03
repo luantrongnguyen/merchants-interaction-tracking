@@ -233,7 +233,7 @@ const COLORS = [
 	const total = counts.reduce((a, b) => a + b, 0);
 
 	// Calculate MI Updated statistics
-	// Categories: Ver 11112025, Ver 11212025, Ver 11242025, z11/no card machine, not updated yet
+	// Categories: Ver 11112025, Ver 11212025, Ver 11242025, z11/no card machine, other versions
 	const miUpdatedStats = useMemo(() => {
 		const ver11042025: MerchantWithStatus[] = []; // Legacy version, keep for backward compatibility
 		const ver11112025: MerchantWithStatus[] = [];
@@ -267,7 +267,7 @@ const COLORS = [
 				// z11/no card machine (and no specific version)
 				z11NoCardMachine.push(m);
 			} else if (!m.isMiUpdated && !m.z11OrNotGoWMango) {
-				// Not updated yet (no version, no z11, no isMiUpdated)
+				// Other versions (no version, no z11, no isMiUpdated)
 				notUpdatedYet.push(m);
 			}
 		});
@@ -298,7 +298,7 @@ const COLORS = [
 			'Ver 11212025',
 			'Ver 11242025',
 			'Z11 / No Card Machine',
-			'Not Updated Yet'
+			'Other Versions'
 		],
 		datasets: [
 			{
@@ -371,7 +371,7 @@ const COLORS = [
 		onClick: (event: any, elements: any[]) => {
 			if (elements && elements.length > 0) {
 				const elementIndex = elements[0].index;
-				const labels = ['Ver 11112025', 'Ver 11212025', 'Ver 11242025', 'Z11 / No Card Machine', 'Not Updated Yet'];
+				const labels = ['Ver 11112025', 'Ver 11212025', 'Ver 11242025', 'Z11 / No Card Machine', 'Other Versions'];
 				const category = labels[elementIndex];
 				if (category) {
 					handleMiUpdatedClick(category);
@@ -399,7 +399,7 @@ const COLORS = [
 			filtered = miUpdatedStats.categories.ver11242025;
 		} else if (category === 'Z11 / No Card Machine') {
 			filtered = miUpdatedStats.categories.z11NoCardMachine;
-		} else if (category === 'Not Updated Yet') {
+		} else if (category === 'Other Versions') {
 			filtered = miUpdatedStats.categories.notUpdatedYet;
 		}
 		
@@ -1395,18 +1395,18 @@ const COLORS = [
 													padding: '0.25rem 0.75rem',
 													borderRadius: '6px',
 													background: (() => {
-														if (selectedMiUpdatedStatus === 'not updated yet') return '#fee2e2';
+														if (selectedMiUpdatedStatus === 'Other Versions') return '#fee2e2';
 														return '#dcfce7';
 													})(),
 													color: (() => {
-														if (selectedMiUpdatedStatus === 'not updated yet') return '#991b1b';
+														if (selectedMiUpdatedStatus === 'Other Versions') return '#991b1b';
 														return '#166534';
 													})(),
 													fontSize: '0.75rem',
 													fontWeight: 600,
 												}}
 											>
-												{selectedMiUpdatedStatus === 'not updated yet' ? '✗ Not Updated' : '✓ Updated'}
+												{selectedMiUpdatedStatus === 'Other Versions' ? '✗ Other Versions' : '✓ Updated'}
 											</div>
 											{merchant.supportLogs && merchant.supportLogs.length > 0 && (
 												<div style={{ fontSize: '0.75rem', color: '#64748b' }}>
