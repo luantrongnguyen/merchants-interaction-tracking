@@ -128,15 +128,15 @@ const MerchantStatsModal: React.FC<MerchantStatsModalProps> = ({ merchant, onClo
     processData();
   }, [supportLogs, range]);
 
-  const { labels, counts, total } = processedData || { labels: [], counts: [], total: 0 };
+  const { labels = [], counts = [], total = 0 } = processedData || { labels: [], counts: [], total: 0 };
 
   const pieData = {
-    labels,
+    labels: labels || [],
     datasets: [
       {
         label: 'Số lượng theo Category',
-        data: counts,
-        backgroundColor: labels.map((_, i) => COLORS[i % COLORS.length]),
+        data: counts || [],
+        backgroundColor: (labels || []).map((_, i) => COLORS[i % COLORS.length]),
         borderColor: '#ffffff',
         borderWidth: 1,
       },
