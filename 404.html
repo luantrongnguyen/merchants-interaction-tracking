@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/merchants-interaction-tracking/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Merchant Tracking - Track and manage merchant interactions"
+    />
+    <link rel="apple-touch-icon" href="/merchants-interaction-tracking/logo.png" />
+    <link rel="manifest" href="/merchants-interaction-tracking/manifest.json" />
+    <title>Merchant Tracking</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      // This script takes the current url and converts the path and query
+      // string into just a query string, and then redirects the browser
+      // to the new url with only a query string and hash fragment,
+      // e.g. https://www.foo.com/path/to/page?q=1&r=2#/dashboard
+      // becomes:
+      // https://www.foo.com/?q=1&r=2#/dashboard
+      (function(l) {
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location))
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script>
+      // Redirect to index.html with the path as a query parameter
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      var path = window.location.pathname;
+      var search = window.location.search;
+      var hash = window.location.hash;
+      
+      // Remove the basename from path if it exists
+      var basename = '/merchants-interaction-tracking';
+      if (path.startsWith(basename)) {
+        path = path.slice(basename.length);
+      }
+      
+      // Build the redirect URL - use query parameter format
+      var redirectPath = basename + '/index.html';
+      var query = path !== '/' && path !== '' ? '?/' + path.slice(1).replace(/\//g, '~and~') : '';
+      if (search && search !== '?') {
+        query += (query ? '&' : '?') + search.slice(1);
+      }
+      if (hash) {
+        query += hash;
+      }
+      
+      // Only redirect if we haven't already processed the query
+      if (!window.location.search.includes('/')) {
+        window.location.replace(redirectPath + query);
+      }
+    </script>
+  </body>
+</html>
+
